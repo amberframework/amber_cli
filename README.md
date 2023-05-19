@@ -1,6 +1,8 @@
 # amber_cli
 
-TODO: Write a description here
+This is a WIP tool that takes the Amber CLI out of the same repo as the Amber framework itself.
+
+This allows us to build a CLI tool that isn't tightly coupled to release versions of Amber.
 
 ## Installation
 
