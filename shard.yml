@@ -1,0 +1,79 @@
+name: amber_cli
+version: 0.1.0
+
+authors:
+  - crimson-knight <crimsonknightstudios@gmail.com>
+
+crystal: 1.7.3
+
+license: MIT
+
+dependencies:
+
+  micrate:
+    github: amberframework/micrate
+    version: ~> 0.15.0
+
+  pg:
+    github: will/crystal-pg
+    version: ~> 0.26.0
+
+  mysql:
+    github: crystal-lang/crystal-mysql
+    version: ~> 0.14.0
+
+  sqlite3:
+    github: crystal-lang/crystal-sqlite3
+    version: ~> 0.19.0
+
+  exception_page:
+    github: crystal-loot/exception_page
+    version: ~> 0.2.1
+
+  # Fork from Mosop, only used by the CLI tool
+  cli:
+    github: amberframework/cli
+    version: ~> 0.11.3
+
+  # Currently only used in the CLI tool
+  liquid:
+    github: amberframework/liquid.cr
+    branch: master # Shouldn't be left on Master, but good enough for now to use Hugo's best work :)
+
+  # Only used in the CLI tool, original appears to have been abandoned. Lucky one is maintained, mostly?
+  shell-table:
+    github: luckyframework/shell-table.cr
+    version: ~> 0.9.3
+
+  # Latest version unknown, no updates since. 
+  ## Worth moving into CLI tool
+  inflector:
+    github: phoffer/inflector.cr
+    version: ~> 1.0.0
+
+  # Forked from original by Mosop, and is more maintained than Mosop
+  ## Worth moving into CLI tool
+  teeplate:
+    github: amberframework/teeplate
+    version: ~> 0.11.2
+
+  # Issue made to remove: https://github.com/amberframework/amber/issues/1310
+  yaml_mapping:
+    github: crystal-lang/yaml_mapping.cr
+    version: ~> 0.1.0
+
+  ## Issue made to remove: https://github.com/amberframework/amber/issues/1311
+  json_mapping:
+    github: crystal-lang/json_mapping.cr
+    version: ~> 0.1.0
+
+  # CLI tool item, specifically for when distributing a compiled binary (like the CLI tool will be)
+  compiled_license:
+    github: elorest/compiled_license
+    version: ~> 1.2.2
+
+
+development_dependencies:
+  ameba:
+    github: crystal-ameba/ameba
+    version: ~> 1.3.0
