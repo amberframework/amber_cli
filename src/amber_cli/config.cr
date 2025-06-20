@@ -1,4 +1,4 @@
-require "yaml_mapping"
+require "yaml"
 
 module Amber::CLI
   def self.config
@@ -15,6 +15,8 @@ module Amber::CLI
   end
 
   class Config
+    include YAML::Serializable
+    
     SHARD_YML    = "shard.yml"
     DEFAULT_NAME = "[process_name]"
 
@@ -26,20 +28,15 @@ module Amber::CLI
     property model : String = "granite"
     property recipe : (String | Nil) = nil
     property recipe_source : (String | Nil) = nil
-    property watch : WatchOptions
+    property watch : WatchOptions?
 
     def initialize
       @watch = default_watch_options
     end
 
-    YAML.mapping(
-      database: {type: String, default: "pg"},
-      language: {type: String, default: "slang"},
-      model: {type: String, default: "granite"},
-      recipe: String | Nil,
-      recipe_source: String | Nil,
-      watch: {type: WatchOptions, default: default_watch_options}
-    )
+    def watch : WatchOptions
+      @watch ||= default_watch_options
+    end
 
     def default_watch_options
       appname = self.class.get_name

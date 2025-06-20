@@ -61,10 +61,6 @@ dependencies:
     github: amberframework/teeplate
     version: ~> 0.11.2
 
-  # Issue made to remove: https://github.com/amberframework/amber/issues/1310
-  yaml_mapping:
-    github: crystal-lang/yaml_mapping.cr
-    version: ~> 0.1.0
 
   ## Issue made to remove: https://github.com/amberframework/amber/issues/1311
   json_mapping:
