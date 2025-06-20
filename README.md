@@ -11,7 +11,7 @@ This allows us to build a CLI tool that isn't tightly coupled to release version
    ```yaml
    dependencies:
      amber_cli:
-       github: your-github-user/amber_cli
+       github: amberframework/amber_cli
    ```
 
 2. Run `shards install`
@@ -30,7 +30,7 @@ TODO: Write development instructions here
 
 ## Contributing
 
-1. Fork it (<https://github.com/your-github-user/amber_cli/fork>)
+1. Fork it (<https://github.com/amberframework/amber_cli/fork>)
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
@@ -38,4 +38,4 @@ TODO: Write development instructions here
 
 ## Contributors
 
-- [crimson-knight](https://github.com/your-github-user) - creator and maintainer
+- [crimson-knight](https://github.com/crimson-knight) - creator and maintainer
