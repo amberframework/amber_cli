@@ -2,6 +2,27 @@ require "inflector"
 
 module AmberCLI::Core
   class WordTransformer
+    # Common words that inflector.cr doesn't handle correctly
+    CUSTOM_PLURALS = {
+      "hero" => "heroes",
+      "potato" => "potatoes",
+      "echo" => "echoes",
+      "embargo" => "embargoes",
+      "tornado" => "tornadoes",
+      "volcano" => "volcanoes",
+      "buffalo" => "buffaloes", # though "buffalos" is also acceptable
+    }
+
+    CUSTOM_SINGULARS = {
+      "heroes" => "hero", 
+      "potatoes" => "potato",
+      "echoes" => "echo",
+      "embargoes" => "embargo", 
+      "tornadoes" => "tornado",
+      "volcanoes" => "volcano",
+      "buffaloes" => "buffalo",
+    }
+
     def self.transform(word : String, transformation : String, conventions : Hash(String, String) = {} of String => String) : String
       return word if word.empty?
 
@@ -11,12 +32,22 @@ module AmberCLI::Core
         return pattern.gsub("{{word}}", word)
       end
 
-      # Apply standard transformations using inflector.cr
+      # Apply standard transformations using inflector.cr with custom overrides
       case transformation
       when "singular"
-        Inflector.singularize(word)
+        # Check our custom singulars first
+        if CUSTOM_SINGULARS.has_key?(word.downcase)
+          CUSTOM_SINGULARS[word.downcase]
+        else
+          Inflector.singularize(word)
+        end
       when "plural"
-        Inflector.pluralize(word)
+        # Check our custom plurals first
+        if CUSTOM_PLURALS.has_key?(word.downcase)
+          CUSTOM_PLURALS[word.downcase]
+        else
+          Inflector.pluralize(word)
+        end
       when "pascal_case", "camel_case"
         # Convert to snake_case first if needed, then camelize
         snake_word = word.includes?("_") ? word : Inflector.underscore(word)
@@ -44,7 +75,7 @@ module AmberCLI::Core
       when "tableize"
         # Convert to snake_case and pluralize for table names
         snake_word = Inflector.underscore(word)
-        Inflector.pluralize(snake_word)
+        transform(snake_word, "plural") # Use our enhanced plural method
       when "foreign_key"
         Inflector.foreign_key(word)
       when "snake_case_plural"

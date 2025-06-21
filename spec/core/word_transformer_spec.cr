@@ -22,7 +22,8 @@ describe AmberCLI::Core::WordTransformer do
         AmberCLI::Core::WordTransformer.transform("box", "plural").should eq("boxes")
         AmberCLI::Core::WordTransformer.transform("dish", "plural").should eq("dishes")
         AmberCLI::Core::WordTransformer.transform("church", "plural").should eq("churches")
-        AmberCLI::Core::WordTransformer.transform("hero", "plural").should eq("heros")
+        AmberCLI::Core::WordTransformer.transform("hero", "plural").should eq("heroes")
+        AmberCLI::Core::WordTransformer.transform("potato", "plural").should eq("potatoes")
       end
 
       it "converts to camel_case" do
