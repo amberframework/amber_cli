@@ -50,19 +50,7 @@ dependencies:
     github: phoffer/inflector.cr
     version: ~> 1.0.0
 
-
-  ## Issue made to remove: https://github.com/amberframework/amber/issues/1311
-  json_mapping:
-    github: crystal-lang/json_mapping.cr
-    version: ~> 0.1.0
-
   # CLI tool item, specifically for when distributing a compiled binary (like the CLI tool will be)
   compiled_license:
     github: elorest/compiled_license
     version: ~> 1.2.2
-
-
-development_dependencies:
-  ameba:
-    github: crystal-ameba/ameba
-    version: ~> 1.3.0
