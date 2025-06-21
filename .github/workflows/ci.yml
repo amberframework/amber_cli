@@ -82,7 +82,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
 
     - name: Upload binary artifact (Linux)
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: matrix.os == 'ubuntu-latest'
       with:
         name: amber_cli-linux
