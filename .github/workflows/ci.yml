@@ -1,0 +1,163 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        crystal: [latest]
+        include:
+          - os: ubuntu-latest
+            crystal-install: |
+              curl -fsSL https://crystal-lang.org/install.sh | sudo bash
+          - os: macos-latest
+            crystal-install: |
+              brew install crystal
+          - os: windows-latest
+            crystal-install: |
+              choco install crystal
+
+    name: Test on ${{ matrix.os }} with Crystal ${{ matrix.crystal }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Crystal (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        curl -fsSL https://crystal-lang.org/install.sh | sudo bash
+        crystal version
+
+    - name: Install Crystal (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install crystal
+        crystal version
+
+    - name: Install Crystal (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install crystal -y
+        crystal version
+      shell: powershell
+
+    - name: Cache shards
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/shards
+          ./lib
+        key: ${{ runner.os }}-shards-${{ hashFiles('shard.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-shards-
+
+    - name: Install dependencies
+      run: shards install
+
+    - name: Check code formatting
+      run: crystal tool format --check
+      continue-on-error: true
+
+    - name: Run ameba linter
+      run: ./bin/ameba
+      continue-on-error: true
+
+    - name: Compile project
+      run: crystal build src/amber_cli.cr --no-debug
+
+    - name: Run tests
+      run: crystal spec
+
+    - name: Build release binary
+      run: crystal build src/amber_cli.cr --release --no-debug -o amber_cli
+      if: matrix.os == 'ubuntu-latest'
+
+    - name: Upload binary artifact (Linux)
+      uses: actions/upload-artifact@v3
+      if: matrix.os == 'ubuntu-latest'
+      with:
+        name: amber_cli-linux
+        path: amber_cli
+
+  # Separate job for additional platform-specific tests
+  platform-specific:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    
+    name: Platform-specific tests on ${{ matrix.os }}
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Crystal (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        curl -fsSL https://crystal-lang.org/install.sh | sudo bash
+
+    - name: Install Crystal (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install crystal
+
+    - name: Install Crystal (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install crystal -y
+      shell: powershell
+
+    - name: Install dependencies
+      run: shards install
+
+    - name: Test CLI functionality (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        crystal build src/amber_cli.cr -o amber_cli
+        ./amber_cli --help || true
+        ./amber_cli --version || true
+
+    - name: Test CLI functionality (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        crystal build src/amber_cli.cr -o amber_cli.exe
+        .\amber_cli.exe --help
+        .\amber_cli.exe --version
+      shell: powershell
+      continue-on-error: true
+
+  # Job to run integration tests
+  integration:
+    runs-on: ubuntu-latest
+    name: Integration tests
+    needs: test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Crystal
+      run: |
+        curl -fsSL https://crystal-lang.org/install.sh | sudo bash
+
+    - name: Install dependencies
+      run: shards install
+
+    - name: Run integration tests
+      run: |
+        if [ -d "spec/integration" ]; then
+          crystal spec spec/integration/
+        else
+          echo "No integration tests found, skipping..."
+        fi 

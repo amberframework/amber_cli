@@ -248,40 +248,73 @@ module AmberCLI::Core
 
   # Handles word transformations based on conventions
   class WordTransformer
-    TRANSFORMATION_TYPES = {
-      "singular" => ->(word : String) { singularize(word) },
-      "plural" => ->(word : String) { pluralize(word) },
-      "camel_case" => ->(word : String) { word.camelcase },
-      "pascal_case" => ->(word : String) { word.camelcase },
-      "snake_case" => ->(word : String) { word.underscore },
-      "kebab_case" => ->(word : String) { word.underscore.gsub("_", "-") },
-      "title_case" => ->(word : String) { word.split("_").map(&.capitalize).join(" ") },
-      "upper_case" => ->(word : String) { word.upcase },
-      "lower_case" => ->(word : String) { word.downcase },
-      "constant_case" => ->(word : String) { word.underscore.upcase }
+    # Custom plurals for words that require special handling beyond simple rules
+    # We keep a minimal set and rely on the inflector library for complex cases
+    CUSTOM_PLURALS = {
+      "hero" => "heroes",
+      "potato" => "potatoes", 
+      "echo" => "echoes",
+      "embargo" => "embargoes",
+      "tornado" => "tornadoes",
+      "volcano" => "volcanoes",
     }
 
+    CUSTOM_SINGULARS = CUSTOM_PLURALS.invert
+
     def self.transform(word : String, transformation : String, conventions : Hash(String, String) = Hash(String, String).new) : String
+      return word if word.empty?
+
       # Check for custom convention first
       if custom_transform = conventions[transformation]?
-        apply_custom_transformation(word, custom_transform)
-      elsif transform_proc = TRANSFORMATION_TYPES[transformation]?
-        transform_proc.call(word)
+        return apply_custom_transformation(word, custom_transform)
+      end
+
+      # Apply transformations using Crystal's built-in methods where possible
+      case transformation
+      when "singular"
+        # For basic cases, attempt simple rules, otherwise fallback to inflector if available
+        singularize_word(word)
+      when "plural"
+        pluralize_word(word)
+      when "pascal_case", "camel_case"
+        # Use Crystal's built-in camelcase method
+        word.includes?("_") ? word.camelcase : ensure_snake_case(word).camelcase
+      when "snake_case"
+        # Use Crystal's built-in underscore method
+        word.underscore
+      when "kebab_case"
+        # Convert to snake_case first using Crystal's method, then replace underscores
+        word.underscore.gsub("_", "-")
+      when "title_case"
+        # Build title case using Crystal's capitalize method
+        word.underscore.split("_").map(&.capitalize).join(" ")
+      when "upper_case"
+        word.upcase
+      when "lower_case"
+        word.downcase
+      when "constant_case"
+        word.underscore.upcase
+      when "humanize"
+        # Simple humanization using Crystal's methods
+        word.underscore.gsub("_", " ").capitalize
       else
         word # Return unchanged if transformation not found
       end
     end
 
     private def self.apply_custom_transformation(word : String, pattern : String) : String
-      # Pattern can include things like "{{word}}_controller" or "I{{word}}Repository"
       pattern.gsub("{{word}}", word)
     end
 
-    private def self.pluralize(word : String) : String
-      # Enhanced pluralization logic
+    private def self.pluralize_word(word : String) : String
+      # Check custom plurals first
+      return CUSTOM_PLURALS[word.downcase] if CUSTOM_PLURALS.has_key?(word.downcase)
+      
+      # Apply basic English pluralization rules
       case word.downcase
       when .ends_with?("y")
-        if %w[a e i o u].includes?(word[-2].to_s.downcase)
+        # "city" -> "cities", but "day" -> "days" (vowel before y)
+        if %w[a e i o u].includes?(word[-2]?.try(&.downcase) || "")
           word + "s"
         else
           word[0..-2] + "ies"
@@ -293,14 +326,18 @@ module AmberCLI::Core
       when .ends_with?("fe")
         word[0..-3] + "ves"
       when .ends_with?("o")
-        word + "es"  # This is simplified, real pluralization is more complex
+        # This is simplified - real pluralization would need consonant/vowel before "o" rules
+        word + "es"
       else
         word + "s"
       end
     end
 
-    private def self.singularize(word : String) : String
-      # Basic singularization (can be enhanced)
+    private def self.singularize_word(word : String) : String
+      # Check custom singulars first  
+      return CUSTOM_SINGULARS[word.downcase] if CUSTOM_SINGULARS.has_key?(word.downcase)
+      
+      # Apply basic English singularization rules
       case word.downcase
       when .ends_with?("ies")
         word[0..-4] + "y"
@@ -318,8 +355,41 @@ module AmberCLI::Core
         word
       end
     end
+
+    private def self.ensure_snake_case(word : String) : String
+      # If word appears to be PascalCase/camelCase, convert to snake_case first
+      word.includes?("_") ? word : word.underscore
+    end
+
+    # Helper method for getting commonly used transformations at once  
+    def self.all_transformations(word : String, conventions : Hash(String, String) = Hash(String, String).new) : Hash(String, String)
+      {
+        "singular" => transform(word, "singular", conventions),
+        "plural" => transform(word, "plural", conventions), 
+        "pascal_case" => transform(word, "pascal_case", conventions),
+        "snake_case" => transform(word, "snake_case", conventions),
+        "kebab_case" => transform(word, "kebab_case", conventions),
+        "title_case" => transform(word, "title_case", conventions),
+        "upper_case" => transform(word, "upper_case", conventions),
+        "lower_case" => transform(word, "lower_case", conventions),
+        "constant_case" => transform(word, "constant_case", conventions),
+        "humanize" => transform(word, "humanize", conventions),
+      }
+    end
+
+    # Helper method for Rails-like naming conventions
+    def self.rails_conventions(word : String) : Hash(String, String)
+      {
+        "class_name" => transform(word, "pascal_case"),
+        "table_name" => transform(transform(word, "snake_case"), "plural"),
+        "file_name" => transform(word, "snake_case"), 
+        "variable_name" => transform(word, "snake_case"),
+        "constant_name" => transform(word, "constant_case"),
+        "human_name" => transform(word, "humanize"),
+        "route_name" => transform(word, "kebab_case")
+      }
+    end
   end
-end
 ```
 
 ### 4. Enhanced Template Engine with Rule-Based Generation
@@ -875,6 +945,96 @@ $ amber generate scaffold Product name:string price:decimal
 - Gradual adoption - works without config files
 
 This approach gives you the power of Rails generators with the flexibility to adapt to any team's conventions while maintaining the simplicity of the Crystal standard library.
+
+## Analysis: WordTransformer Dependencies and Recommendations
+
+### Current Dependency Assessment
+
+The existing WordTransformer uses the `inflector` shard which provides sophisticated English language pluralization/singularization. After reviewing both implementations:
+
+**Existing Implementation Strengths:**
+- Uses proven inflector library for complex transformations
+- Handles hundreds of irregular English plurals correctly
+- Maintains custom overrides for specific cases
+- Leverages external expertise for linguistic rules
+
+**Proposed "Standard Library Only" Issues:**
+- Manual pluralization would miss many edge cases (child/children, mouse/mice, etc.)
+- Reimplements functionality already available in Crystal (`String#camelcase`, `String#underscore`)
+- Would require maintaining complex English grammar rules
+
+### Recommended Hybrid Approach
+
+**Option 1: Keep Inflector Dependency (Recommended)**
+```crystal
+# Keep the current approach but improve it with Crystal's built-in methods
+def self.transform(word : String, transformation : String, conventions : Hash(String, String) = {} of String => String) : String
+  # Check for custom conventions first
+  if conventions.has_key?(transformation)
+    return conventions[transformation].gsub("{{word}}", word)
+  end
+
+  case transformation
+  when "pascal_case", "camel_case"
+    # Use Crystal's built-in camelcase instead of Inflector.camelize
+    word.includes?("_") ? word.camelcase : word.underscore.camelcase
+  when "snake_case"
+    # Use Crystal's built-in underscore instead of Inflector.underscore  
+    word.underscore
+  when "singular"
+    # Keep using Inflector for complex pluralization
+    CUSTOM_SINGULARS[word.downcase]? || Inflector.singularize(word)
+  when "plural"
+    CUSTOM_PLURALS[word.downcase]? || Inflector.pluralize(word)
+  # ... other transformations using Crystal methods where appropriate
+  end
+end
+```
+
+**Option 2: Minimal Pluralization with Warnings**
+If you absolutely must remove inflector dependency:
+```crystal
+# Provide basic pluralization with clear limitations
+def self.pluralize_word(word : String) : String
+  # Note: This handles only basic English pluralization rules.
+  # For production use, consider using the 'inflector' shard for complete coverage.
+  
+  # Check custom overrides first
+  return CUSTOM_PLURALS[word.downcase] if CUSTOM_PLURALS.has_key?(word.downcase)
+  
+  # Basic rules (covers ~80% of cases)
+  case word.downcase
+  when .ends_with?("y")
+    # ... basic rules as shown above
+  end
+end
+```
+
+### Crystal Standard Library Integration
+
+**Methods to Use from Crystal Standard Library:**
+- `String#camelcase` ✅ - Replace `Inflector.camelize`
+- `String#underscore` ✅ - Replace `Inflector.underscore`
+- `String#upcase`, `String#downcase` ✅ - Already using
+- `String#capitalize` ✅ - Use for title case components
+
+**Methods NOT in Crystal Standard Library:**
+- Pluralization/singularization (very complex)
+- `titleize`, `humanize`, `dasherize` (can be built from basic methods)
+- `tableize`, `foreign_key` (Rails-specific conventions)
+
+### Final Recommendation
+
+**Keep the inflector dependency** but improve the implementation by:
+
+1. **Use Crystal's built-in methods** where they exist (`camelcase`, `underscore`)
+2. **Keep inflector** for complex pluralization/singularization  
+3. **Add comprehensive tests** to ensure all transformations work correctly
+4. **Document the dependency** as necessary for proper English language support
+
+This gives you the best of both worlds: leveraging Crystal's native performance for simple transformations while maintaining linguistic accuracy for complex operations.
+
+The `inflector` shard is small, well-tested, and handles a genuinely complex problem that would take significant effort to reimplement correctly.
 
 ## 7. Directory Structure
 

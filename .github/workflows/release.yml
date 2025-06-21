@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+            binary_name: amber_cli
+            build_cmd: crystal build src/amber_cli.cr --release --static -o amber_cli-linux
+          - os: macos-latest
+            target: macos
+            binary_name: amber_cli
+            build_cmd: crystal build src/amber_cli.cr --release -o amber_cli-macos
+          - os: windows-latest
+            target: windows
+            binary_name: amber_cli.exe
+            build_cmd: crystal build src/amber_cli.cr --release -o amber_cli-windows.exe
+
+    name: Build for ${{ matrix.target }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Crystal (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        curl -fsSL https://crystal-lang.org/install.sh | sudo bash
+
+    - name: Install Crystal (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install crystal
+
+    - name: Install Crystal (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install crystal -y
+      shell: powershell
+
+    - name: Cache shards
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/shards
+          ./lib
+        key: ${{ runner.os }}-shards-${{ hashFiles('shard.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-shards-
+
+    - name: Install dependencies
+      run: shards install --production
+
+    - name: Build binary (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        # Install static build dependencies for Linux
+        sudo apt-get update
+        sudo apt-get install -y build-essential
+        crystal build src/amber_cli.cr --release --static -o amber_cli-linux
+
+    - name: Build binary (macOS)
+      if: matrix.os == 'macos-latest'
+      run: crystal build src/amber_cli.cr --release -o amber_cli-macos
+
+    - name: Build binary (Windows)
+      if: matrix.os == 'windows-latest'
+      run: crystal build src/amber_cli.cr --release -o amber_cli-windows.exe
+      shell: powershell
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: binaries-${{ matrix.target }}
+        path: amber_cli-*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          binaries-linux/amber_cli-linux
+          binaries-macos/amber_cli-macos
+          binaries-windows/amber_cli-windows.exe
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

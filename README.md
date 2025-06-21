@@ -1,8 +1,15 @@
-# amber_cli
+# Amber CLI
 
-This is a WIP tool that takes the Amber CLI out of the same repo as the Amber framework itself.
+This tool serves as a replacement for the original AMBER framework CLI tool.
 
-This allows us to build a CLI tool that isn't tightly coupled to release versions of Amber.
+The CLI tool is no longer an integrated part of the main amber framework. This means that you do not have to install this helper tool in order to use it.
+
+There are a few major changes between this version and the original version. 
+
+1. I have removed some features that were not being used such as `recipes` and `plugins`.
+
+2. There is an entirely _new_ generator command that is much more flexable than the previous generation. Please read the docs to better understand how to utilize this.
+
 
 ## Installation
 
