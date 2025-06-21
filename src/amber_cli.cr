@@ -5,6 +5,14 @@ require "./exceptions/*"
 require "./environment"
 require "./amber_cli/commands"
 
+# New core architecture modules
+require "./amber_cli/exceptions"
+require "./amber_cli/core/word_transformer"
+require "./amber_cli/core/generator_config"
+require "./amber_cli/core/template_engine"
+require "./amber_cli/core/base_command"
+require "./amber_cli/core/configurable_generator_manager"
+
 backend = Log::IOBackend.new
 backend.formatter = Log::Formatter.new do |entry, io|
   io << entry.timestamp.to_s("%I:%M:%S")
