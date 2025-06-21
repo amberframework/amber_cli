@@ -39,11 +39,6 @@ dependencies:
     github: amberframework/cli
     version: ~> 0.11.3
 
-  # Currently only used in the CLI tool
-  liquid:
-    github: amberframework/liquid.cr
-    branch: master # Shouldn't be left on Master, but good enough for now to use Hugo's best work :)
-
   # Only used in the CLI tool, original appears to have been abandoned. Lucky one is maintained, mostly?
   shell-table:
     github: luckyframework/shell-table.cr
@@ -54,12 +49,6 @@ dependencies:
   inflector:
     github: phoffer/inflector.cr
     version: ~> 1.0.0
-
-  # Forked from original by Mosop, and is more maintained than Mosop
-  ## Worth moving into CLI tool
-  teeplate:
-    github: amberframework/teeplate
-    version: ~> 0.11.2
 
 
   ## Issue made to remove: https://github.com/amberframework/amber/issues/1311

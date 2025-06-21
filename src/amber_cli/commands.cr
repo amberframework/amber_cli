@@ -1,6 +1,5 @@
 require "../version"
 require "cli"
-require "./recipes/recipe"
 require "./config"
 require "./commands/command"
 require "./commands/*"

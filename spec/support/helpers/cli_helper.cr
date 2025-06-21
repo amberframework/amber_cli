@@ -14,6 +14,10 @@ class RouteJSON
 end
 
 module CLIHelper
+  CURRENT_DIR         = Dir.current
+  TEST_APP_NAME       = "test_app"
+  TESTING_APP         = TEST_APP_NAME
+  APP_TEMPLATE_PATH   = "src/amber_cli/templates/app"
   BASE_ENV_PATH       = "./config/environments/"
   ENV_CONFIG_PATH     = "#{TESTING_APP}/config/environments/"
   CURRENT_ENVIRONMENT = ENV["AMBER_ENV"] ||= "test"
@@ -113,6 +117,11 @@ module CLIHelper
     Amber::CLI::MainCommand.run ["new", app_name, "-y", "--no-deps"] | options.to_a
     Dir.cd(app_name)
     prepare_yaml(Dir.current)
+  end
+
+  def scaffold_app_with_plugin
+    scaffold_app(TESTING_APP)
+    FileUtils.mkdir_p("src/plugins")
   end
 
   def build_route(controller, action, method)

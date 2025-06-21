@@ -1,13 +1,8 @@
-require "teeplate"
-require "liquid"
 require "base64"
 
 require "random/secure"
 require "../helpers/helpers"
-
-require "../recipes/file_entries"
 require "./fetcher"
-require "./installer"
 require "./settings"
 
 module Amber::Plugins
@@ -35,7 +30,8 @@ module Amber::Plugins
       case action
       when "install"
         log_message "Adding plugin #{name}"
-        Installer.new(name, args).render(directory, list: true, color: true)
+        # TODO: Implement new plugin installation system
+        log_message "Plugin installation not yet implemented in new architecture"
       else
         Log.error { "Invalid plugin command".colorize(:light_red) }
       end

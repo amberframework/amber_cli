@@ -25,16 +25,9 @@ module Amber::CLI
         CLI.toggle_colors(options.no_color?)
         ensure_name_argument!
 
-        if recipe && Amber::Recipes::Recipe.can_generate?(args.type, recipe)
-          generator = Amber::Recipes::Recipe.new(args.name, ".", recipe.as(String), args.fields)
-        else
-          generator = Generators.new(args.name, ".", args.fields)
-        end
+        # Use the new generator system
+        generator = Generators.new(args.name, ".", args.fields)
         generator.generate(args.type, options)
-      end
-
-      def recipe
-        CLI.config.recipe
       end
 
       private def ensure_name_argument!

@@ -12,6 +12,7 @@ require "./amber_cli/core/generator_config"
 require "./amber_cli/core/template_engine"
 require "./amber_cli/core/base_command"
 require "./amber_cli/core/configurable_generator_manager"
+require "./amber_cli/main_command"
 
 backend = Log::IOBackend.new
 backend.formatter = Log::Formatter.new do |entry, io|
