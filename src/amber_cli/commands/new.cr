@@ -38,8 +38,8 @@ module Amber::CLI
           exit! error: true
         end
         # Use the new generator system
-        generator = Generators.new(name, full_path_name)
-        generator.generate_app(options)
+        # generator = Generators.new(name, full_path_name)
+        # generator.generate_app(options)
 
         # Encrypts production.yml by default.
         cwd = Dir.current; Dir.cd(full_path_name)
