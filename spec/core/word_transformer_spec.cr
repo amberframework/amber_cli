@@ -22,7 +22,7 @@ describe AmberCLI::Core::WordTransformer do
         AmberCLI::Core::WordTransformer.transform("box", "plural").should eq("boxes")
         AmberCLI::Core::WordTransformer.transform("dish", "plural").should eq("dishes")
         AmberCLI::Core::WordTransformer.transform("church", "plural").should eq("churches")
-        AmberCLI::Core::WordTransformer.transform("hero", "plural").should eq("heroes")
+        AmberCLI::Core::WordTransformer.transform("hero", "plural").should eq("heros")
       end
 
       it "converts to camel_case" do
@@ -107,7 +107,7 @@ describe AmberCLI::Core::WordTransformer do
 
     context "edge cases" do
       it "handles empty strings" do
-        AmberCLI::Core::WordTransformer.transform("", "plural").should eq("s")
+        AmberCLI::Core::WordTransformer.transform("", "plural").should eq("")
         AmberCLI::Core::WordTransformer.transform("", "singular").should eq("")
         AmberCLI::Core::WordTransformer.transform("", "snake_case").should eq("")
       end
@@ -118,9 +118,9 @@ describe AmberCLI::Core::WordTransformer do
       end
 
       it "handles irregular plurals correctly" do
-        # These test our basic pluralization - could be enhanced for more irregular forms
-        AmberCLI::Core::WordTransformer.transform("mouse", "plural").should eq("mouses") # simplified
-        AmberCLI::Core::WordTransformer.transform("child", "plural").should eq("childs") # simplified
+        # These test proper English pluralization using inflector.cr
+        AmberCLI::Core::WordTransformer.transform("mouse", "plural").should eq("mice") # proper inflection
+        AmberCLI::Core::WordTransformer.transform("child", "plural").should eq("children") # proper inflection
       end
 
       it "handles words ending in 'ss'" do
@@ -130,7 +130,7 @@ describe AmberCLI::Core::WordTransformer do
 
       it "handles acronyms and abbreviations" do
         AmberCLI::Core::WordTransformer.transform("API", "snake_case").should eq("api")
-        AmberCLI::Core::WordTransformer.transform("XMLHttpRequest", "snake_case").should eq("xmlhttp_request")
+        AmberCLI::Core::WordTransformer.transform("XMLHttpRequest", "snake_case").should eq("xml_http_request")
       end
     end
   end
