@@ -197,7 +197,7 @@ describe AmberCLI::Core::TemplateEngine do
           template_dir = File.join(temp_dir, ".amber", "templates")
           engine = AmberCLI::Core::TemplateEngine.new
           
-          generated_files = engine.generate_file_from_rule(rule, word, template_dir, {} of String => String)
+          generated_files = engine.generate_file_from_rule(rule, word, template_dir, {} of String => String, {} of String => String)
           
           generated_files.size.should eq(1)
           
@@ -237,7 +237,7 @@ describe AmberCLI::Core::TemplateEngine do
           template_dir = File.join(temp_dir, ".amber", "templates")
           engine = AmberCLI::Core::TemplateEngine.new
           
-          generated_files = engine.generate_file_from_rule(rule, word, template_dir, {} of String => String)
+          generated_files = engine.generate_file_from_rule(rule, word, template_dir, {} of String => String, {} of String => String)
           
           file_info = generated_files[0]
           file_info[:content].should contain("class BlogPost")
@@ -276,7 +276,7 @@ describe AmberCLI::Core::TemplateEngine do
           template_dir = File.join(temp_dir, ".amber", "templates")
           engine = AmberCLI::Core::TemplateEngine.new
           
-          generated_files = engine.generate_file_from_rule(rule, word, template_dir, custom_variables)
+          generated_files = engine.generate_file_from_rule(rule, word, template_dir, custom_variables, {} of String => String)
           
           file_info = generated_files[0]
           file_info[:content].should contain("module MyApp::Models")
@@ -296,16 +296,16 @@ describe AmberCLI::Core::TemplateEngine do
             template: "conditional",
             output_path: "src/conditional.cr",
             transformations: nil,
-            conditions: {"create_file" => "false"}
+            conditions: {"create_file" => "true"}  # Condition requires true
           )
           
           word = "test"
           template_dir = File.join(temp_dir, ".amber", "templates")
           engine = AmberCLI::Core::TemplateEngine.new
           
-          generated_files = engine.generate_file_from_rule(rule, word, template_dir, {"create_file" => "false"})
+          generated_files = engine.generate_file_from_rule(rule, word, template_dir, {"create_file" => "false"}, {} of String => String)
           
-          # Should return empty array due to condition not being met
+          # Should return empty array due to condition not being met (true required but false provided)
           generated_files.should be_empty
         end
       end
@@ -326,7 +326,7 @@ describe AmberCLI::Core::TemplateEngine do
           engine = AmberCLI::Core::TemplateEngine.new
           
           expect_raises(AmberCLI::Exceptions::TemplateError, /Template file not found/) do
-            engine.generate_file_from_rule(rule, word, template_dir, {} of String => String)
+            engine.generate_file_from_rule(rule, word, template_dir, {} of String => String, {} of String => String)
           end
         end
       end

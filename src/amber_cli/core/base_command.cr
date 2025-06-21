@@ -2,7 +2,6 @@ require "option_parser"
 
 module AmberCLI::Core
   abstract class BaseCommand
-    getter command_name : String
     getter option_parser : OptionParser
     getter parsed_options : Hash(String, String | Bool | Array(String))
     getter remaining_arguments : Array(String)
@@ -11,60 +10,105 @@ module AmberCLI::Core
       @option_parser = OptionParser.new
       @parsed_options = Hash(String, String | Bool | Array(String)).new
       @remaining_arguments = Array(String).new
-      setup_options
+      setup_global_options
+      setup_command_options
     end
 
-    abstract def setup_options
-    abstract def run(args : Array(String)) : Int32
+    abstract def setup_command_options
+    abstract def execute
+    abstract def help_description : String
 
-    def parse_arguments(args : Array(String)) : Array(String)
-      remaining = @option_parser.parse(args)
-      @remaining_arguments = remaining || Array(String).new
-      remaining || Array(String).new
+    private def setup_global_options
+      option_parser.banner = help_description
+      option_parser.on("--no-color", "Disable colored output") do
+        @parsed_options["no_color"] = true
+      end
+      option_parser.on("-h", "--help", "Show help") do
+        puts option_parser
+        exit(0)
+      end
     end
 
-    def has_option?(key : String) : Bool
-      @parsed_options.has_key?(key)
+    def parse_and_execute(args : Array(String))
+      option_parser.unknown_args do |unknown_args, _|
+        @remaining_arguments.concat(unknown_args)
+      end
+      
+      option_parser.parse(args)
+      validate_arguments
+      execute
+    rescue ex : OptionParser::InvalidOption
+      error "Invalid option: #{ex.message}"
+      puts option_parser
+      exit(1)
     end
 
-    def option_value(key : String)
-      @parsed_options[key]?
+    protected def validate_arguments
+      # Override in subclasses for specific validation
     end
 
-    def show_help(io : IO = STDOUT)
-      @option_parser.to_s(io)
+    protected def error(message : String)
+      puts "Error: #{message}".colorize.red
+    end
+
+    protected def info(message : String)
+      puts message.colorize.light_cyan
+    end
+
+    protected def success(message : String)
+      puts message.colorize.green
+    end
+
+    protected def warning(message : String)
+      puts message.colorize.yellow
+    end
+
+    protected def no_color?
+      @parsed_options["no_color"]? == true
+    end
+
+    protected def exit!(message : String = "", error : Bool = false)
+      puts message unless message.empty?
+      exit(error ? 1 : 0)
     end
   end
 
   class CommandRegistry
-    @commands : Hash(String, BaseCommand)
+    COMMANDS = {} of String => BaseCommand.class
 
-    def initialize
-      @commands = Hash(String, BaseCommand).new
+    def self.register(name : String, aliases : Array(String), command_class : BaseCommand.class)
+      COMMANDS[name] = command_class
+      aliases.each { |alias_name| COMMANDS[alias_name] = command_class }
     end
 
-    def register_command(command : BaseCommand)
-      @commands[command.command_name] = command
+    def self.find_command(name : String)
+      COMMANDS[name]?
     end
 
-    def has_command?(name : String) : Bool
-      @commands.has_key?(name)
+    def self.list_commands : Array(String)
+      COMMANDS.keys.uniq
     end
 
-    def run_command(name : String, args : Array(String)) : Int32
-      return 1 unless has_command?(name)
-      
-      command = @commands[name]
-      begin
-        command.parse_arguments(args)
-        command.run(command.remaining_arguments)
-      rescue
-        1
+    def self.execute_command(command_name : String, args : Array(String))
+      if command_class = find_command(command_name)
+        command = command_class.new(command_name)
+        command.parse_and_execute(args)
+      else
+        puts "Unknown command: #{command_name}"
+        show_help
+        exit(1)
       end
     end
 
-    def list_commands : Array(String)
-      @commands.keys.sort
+    private def self.show_help
+      puts <<-HELP
+      Amber CLI - Crystal web framework tool
+
+      Available commands:
+      #{list_commands.join(", ")}
+
+      Use 'amber <command> --help' for more information about a command.
+      HELP
     end
   end
 end 

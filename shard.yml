@@ -35,16 +35,6 @@ dependencies:
     github: crystal-loot/exception_page
     version: ~> 0.2.1
 
-  # Fork from Mosop, only used by the CLI tool
-  cli:
-    github: amberframework/cli
-    version: ~> 0.11.3
-
-  # Only used in the CLI tool, original appears to have been abandoned. Lucky one is maintained, mostly?
-  shell-table:
-    github: luckyframework/shell-table.cr
-    version: ~> 0.9.3
-
   # Latest version unknown, no updates since. 
   ## Worth moving into CLI tool
   inflector:

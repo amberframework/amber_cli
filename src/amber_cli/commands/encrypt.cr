@@ -1,41 +1,87 @@
-module Amber::CLI
-  class MainCommand < ::Cli::Supercommand
-    command "e", aliased: "encrypt"
+require "../core/base_command"
+require "../exceptions"
+require "../../support/file_encryptor"
 
-    class Encrypt < Command
-      class Options
-        arg "env", desc: "environment file to encrypt", default: "production"
-        string ["-e", "--editor"], desc: "preferred editor: [vim, nano, pico, etc]", default: ENV.fetch("EDITOR", "vim")
-        bool ["--noedit"], desc: "skip editing and just encrypt", default: false
-        help
+module AmberCLI::Commands
+  class EncryptCommand < AmberCLI::Core::BaseCommand
+    getter environment : String = "production"
+    getter editor : String = ENV.fetch("EDITOR", "vim")
+    getter no_edit : Bool = false
+
+    def help_description : String
+      "Encrypts environment YAML file"
+    end
+
+    def setup_command_options
+      option_parser.on("-e EDITOR", "--editor=EDITOR", "Preferred editor (vim, nano, pico, etc)") do |ed|
+        @parsed_options["editor"] = ed
+        @editor = ed
       end
 
-      class Help
-        header "Encrypts environment YAML file."
-        caption "encrypts environment YAML file"
+      option_parser.on("--noedit", "Skip editing and just encrypt") do
+        @parsed_options["noedit"] = true
+        @no_edit = true
       end
 
-      def run
-        env = args.env
-        encrypted_file = "config/environments/.#{env}.enc"
-        unencrypted_file = "config/environments/#{env}.yml"
+      option_parser.separator ""
+      option_parser.separator "Usage: amber encrypt [ENVIRONMENT] [options]"
+      option_parser.separator ""
+      option_parser.separator "Arguments:"
+      option_parser.separator "  ENVIRONMENT    Environment file to encrypt (default: production)"
+      option_parser.separator ""
+      option_parser.separator "Examples:"
+      option_parser.separator "  amber encrypt production"
+      option_parser.separator "  amber encrypt staging --editor nano"
+      option_parser.separator "  amber encrypt production --noedit"
+    end
 
-        unless File.exists?(unencrypted_file) || File.exists?(encrypted_file)
-          raise Exceptions::Environment.new("./config/environments/", env)
-        end
-
-        if File.exists?(encrypted_file)
-          File.write(unencrypted_file, Support::FileEncryptor.read(encrypted_file))
-          system("#{options.editor} #{unencrypted_file}") unless options.noedit?
-        end
-
-        if File.exists?(unencrypted_file)
-          Support::FileEncryptor.write(encrypted_file, File.read(unencrypted_file))
-          File.delete(unencrypted_file)
-        end
-      rescue e : Exception
-        exit! e.message, error: true
+    def validate_arguments
+      if remaining_arguments.empty?
+        @environment = "production"
+      else
+        @environment = remaining_arguments[0]
       end
+    end
+
+    def execute
+      encrypted_file = "config/environments/.#{environment}.enc"
+      unencrypted_file = "config/environments/#{environment}.yml"
+
+      unless File.exists?(unencrypted_file) || File.exists?(encrypted_file)
+        error "Environment file not found"
+        info "Expected to find either:"
+        info "  #{unencrypted_file}"
+        info "  #{encrypted_file}"
+        exit!(error: true)
+      end
+
+      if File.exists?(encrypted_file)
+        info "Decrypting #{encrypted_file}..."
+        decrypted_content = Amber::Support::FileEncryptor.read(encrypted_file)
+        File.write(unencrypted_file, decrypted_content)
+        success "Decrypted to #{unencrypted_file}"
+        
+        unless no_edit
+          info "Opening #{unencrypted_file} in #{editor}..."
+          system("#{editor} #{unencrypted_file}")
+        end
+      end
+
+      if File.exists?(unencrypted_file)
+        info "Encrypting #{unencrypted_file}..."
+        file_content = File.read(unencrypted_file)
+        Amber::Support::FileEncryptor.write(encrypted_file, file_content)
+        File.delete(unencrypted_file)
+        success "Encrypted and saved as #{encrypted_file}"
+        info "Removed unencrypted file #{unencrypted_file}"
+      end
+
+    rescue e : Exception
+      error "Encryption failed: #{e.message}"
+      exit!(error: true)
     end
   end
 end
+
+# Register the command
+AmberCLI::Core::CommandRegistry.register("encrypt", ["e"], AmberCLI::Commands::EncryptCommand)

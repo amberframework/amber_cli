@@ -24,7 +24,7 @@ module AmberCLI::Core
       result
     end
 
-    def generate_file_from_rule(rule : FileGenerationRule, word : String, template_dir : String, custom_variables : Hash(String, String)) : Array(NamedTuple(path: String, content: String))
+    def generate_file_from_rule(rule : FileGenerationRule, word : String, template_dir : String, custom_variables : Hash(String, String), naming_conventions : Hash(String, String) = {} of String => String) : Array(NamedTuple(path: String, content: String))
       # Check conditions first
       if conditions = rule.conditions
         return [] of NamedTuple(path: String, content: String) unless meets_conditions?(conditions, custom_variables)
@@ -44,15 +44,15 @@ module AmberCLI::Core
       # Add word transformations
       if transformations = rule.transformations
         transformations.each do |placeholder, transformation|
-          replacements[placeholder] = WordTransformer.transform(word, transformation)
+          replacements[placeholder] = WordTransformer.transform(word, transformation, naming_conventions)
         end
       end
       
       # Add basic transformations
-      replacements["snake_case"] = WordTransformer.transform(word, "snake_case")
-      replacements["pascal_case"] = WordTransformer.transform(word, "pascal_case")
-      replacements["snake_case_plural"] = WordTransformer.transform(word, "snake_case_plural")
-      replacements["pascal_case_plural"] = WordTransformer.transform(word, "pascal_case_plural")
+      replacements["snake_case"] = WordTransformer.transform(word, "snake_case", naming_conventions)
+      replacements["pascal_case"] = WordTransformer.transform(word, "pascal_case", naming_conventions)
+      replacements["snake_case_plural"] = WordTransformer.transform(word, "snake_case_plural", naming_conventions)
+      replacements["pascal_case_plural"] = WordTransformer.transform(word, "pascal_case_plural", naming_conventions)
       
       # Process template
       processed_content = process_template(template_content, replacements)

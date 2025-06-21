@@ -25,7 +25,7 @@ module Sentry
       loop do
         scan_files
         check_processes
-        sleep 1
+        sleep 1.second
       end
     end
 

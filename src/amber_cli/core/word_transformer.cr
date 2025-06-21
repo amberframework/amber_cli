@@ -96,7 +96,24 @@ module AmberCLI::Core
       # Check for custom conventions first - allows overriding any transformation
       if conventions.has_key?(transformation)
         pattern = conventions[transformation]
-        return pattern.gsub("{{word}}", word)
+        
+        # Only apply pascal case for specific well-known class/interface patterns
+        # Be conservative to allow custom patterns to fully override behavior
+        word_to_use = if pattern.includes?("{{word}}Service") ||
+                         pattern.includes?("{{word}}Controller") ||
+                         pattern.includes?("{{word}}Repository") ||
+                         pattern.includes?("{{word}}Handler") ||
+                         pattern.includes?("{{word}}Manager") ||
+                         pattern.includes?("Api{{word}}") ||
+                         pattern.includes?("I{{word}}")
+                        # Convert to pascal case for well-known class-like patterns
+                        word.includes?("_") ? word.camelcase : word.underscore.camelcase
+                      else
+                        # Use original word for all other patterns to preserve user intent
+                        word
+                      end
+        
+        return pattern.gsub("{{word}}", word_to_use)
       end
 
       # Apply transformations using Crystal's built-in methods where possible
