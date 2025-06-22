@@ -1,6 +1,6 @@
 # GitHub Actions CI/CD Setup
 
-This directory contains the GitHub Actions workflows for the Amber CLI project, providing comprehensive continuous integration and deployment across all major operating systems.
+This directory contains the GitHub Actions workflows for the Amber CLI project, providing comprehensive continuous integration and deployment for Linux and macOS.
 
 ## Workflows
 
@@ -11,7 +11,7 @@ This directory contains the GitHub Actions workflows for the Amber CLI project, 
 **Purpose:** Ensures code quality and compatibility across platforms
 
 **Jobs:**
-- **test**: Runs on Ubuntu, macOS, and Windows
+- **test**: Runs on Ubuntu and macOS
   - Installs Crystal using platform-specific methods
   - Caches shard dependencies for faster builds
   - Checks code formatting with `crystal tool format`
@@ -35,7 +35,7 @@ This directory contains the GitHub Actions workflows for the Amber CLI project, 
 
 **Features:**
 - Builds static binaries for Linux (fully portable)
-- Builds optimized binaries for macOS and Windows
+- Builds optimized binaries for macOS
 - Automatically creates GitHub releases with binaries attached
 - Generates release notes automatically
 
@@ -58,10 +58,7 @@ This directory contains the GitHub Actions workflows for the Amber CLI project, 
 - Installs Crystal via Homebrew
 - Builds standard dynamic binaries
 
-### Windows (Windows Latest)
-- Installs Crystal via Chocolatey
-- Uses PowerShell for Windows-specific commands
-- Some CLI tests use `continue-on-error` due to potential Windows-specific issues
+
 
 ## Caching Strategy
 
@@ -90,7 +87,6 @@ You can trigger the release workflow manually from the GitHub Actions tab for te
 ### Common Issues
 1. **Crystal installation fails**: Usually due to temporary network issues or package manager problems
 2. **Shard installation fails**: Often due to missing system dependencies
-3. **Windows-specific failures**: Crystal on Windows can be less stable; some tests use `continue-on-error`
 
 ### Debugging
 - Check the Actions tab in your GitHub repository for detailed logs
