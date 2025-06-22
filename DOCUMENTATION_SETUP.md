@@ -47,9 +47,6 @@ amber_cli/
 
 # Manual generation
 crystal docs --project-name="Amber CLI" --output=docs
-
-# Serve locally
-cd docs && python -m http.server 8000
 ```
 
 ### **Automatic Deployment**

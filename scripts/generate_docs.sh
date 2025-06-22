@@ -41,18 +41,6 @@ crystal docs \
 
 echo "✅ Documentation generated successfully in ./docs"
 echo ""
-
-# Check if the user wants to serve the docs locally
-read -p "🌐 Would you like to serve the documentation locally? (y/N): " -n 1 -r
-echo ""
-
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "🚀 Starting local server on http://localhost:8000"
-    echo "   Press Ctrl+C to stop"
-    cd docs && python3 -m http.server 8000 2>/dev/null || python -m http.server 8000
-fi
-
-echo ""
 echo "🎉 Done! Documentation is ready."
 echo "   Local files: ./docs/index.html"
 echo "   Live site: https://amberframework.github.io/amber_cli/" 
