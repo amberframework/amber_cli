@@ -16,7 +16,7 @@ module AmberCLI::Core
   # ## Performance Characteristics
   #
   # - Fast transformations: Uses Crystal's native String methods (`String#camelcase`, `String#underscore`, etc.)
-  # - Moderate complexity: Uses inflector for pluralization (requires linguistic rules)  
+  # - Moderate complexity: Uses inflector for pluralization (requires linguistic rules)
   # - Memory efficient: Minimal object allocation, mostly string operations
   #
   # ## Dependency Justification
@@ -32,26 +32,26 @@ module AmberCLI::Core
   #
   # ```
   # # Fast Crystal built-in methods
-  # WordTransformer.transform("UserProfile", "snake_case")    # => "user_profile"
-  # WordTransformer.transform("user_profile", "pascal_case")  # => "UserProfile" 
-  # WordTransformer.transform("blog_post", "kebab_case")      # => "blog-post"
+  # WordTransformer.transform("UserProfile", "snake_case")   # => "user_profile"
+  # WordTransformer.transform("user_profile", "pascal_case") # => "UserProfile"
+  # WordTransformer.transform("blog_post", "kebab_case")     # => "blog-post"
   #
   # # Complex pluralization via inflector + custom overrides
-  # WordTransformer.transform("user", "plural")              # => "users"
-  # WordTransformer.transform("foot", "plural")              # => "feet" (custom override)
-  # WordTransformer.transform("child", "plural")             # => "children" (inflector)
+  # WordTransformer.transform("user", "plural")  # => "users"
+  # WordTransformer.transform("foot", "plural")  # => "feet" (custom override)
+  # WordTransformer.transform("child", "plural") # => "children" (inflector)
   #
   # # Custom naming conventions
   # conventions = {"controller_suffix" => "{{word}}Controller"}
-  # WordTransformer.transform("User", "controller_suffix", conventions)  # => "UserController"
+  # WordTransformer.transform("User", "controller_suffix", conventions) # => "UserController"
   # ```
   class WordTransformer
     # Common words that need special handling beyond standard English rules
     # Note: We now use a vendored, improved inflector library that fixes many issues
     CUSTOM_PLURALS = {
-      "hero" => "heroes",
-      "potato" => "potatoes", 
-      "echo" => "echoes",
+      "hero"    => "heroes",
+      "potato"  => "potatoes",
+      "echo"    => "echoes",
       "embargo" => "embargoes",
       "tornado" => "tornadoes",
       "volcano" => "volcanoes",
@@ -60,12 +60,12 @@ module AmberCLI::Core
     }
 
     CUSTOM_SINGULARS = {
-      "heroes" => "hero", 
-      "potatoes" => "potato",
-      "echoes" => "echo",
-      "embargoes" => "embargo", 
+      "heroes"    => "hero",
+      "potatoes"  => "potato",
+      "echoes"    => "echo",
+      "embargoes" => "embargo",
       "tornadoes" => "tornado",
-      "volcanoes" => "volcano", 
+      "volcanoes" => "volcano",
       "buffaloes" => "buffalo",
       # Note: "feet" -> "foot" is now fixed in our vendored inflector
     }
@@ -83,13 +83,13 @@ module AmberCLI::Core
     # Returns the transformed word, or the original *word* if transformation is not recognized.
     #
     # ```
-    # WordTransformer.transform("UserProfile", "snake_case")     # => "user_profile"
-    # WordTransformer.transform("blog_post", "pascal_case")      # => "BlogPost"
-    # WordTransformer.transform("user", "plural")               # => "users"
-    # 
+    # WordTransformer.transform("UserProfile", "snake_case") # => "user_profile"
+    # WordTransformer.transform("blog_post", "pascal_case")  # => "BlogPost"
+    # WordTransformer.transform("user", "plural")            # => "users"
+    #
     # # With custom conventions
     # conventions = {"service_class" => "{{word}}Service"}
-    # WordTransformer.transform("User", "service_class", conventions)  # => "UserService"
+    # WordTransformer.transform("User", "service_class", conventions) # => "UserService"
     # ```
     def self.transform(word : String, transformation : String, conventions : Hash(String, String) = {} of String => String) : String
       return word if word.empty?
@@ -97,7 +97,7 @@ module AmberCLI::Core
       # Check for custom conventions first - allows overriding any transformation
       if conventions.has_key?(transformation)
         pattern = conventions[transformation]
-        
+
         # Only apply pascal case for specific well-known class/interface patterns
         # Be conservative to allow custom patterns to fully override behavior
         word_to_use = if pattern.includes?("{{word}}Service") ||
@@ -113,7 +113,7 @@ module AmberCLI::Core
                         # Use original word for all other patterns to preserve user intent
                         word
                       end
-        
+
         return pattern.gsub("{{word}}", word_to_use)
       end
 
@@ -183,18 +183,18 @@ module AmberCLI::Core
     #
     # ```
     # result = WordTransformer.all_transformations("blog_post")
-    # result["pascal_case"]  # => "BlogPost"
-    # result["snake_case"]   # => "blog_post"
-    # result["plural"]       # => "blog_posts"
+    # result["pascal_case"] # => "BlogPost"
+    # result["snake_case"]  # => "blog_post"
+    # result["plural"]      # => "blog_posts"
     # ```
     def self.all_transformations(word : String, conventions : Hash(String, String) = {} of String => String) : Hash(String, String)
       transformations = {} of String => String
-      
-      %w(singular plural pascal_case snake_case kebab_case title_case 
-         upper_case lower_case constant_case humanize classify tableize).each do |transformation|
+
+      %w(singular plural pascal_case snake_case kebab_case title_case
+        upper_case lower_case constant_case humanize classify tableize).each do |transformation|
         transformations[transformation] = transform(word, transformation, conventions)
       end
-      
+
       transformations
     end
 
@@ -205,20 +205,20 @@ module AmberCLI::Core
     #
     # ```
     # result = WordTransformer.rails_conventions("blog_post")
-    # result["class_name"]    # => "BlogPost"
-    # result["table_name"]    # => "blog_posts" 
-    # result["file_name"]     # => "blog_post"
-    # result["route_name"]    # => "blog-post"
+    # result["class_name"] # => "BlogPost"
+    # result["table_name"] # => "blog_posts"
+    # result["file_name"]  # => "blog_post"
+    # result["route_name"] # => "blog-post"
     # ```
     def self.rails_conventions(word : String) : Hash(String, String)
       {
-        "class_name" => transform(word, "pascal_case"),
-        "table_name" => transform(word, "tableize"),
-        "file_name" => transform(word, "snake_case"),
+        "class_name"    => transform(word, "pascal_case"),
+        "table_name"    => transform(word, "tableize"),
+        "file_name"     => transform(word, "snake_case"),
         "variable_name" => transform(word, "snake_case"),
         "constant_name" => transform(word, "constant_case"),
-        "human_name" => transform(word, "humanize"),
-        "route_name" => transform(word, "kebab_case")
+        "human_name"    => transform(word, "humanize"),
+        "route_name"    => transform(word, "kebab_case"),
       }
     end
 
@@ -227,12 +227,12 @@ module AmberCLI::Core
     # Use this method to validate transformation names before calling `#transform`.
     #
     # ```
-    # WordTransformer.supports_transformation?("pascal_case")     # => true
-    # WordTransformer.supports_transformation?("invalid_type")   # => false
+    # WordTransformer.supports_transformation?("pascal_case")  # => true
+    # WordTransformer.supports_transformation?("invalid_type") # => false
     # ```
     def self.supports_transformation?(transformation : String) : Bool
       case transformation
-      when "singular", "plural", "pascal_case", "camel_case", "snake_case", 
+      when "singular", "plural", "pascal_case", "camel_case", "snake_case",
            "kebab_case", "title_case", "upper_case", "lower_case", "constant_case",
            "humanize", "classify", "tableize", "foreign_key", "snake_case_plural",
            "pascal_case_plural", "kebab_case_plural"
@@ -248,12 +248,12 @@ module AmberCLI::Core
     #
     # ```
     # transformations = WordTransformer.supported_transformations
-    # transformations.includes?("pascal_case")  # => true
+    # transformations.includes?("pascal_case") # => true
     # ```
     def self.supported_transformations : Array(String)
-      %w(singular plural pascal_case camel_case snake_case kebab_case title_case 
-         upper_case lower_case constant_case humanize classify tableize foreign_key 
-         snake_case_plural pascal_case_plural kebab_case_plural)
+      %w(singular plural pascal_case camel_case snake_case kebab_case title_case
+        upper_case lower_case constant_case humanize classify tableize foreign_key
+        snake_case_plural pascal_case_plural kebab_case_plural)
     end
   end
-end 
+end

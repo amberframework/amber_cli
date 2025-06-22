@@ -64,13 +64,13 @@ describe AmberCLI::Core::BaseCommand do
       it "parses simple flags correctly" do
         command = TestGenerateCommand.new("generate")
         args = ["model", "User", "--force", "--verbose"]
-        
+
         # Mock parse_and_execute to not actually execute
         command.option_parser.unknown_args do |unknown_args, _|
           command.remaining_arguments.concat(unknown_args)
         end
         command.option_parser.parse(args)
-        
+
         command.parsed_options["force"].should be_true
         command.parsed_options["verbose"].should be_true
         command.remaining_arguments.should eq(["model", "User"])
@@ -79,12 +79,12 @@ describe AmberCLI::Core::BaseCommand do
       it "parses arguments with values" do
         command = TestGenerateCommand.new("generate")
         args = ["controller", "Users", "--template", "custom_controller", "--force"]
-        
+
         command.option_parser.unknown_args do |unknown_args, _|
           command.remaining_arguments.concat(unknown_args)
         end
         command.option_parser.parse(args)
-        
+
         command.parsed_options["template"].should eq("custom_controller")
         command.parsed_options["force"].should be_true
         command.remaining_arguments.should eq(["controller", "Users"])
@@ -93,12 +93,12 @@ describe AmberCLI::Core::BaseCommand do
       it "handles mixed short and long options" do
         command = TestGenerateCommand.new("generate")
         args = ["scaffold", "Post", "-f", "--template", "blog_scaffold", "-v"]
-        
+
         command.option_parser.unknown_args do |unknown_args, _|
           command.remaining_arguments.concat(unknown_args)
         end
         command.option_parser.parse(args)
-        
+
         command.parsed_options["force"].should be_true
         command.parsed_options["verbose"].should be_true
         command.parsed_options["template"].should eq("blog_scaffold")
@@ -108,12 +108,12 @@ describe AmberCLI::Core::BaseCommand do
       it "preserves non-option arguments in order" do
         command = TestNewCommand.new("new")
         args = ["my_app", "--database", "postgresql", "extra_arg"]
-        
+
         command.option_parser.unknown_args do |unknown_args, _|
           command.remaining_arguments.concat(unknown_args)
         end
         command.option_parser.parse(args)
-        
+
         command.parsed_options["database"].should eq("postgresql")
         command.remaining_arguments.should eq(["my_app", "extra_arg"])
       end
@@ -122,12 +122,12 @@ describe AmberCLI::Core::BaseCommand do
     context "with edge cases" do
       it "handles empty argument list" do
         command = TestGenerateCommand.new("generate")
-        
+
         command.option_parser.unknown_args do |unknown_args, _|
           command.remaining_arguments.concat(unknown_args)
         end
         command.option_parser.parse([] of String)
-        
+
         command.parsed_options.should be_empty
         command.remaining_arguments.should be_empty
       end
@@ -135,12 +135,12 @@ describe AmberCLI::Core::BaseCommand do
       it "handles only flags with no arguments" do
         command = TestGenerateCommand.new("generate")
         args = ["--force", "--verbose"]
-        
+
         command.option_parser.unknown_args do |unknown_args, _|
           command.remaining_arguments.concat(unknown_args)
         end
         command.option_parser.parse(args)
-        
+
         command.parsed_options["force"].should be_true
         command.parsed_options["verbose"].should be_true
         command.remaining_arguments.should be_empty
@@ -149,12 +149,12 @@ describe AmberCLI::Core::BaseCommand do
       it "handles arguments without any flags" do
         command = TestGenerateCommand.new("generate")
         args = ["model", "User", "name:string", "email:string"]
-        
+
         command.option_parser.unknown_args do |unknown_args, _|
           command.remaining_arguments.concat(unknown_args)
         end
         command.option_parser.parse(args)
-        
+
         command.parsed_options.should be_empty
         command.remaining_arguments.should eq(["model", "User", "name:string", "email:string"])
       end
@@ -164,12 +164,12 @@ describe AmberCLI::Core::BaseCommand do
   describe "option access methods" do
     it "provides access to parsed options" do
       command = TestGenerateCommand.new("generate")
-      
+
       command.option_parser.unknown_args do |unknown_args, _|
         command.remaining_arguments.concat(unknown_args)
       end
       command.option_parser.parse(["--force", "--template", "custom"])
-      
+
       command.parsed_options["force"].should be_true
       command.parsed_options["template"].should eq("custom")
     end
@@ -187,7 +187,7 @@ describe AmberCLI::Core::CommandRegistry do
   describe ".register" do
     it "registers a command class successfully" do
       AmberCLI::Core::CommandRegistry.register("test_generate", ["tg"], TestGenerateCommand)
-      
+
       AmberCLI::Core::CommandRegistry.find_command("test_generate").should eq(TestGenerateCommand)
       AmberCLI::Core::CommandRegistry.find_command("tg").should eq(TestGenerateCommand)
     end
@@ -195,7 +195,7 @@ describe AmberCLI::Core::CommandRegistry do
     it "allows multiple command registrations" do
       AmberCLI::Core::CommandRegistry.register("test_generate2", ["tg2"], TestGenerateCommand)
       AmberCLI::Core::CommandRegistry.register("test_new2", ["tn2"], TestNewCommand)
-      
+
       AmberCLI::Core::CommandRegistry.find_command("test_generate2").should eq(TestGenerateCommand)
       AmberCLI::Core::CommandRegistry.find_command("test_new2").should eq(TestNewCommand)
     end
@@ -204,7 +204,7 @@ describe AmberCLI::Core::CommandRegistry do
   describe ".find_command" do
     it "returns command class for registered commands" do
       AmberCLI::Core::CommandRegistry.register("test_find", ["tf"], TestGenerateCommand)
-      
+
       AmberCLI::Core::CommandRegistry.find_command("test_find").should eq(TestGenerateCommand)
     end
 
@@ -214,7 +214,7 @@ describe AmberCLI::Core::CommandRegistry do
 
     it "works with aliases" do
       AmberCLI::Core::CommandRegistry.register("test_alias", ["ta", "talias"], TestGenerateCommand)
-      
+
       AmberCLI::Core::CommandRegistry.find_command("test_alias").should eq(TestGenerateCommand)
       AmberCLI::Core::CommandRegistry.find_command("ta").should eq(TestGenerateCommand)
       AmberCLI::Core::CommandRegistry.find_command("talias").should eq(TestGenerateCommand)
@@ -226,13 +226,13 @@ describe AmberCLI::Core::CommandRegistry do
       # Clear any existing commands for this test
       AmberCLI::Core::CommandRegistry.register("test_list1", ["tl1"], TestGenerateCommand)
       AmberCLI::Core::CommandRegistry.register("test_list2", ["tl2"], TestNewCommand)
-      
+
       commands = AmberCLI::Core::CommandRegistry.list_commands
-      
+
       commands.should contain("test_list1")
       commands.should contain("test_list2")
       commands.should contain("tl1")
       commands.should contain("tl2")
     end
   end
-end 
+end

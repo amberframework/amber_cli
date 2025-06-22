@@ -11,29 +11,65 @@ There are a few major changes between this version and the original version.
 2. There is an entirely _new_ generator command that is much more flexable than the previous generation. Please read the docs to better understand how to utilize this.
 
 
+
+
 ## Installation
 
-1. Add the dependency to your `shard.yml`:
 
-   ```yaml
-   dependencies:
-     amber_cli:
-       github: amberframework/amber_cli
-   ```
+MacOS & Linux via Homebrew: 
 
-2. Run `shards install`
+`brew install amber`
 
-## Usage
+From source:
 
-```crystal
-require "amber_cli"
-```
+1. Clone the repo from the latest release tag `git clone git@
+2. Install the dependencies `shards install`
+3. Build the binary `crystal build src/amber_cli.cr -o amber`
+4. (Optional) Build the MCP server `crystal build src/amber_mcp`
+
+
+Windows:
+
+Not directly supported at this time. This CLI tool should work as expected when using a virtual machine or WSL2.
+
 
 TODO: Write usage instructions here
 
 ## Development
 
-TODO: Write development instructions here
+To get started with development:
+
+1. **Install Crystal**: Make sure you have Crystal installed (version 1.0+ recommended)
+   - macOS: `brew install crystal`
+   - Ubuntu/Debian: Follow the [Crystal installation guide](https://crystal-lang.org/install/)
+
+2. **Clone and setup**:
+   ```bash
+   git clone https://github.com/amberframework/amber_cli.git
+   cd amber_cli
+   shards install
+   ```
+
+3. **Build and test**:
+   ```bash
+   # Build the CLI
+   crystal build src/amber_cli.cr -o amber
+
+   # Run tests
+   crystal spec
+
+   # Run the CLI locally
+   ./amber --help
+   ```
+
+4. **Development workflow**:
+   - The main CLI entry point is in `src/amber_cli.cr`
+   - Core functionality is organized under `src/amber_cli/core/`
+   - Commands are defined in `src/amber_cli/commands/`
+   - Run `crystal run src/amber_cli.cr -- <args>` to test changes without building
+
+5. **Code style**: Follow Crystal's standard formatting with `crystal tool format`
+
 
 ## Contributing
 

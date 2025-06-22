@@ -9,7 +9,7 @@ module AmberCLI::Commands
   class DatabaseCommand < AmberCLI::Core::BaseCommand
     Log = ::Log.for("database")
 
-    MIGRATIONS_DIR = "./db/migrations"
+    MIGRATIONS_DIR        = "./db/migrations"
     CREATE_SQLITE_MESSAGE = "For sqlite3, the database will be created during the first migration."
 
     def help_description : String
@@ -166,7 +166,7 @@ module AmberCLI::Commands
       return "pg" if url.starts_with?("postgres://") || url.starts_with?("postgresql://")
       return "mysql" if url.starts_with?("mysql://")
       return "sqlite" if url.starts_with?("sqlite3://")
-      
+
       # Fallback to config file or environment
       config_file = ".amber.yml"
       if File.exists?(config_file)

@@ -60,7 +60,7 @@ module AmberCLI::Commands
         decrypted_content = Amber::Support::FileEncryptor.read(encrypted_file)
         File.write(unencrypted_file, decrypted_content)
         success "Decrypted to #{unencrypted_file}"
-        
+
         unless no_edit
           info "Opening #{unencrypted_file} in #{editor}..."
           system("#{editor} #{unencrypted_file}")
@@ -75,7 +75,6 @@ module AmberCLI::Commands
         success "Encrypted and saved as #{encrypted_file}"
         info "Removed unencrypted file #{unencrypted_file}"
       end
-
     rescue e : Exception
       error "Encryption failed: #{e.message}"
       exit!(error: true)

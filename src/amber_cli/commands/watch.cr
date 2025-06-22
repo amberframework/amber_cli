@@ -88,14 +88,14 @@ module AmberCLI::Commands
           return match[1].strip
         end
       end
-      
+
       if File.exists?("shard.yml")
         content = File.read("shard.yml")
         if match = content.match(/name:\s*(.+)/)
           return match[1].strip
         end
       end
-      
+
       File.basename(Dir.current)
     end
 
@@ -110,9 +110,9 @@ module AmberCLI::Commands
     private def get_default_watch_files
       [
         "src/**/*.cr",
-        "config/**/*.cr", 
+        "config/**/*.cr",
         "config/**/*.yml",
-        "config/**/*.yaml"
+        "config/**/*.yaml",
       ]
     end
 

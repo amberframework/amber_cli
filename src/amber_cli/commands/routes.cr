@@ -8,12 +8,12 @@ module AmberCLI::Commands
     WEBSOCKET_ROUTE_REGEX = /(websocket)\s+\"([^\"]+)\",\s*([\w:]+)/
     PIPE_SCOPE_REGEX      = /(routes)\s+\:(\w+)(?:,\s+\"([^\"]+)\")?/
 
-    LABELS = ["Verb", "Controller", "Action", "Pipeline", "Scope", "URI Pattern"]
+    LABELS         = ["Verb", "Controller", "Action", "Pipeline", "Scope", "URI Pattern"]
     ACTION_MAPPING = {
-      "get" => ["index", "show", "new", "edit"],
-      "post" => ["create"], 
-      "patch" => ["update"],
-      "put" => ["update"], 
+      "get"    => ["index", "show", "new", "edit"],
+      "post"   => ["create"],
+      "patch"  => ["update"],
+      "put"    => ["update"],
       "delete" => ["destroy"],
     }
 

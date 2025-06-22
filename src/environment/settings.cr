@@ -26,7 +26,7 @@ module Amber::Environment
     end
 
     setter session : Hash(String, Int32 | String)
-    
+
     property logging : Logging::OptionsType = Logging::DEFAULTS
 
     @[YAML::Field(ignore: true)]

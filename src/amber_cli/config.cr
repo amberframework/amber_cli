@@ -16,7 +16,7 @@ module Amber::CLI
 
   class Config
     include YAML::Serializable
-    
+
     SHARD_YML    = "shard.yml"
     DEFAULT_NAME = "[process_name]"
 

@@ -26,15 +26,15 @@ module AmberCLI::Vendor::Inflector
   def pluralize(word : String) : String
     # Try local rules first
     local_result = apply_inflections(word, @@plurals)
-    
-    # If local rules didn't change the word (except for simple 's' addition), 
+
+    # If local rules didn't change the word (except for simple 's' addition),
     # and it's not an uncountable word, try AI fallback
     if should_try_ai_fallback?(word, local_result, is_pluralize: true)
       if ai_result = AITransformer.transform_with_ai(word, "plural")
         return ai_result
       end
     end
-    
+
     local_result
   end
 
@@ -48,14 +48,14 @@ module AmberCLI::Vendor::Inflector
   def singularize(word : String) : String
     # Try local rules first
     local_result = apply_inflections(word, @@singulars)
-    
+
     # If local rules didn't change the word much, try AI fallback
     if should_try_ai_fallback?(word, local_result, is_pluralize: false)
       if ai_result = AITransformer.transform_with_ai(word, "singular")
         return ai_result
       end
     end
-    
+
     local_result
   end
 
@@ -93,7 +93,7 @@ module AmberCLI::Vendor::Inflector
   #   demodulize("Inflections")                                       # => "Inflections"
   private def demodulize(path : String) : String
     if i = path.rindex("::")
-      path[(i+2)..-1]
+      path[(i + 2)..-1]
     else
       path
     end
@@ -104,7 +104,7 @@ module AmberCLI::Vendor::Inflector
     result = word.to_s
 
     return result if result.empty?
-    
+
     # Check if word is uncountable
     word_match = result.downcase[/\b\w+\Z/]?
     return result if word_match && @@uncountables.includes?(word_match)
@@ -137,11 +137,11 @@ module AmberCLI::Vendor::Inflector
   # Determine if we should try AI fallback based on local rule results
   private def should_try_ai_fallback?(original : String, local_result : String, is_pluralize : Bool) : Bool
     return false if original.empty? || local_result.empty?
-    
+
     # Skip AI for uncountable words
     word_match = original.downcase[/\b\w+\Z/]?
     return false if word_match && @@uncountables.includes?(word_match)
-    
+
     # For pluralization: if result is just original + "s", consider AI
     if is_pluralize
       return local_result == original + "s" && original.size > 2
@@ -152,7 +152,7 @@ module AmberCLI::Vendor::Inflector
   end
 
   # Configure AI transformer (convenience method)
-  def self.configure_ai
+  def self.configure_ai(&)
     yield(AITransformer)
   end
 
@@ -160,58 +160,58 @@ module AmberCLI::Vendor::Inflector
   def self.setup_rules
     # Plural rules - ordered from most specific to least specific
     @@plurals = [
-      {/^(ox)$/i,                   "\\1en"},
-      {/^(oxen)$/i,                 "\\1"},
-      {/^(m|l)ouse$/i,              "\\1ice"},
-      {/^(m|l)ice$/i,               "\\1ice"},
-      {/^(ax|test)is$/i,            "\\1es"},
-      {/(octop|vir)us$/i,           "\\1i"},
-      {/(octop|vir)i$/i,            "\\1i"},
-      {/(alias|status)$/i,          "\\1es"},
-      {/(bu)s$/i,                   "\\1ses"},
-      {/(buffal|tomat)o$/i,         "\\1oes"},
-      {/([ti])um$/i,                "\\1a"},
-      {/([ti])a$/i,                 "\\1a"},
-      {/sis$/i,                     "ses"},
-      {/(?:([^f])fe|([lrae])f)$/i,  "\\1\\2ves"},
-      {/(hive)$/i,                  "\\1s"},
-      {/([^aeiouy]|qu)y$/i,         "\\1ies"},
-      {/(x|ch|ss|sh)$/i,            "\\1es"},
+      {/^(ox)$/i, "\\1en"},
+      {/^(oxen)$/i, "\\1"},
+      {/^(m|l)ouse$/i, "\\1ice"},
+      {/^(m|l)ice$/i, "\\1ice"},
+      {/^(ax|test)is$/i, "\\1es"},
+      {/(octop|vir)us$/i, "\\1i"},
+      {/(octop|vir)i$/i, "\\1i"},
+      {/(alias|status)$/i, "\\1es"},
+      {/(bu)s$/i, "\\1ses"},
+      {/(buffal|tomat)o$/i, "\\1oes"},
+      {/([ti])um$/i, "\\1a"},
+      {/([ti])a$/i, "\\1a"},
+      {/sis$/i, "ses"},
+      {/(?:([^f])fe|([lrae])f)$/i, "\\1\\2ves"},
+      {/(hive)$/i, "\\1s"},
+      {/([^aeiouy]|qu)y$/i, "\\1ies"},
+      {/(x|ch|ss|sh)$/i, "\\1es"},
       {/(matr|vert|ind)(?:ix|ex)$/i, "\\1ices"},
-      {/(quiz)$/i,                  "\\1zes"},
-      {/s$/i,                       "s"},
-      {/$/,                         "s"},  # Most general rule goes last
+      {/(quiz)$/i, "\\1zes"},
+      {/s$/i, "s"},
+      {/$/, "s"}, # Most general rule goes last
     ]
 
     # Singular rules - ordered from most specific to least specific
     @@singulars = [
-      {/^(ox)en/i,                                                     "\\1"},
-      {/^(m|l)ice$/i,                                                  "\\1ouse"},
-      {/^(a)x[ie]s$/i,                                                 "\\1xis"},
-      {/(n)ews$/i,                                                     "\\1ews"},
-      {/(s)eries$/i,                                                   "\\1eries"},
-      {/(m)ovies$/i,                                                   "\\1ovie"},
-      {/(database)s$/i,                                                "\\1"},
-      {/(quiz)zes$/i,                                                  "\\1"},
-      {/(matr)ices$/i,                                                 "\\1ix"},
-      {/(vert|ind)ices$/i,                                             "\\1ex"},
-      {/(octop|vir)(us|i)$/i,                                          "\\1us"},
-      {/(alias|status)(es)?$/i,                                        "\\1"},
+      {/^(ox)en/i, "\\1"},
+      {/^(m|l)ice$/i, "\\1ouse"},
+      {/^(a)x[ie]s$/i, "\\1xis"},
+      {/(n)ews$/i, "\\1ews"},
+      {/(s)eries$/i, "\\1eries"},
+      {/(m)ovies$/i, "\\1ovie"},
+      {/(database)s$/i, "\\1"},
+      {/(quiz)zes$/i, "\\1"},
+      {/(matr)ices$/i, "\\1ix"},
+      {/(vert|ind)ices$/i, "\\1ex"},
+      {/(octop|vir)(us|i)$/i, "\\1us"},
+      {/(alias|status)(es)?$/i, "\\1"},
       {/((a)naly|(b)a|(d)iagno|(p)arenthe|(p)rogno|(s)ynop|(t)he)(sis|ses)$/i, "\\1sis"},
-      {/(^analy)(sis|ses)$/i,                                          "\\1sis"},
-      {/(cris|test)(is|es)$/i,                                         "\\1is"},
-      {/([ti])a$/i,                                                    "\\1um"},
-      {/([^f])ves$/i,                                                  "\\1fe"},
-      {/([lrae])ves$/i,                                                "\\1f"},
-      {/([^aeiouy]|qu)ies$/i,                                          "\\1y"},
-      {/(hive)s$/i,                                                    "\\1"},
-      {/(tive)s$/i,                                                    "\\1"},
-      {/(x|ch|ss|sh)es$/i,                                             "\\1"},
-      {/(bus)(es)?$/i,                                                 "\\1"},
-      {/(o)es$/i,                                                      "\\1"},
-      {/(shoe)s$/i,                                                    "\\1"},
-      {/(ss)$/i,                                                       "\\1"},
-      {/s$/i,                                                          ""},  # Most general rule goes last
+      {/(^analy)(sis|ses)$/i, "\\1sis"},
+      {/(cris|test)(is|es)$/i, "\\1is"},
+      {/([ti])a$/i, "\\1um"},
+      {/([^f])ves$/i, "\\1fe"},
+      {/([lrae])ves$/i, "\\1f"},
+      {/([^aeiouy]|qu)ies$/i, "\\1y"},
+      {/(hive)s$/i, "\\1"},
+      {/(tive)s$/i, "\\1"},
+      {/(x|ch|ss|sh)es$/i, "\\1"},
+      {/(bus)(es)?$/i, "\\1"},
+      {/(o)es$/i, "\\1"},
+      {/(shoe)s$/i, "\\1"},
+      {/(ss)$/i, "\\1"},
+      {/s$/i, ""}, # Most general rule goes last
     ]
 
     # Uncountable words

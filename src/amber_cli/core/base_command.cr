@@ -33,7 +33,7 @@ module AmberCLI::Core
       option_parser.unknown_args do |unknown_args, _|
         @remaining_arguments.concat(unknown_args)
       end
-      
+
       option_parser.parse(args)
       validate_arguments
       execute
@@ -111,4 +111,4 @@ module AmberCLI::Core
       HELP
     end
   end
-end 
+end

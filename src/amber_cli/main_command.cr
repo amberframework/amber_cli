@@ -8,18 +8,18 @@ module AmberCLI
 
     def setup_options
       option_parser.banner = "Usage: amber [command] [options]"
-      
+
       option_parser.on("--version", "Show version") do
         puts "Amber CLI #{AmberCli::VERSION}"
         puts "Targets Amber Framework #{Amber::VERSION}"
         exit 0
       end
-      
+
       option_parser.on("-h", "--help", "Show help") do
         puts option_parser
         exit 0
       end
-      
+
       option_parser.separator ""
       option_parser.separator "Commands:"
       option_parser.separator "  new [name]            Create a new Amber application"
@@ -94,4 +94,4 @@ module AmberCLI
       exit exit_code
     end
   end
-end 
+end

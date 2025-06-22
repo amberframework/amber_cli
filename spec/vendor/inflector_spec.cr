@@ -234,10 +234,10 @@ describe AmberCLI::Vendor::Inflector do
       # Empty strings
       AmberCLI::Vendor::Inflector.pluralize("").should eq("")
       AmberCLI::Vendor::Inflector.singularize("").should eq("")
-      
+
       # Single character
       AmberCLI::Vendor::Inflector.pluralize("a").should eq("as")
       AmberCLI::Vendor::Inflector.singularize("s").should eq("")
     end
   end
-end 
+end

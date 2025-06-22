@@ -1,5 +1,5 @@
 # AI Inflector Configuration
-# 
+#
 # Configure AI-powered inflection fallback for unknown words.
 # This is optional and disabled by default.
 
@@ -34,4 +34,4 @@
 #
 # Common words are still handled by fast local rules:
 # AmberCLI::Vendor::Inflector.pluralize("user")      # => "users" (local)
-# AmberCLI::Vendor::Inflector.pluralize("child")     # => "children" (local) 
+# AmberCLI::Vendor::Inflector.pluralize("child")     # => "children" (local)

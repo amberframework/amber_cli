@@ -36,7 +36,7 @@ module AmberCLI::Commands
         puts option_parser
         exit(1)
       end
-      
+
       @plugin_name = remaining_arguments[0]
       @plugin_args = remaining_arguments[1..]
     end
@@ -54,12 +54,12 @@ module AmberCLI::Commands
       end
 
       info "Generating plugin: #{plugin_name}"
-      
+
       template = Amber::Plugins::Plugin.new(plugin_name, "./src/plugins", plugin_args)
       template.generate("install")
-      
+
       success "Plugin '#{plugin_name}' generated successfully!"
-      
+
       unless plugin_args.empty?
         info "Plugin arguments: #{plugin_args.join(", ")}"
       end

@@ -4,4 +4,4 @@ module AmberCLI::Exceptions
       super(message)
     end
   end
-end 
+end

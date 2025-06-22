@@ -103,7 +103,7 @@ module AmberCLI::Commands
       dirs = [
         "config", "config/environments", "config/initializers",
         "db", "db/migrations", "public", "public/css", "public/js", "public/img",
-        "spec", "src", "src/controllers", "src/models", "src/views", "src/views/layouts"
+        "spec", "src", "src/controllers", "src/models", "src/views", "src/views/layouts",
       ]
 
       dirs.each do |dir|

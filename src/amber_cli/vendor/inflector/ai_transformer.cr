@@ -1,5 +1,5 @@
 # AI-Powered Inflector Fallback System
-# 
+#
 # When local rules don't handle a transformation, this system can fall back to AI
 # for smart linguistic transformations. Results are cached for performance.
 
@@ -27,7 +27,7 @@ module AmberCLI::Vendor::Inflector::AITransformer
   @@config = Config.new
 
   # Configure the AI transformer
-  def configure
+  def configure(&)
     yield(@@config)
   end
 
@@ -61,7 +61,7 @@ module AmberCLI::Vendor::Inflector::AITransformer
   def cache_stats
     {
       size: @@cache.size,
-      keys: @@cache.keys.sort
+      keys: @@cache.keys.sort,
     }
   end
 
@@ -70,7 +70,7 @@ module AmberCLI::Vendor::Inflector::AITransformer
     return nil unless @@config.api_key
 
     prompt = build_prompt(word, transformation)
-    
+
     retries = 0
     while retries <= @@config.max_retries
       begin
@@ -81,7 +81,7 @@ module AmberCLI::Vendor::Inflector::AITransformer
       rescue ex : Exception
         puts "AI transformer error (attempt #{retries + 1}): #{ex.message}" if ENV["DEBUG"]?
       end
-      
+
       retries += 1
       sleep(0.5.seconds) if retries <= @@config.max_retries
     end
@@ -140,20 +140,20 @@ module AmberCLI::Vendor::Inflector::AITransformer
   # Make HTTP request to AI service
   private def make_api_request(prompt : String) : String
     headers = HTTP::Headers{
-      "Content-Type" => "application/json",
-      "Authorization" => "Bearer #{@@config.api_key}"
+      "Content-Type"  => "application/json",
+      "Authorization" => "Bearer #{@@config.api_key}",
     }
 
     body = {
-      model: @@config.model,
+      model:    @@config.model,
       messages: [
         {
-          role: "user", 
-          content: prompt
-        }
+          role:    "user",
+          content: prompt,
+        },
       ],
-      max_tokens: 10,  # We only need a single word
-      temperature: 0.1  # Low temperature for consistent results
+      max_tokens:  10,  # We only need a single word
+      temperature: 0.1, # Low temperature for consistent results
     }.to_json
 
     client = HTTP::Client.new(URI.parse(@@config.api_url))
@@ -167,7 +167,7 @@ module AmberCLI::Vendor::Inflector::AITransformer
   # Parse AI service response
   private def parse_response(response_body : String) : String?
     parsed = JSON.parse(response_body)
-    
+
     if choices = parsed["choices"]?.try(&.as_a)
       if choice = choices[0]?
         if message = choice["message"]?
@@ -184,4 +184,4 @@ module AmberCLI::Vendor::Inflector::AITransformer
   rescue JSON::ParseException
     nil
   end
-end 
+end

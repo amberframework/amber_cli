@@ -20,7 +20,7 @@ describe AmberCLI::Core::WordTransformer do
         AmberCLI::Core::WordTransformer.transform("user", "plural").should eq("users")
         AmberCLI::Core::WordTransformer.transform("company", "plural").should eq("companies")
         AmberCLI::Core::WordTransformer.transform("city", "plural").should eq("cities")
-        AmberCLI::Core::WordTransformer.transform("day", "plural").should eq("days")  # vowel before y
+        AmberCLI::Core::WordTransformer.transform("day", "plural").should eq("days") # vowel before y
         AmberCLI::Core::WordTransformer.transform("wife", "plural").should eq("wives")
         AmberCLI::Core::WordTransformer.transform("life", "plural").should eq("lives")
         AmberCLI::Core::WordTransformer.transform("box", "plural").should eq("boxes")
@@ -129,9 +129,9 @@ describe AmberCLI::Core::WordTransformer do
     context "with custom naming conventions" do
       it "applies custom transformation patterns" do
         conventions = {
-          "controller_suffix" => "{{word}}Controller",
-          "interface_prefix" => "I{{word}}",
-          "repository_pattern" => "{{word}}Repository"
+          "controller_suffix"  => "{{word}}Controller",
+          "interface_prefix"   => "I{{word}}",
+          "repository_pattern" => "{{word}}Repository",
         }
 
         AmberCLI::Core::WordTransformer.transform("User", "controller_suffix", conventions).should eq("UserController")
@@ -142,8 +142,8 @@ describe AmberCLI::Core::WordTransformer do
       it "handles complex patterns" do
         conventions = {
           "service_class" => "{{word}}Service",
-          "api_endpoint" => "/api/v1/{{word}}",
-          "table_name" => "app_{{word}}_data"
+          "api_endpoint"  => "/api/v1/{{word}}",
+          "table_name"    => "app_{{word}}_data",
         }
 
         AmberCLI::Core::WordTransformer.transform("User", "service_class", conventions).should eq("UserService")
@@ -153,17 +153,17 @@ describe AmberCLI::Core::WordTransformer do
 
       it "custom conventions override standard transformations" do
         conventions = {
-          "snake_case" => "custom_{{word}}_override",
-          "pascal_case" => "{{word}}CustomClass"
+          "snake_case"  => "custom_{{word}}_override",
+          "pascal_case" => "{{word}}CustomClass",
         }
-        
+
         AmberCLI::Core::WordTransformer.transform("user", "snake_case", conventions).should eq("custom_user_override")
         AmberCLI::Core::WordTransformer.transform("user", "pascal_case", conventions).should eq("userCustomClass")
       end
 
       it "falls back to standard transformations when custom pattern not found" do
         conventions = {"custom_pattern" => "{{word}}Custom"}
-        
+
         AmberCLI::Core::WordTransformer.transform("user", "snake_case", conventions).should eq("user")
         AmberCLI::Core::WordTransformer.transform("UserProfile", "snake_case", conventions).should eq("user_profile")
       end
@@ -226,7 +226,7 @@ describe AmberCLI::Core::WordTransformer do
   describe ".all_transformations" do
     it "returns a hash of all standard transformations" do
       result = AmberCLI::Core::WordTransformer.all_transformations("user")
-      
+
       result.should be_a(Hash(String, String))
       result["singular"].should eq("user")
       result["plural"].should eq("users")
@@ -245,14 +245,14 @@ describe AmberCLI::Core::WordTransformer do
     it "applies custom conventions to all transformations" do
       conventions = {"pascal_case" => "{{word}}Class"}
       result = AmberCLI::Core::WordTransformer.all_transformations("user", conventions)
-      
+
       result["pascal_case"].should eq("userClass")
       result["snake_case"].should eq("user") # Should still use standard transformation
     end
 
     it "handles complex words" do
       result = AmberCLI::Core::WordTransformer.all_transformations("blog_post")
-      
+
       result["pascal_case"].should eq("BlogPost")
       result["snake_case"].should eq("blog_post")
       result["kebab_case"].should eq("blog-post")
@@ -265,7 +265,7 @@ describe AmberCLI::Core::WordTransformer do
   describe ".rails_conventions" do
     it "returns Rails-style naming conventions" do
       result = AmberCLI::Core::WordTransformer.rails_conventions("user")
-      
+
       result.should be_a(Hash(String, String))
       result["class_name"].should eq("User")
       result["table_name"].should eq("users")
@@ -278,7 +278,7 @@ describe AmberCLI::Core::WordTransformer do
 
     it "handles complex words correctly" do
       result = AmberCLI::Core::WordTransformer.rails_conventions("blog_post")
-      
+
       result["class_name"].should eq("BlogPost")
       result["table_name"].should eq("blog_posts")
       result["file_name"].should eq("blog_post")
@@ -290,7 +290,7 @@ describe AmberCLI::Core::WordTransformer do
 
     it "handles PascalCase input" do
       result = AmberCLI::Core::WordTransformer.rails_conventions("BlogPost")
-      
+
       result["class_name"].should eq("BlogPost")
       result["table_name"].should eq("blog_posts")
       result["file_name"].should eq("blog_post")
@@ -316,7 +316,7 @@ describe AmberCLI::Core::WordTransformer do
   describe ".supported_transformations" do
     it "returns an array of all supported transformation names" do
       transformations = AmberCLI::Core::WordTransformer.supported_transformations
-      
+
       transformations.should be_a(Array(String))
       transformations.should contain("pascal_case")
       transformations.should contain("snake_case")
@@ -333,11 +333,11 @@ describe AmberCLI::Core::WordTransformer do
 
     it "includes all transformation types used in the codebase" do
       transformations = AmberCLI::Core::WordTransformer.supported_transformations
-      
+
       # Verify all transformations from the case statement are included
-      %w(singular plural pascal_case camel_case snake_case kebab_case title_case 
-         upper_case lower_case constant_case humanize classify tableize foreign_key 
-         snake_case_plural pascal_case_plural kebab_case_plural).each do |transformation|
+      %w(singular plural pascal_case camel_case snake_case kebab_case title_case
+        upper_case lower_case constant_case humanize classify tableize foreign_key
+        snake_case_plural pascal_case_plural kebab_case_plural).each do |transformation|
         transformations.should contain(transformation)
       end
     end
@@ -348,7 +348,7 @@ describe AmberCLI::Core::WordTransformer do
       # Test that we're using Crystal's native methods by testing a large number of transformations
       1000.times do |i|
         word = "test_word_#{i}"
-        
+
         # These should be fast since they use Crystal's built-in methods
         AmberCLI::Core::WordTransformer.transform(word, "snake_case").should eq(word)
         AmberCLI::Core::WordTransformer.transform(word, "pascal_case").should eq("TestWord#{i}")
@@ -356,4 +356,4 @@ describe AmberCLI::Core::WordTransformer do
       end
     end
   end
-end 
+end

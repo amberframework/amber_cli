@@ -9,18 +9,18 @@ module AmberCLI::Core
 
     def process_template(template_content : String, replacements : Hash(String, String), strict : Bool = false) : String
       result = template_content
-      
+
       # Replace all placeholders
       replacements.each do |key, value|
         result = result.gsub("{{#{key}}}", value)
       end
-      
+
       # Check for remaining placeholders in strict mode
       if strict && result.includes?("{{")
         remaining = result.scan(/\{\{([^}]+)\}\}/).map(&.[1])
         raise AmberCLI::Exceptions::TemplateError.new("Unknown placeholder: #{remaining.join(", ")}")
       end
-      
+
       result
     end
 
@@ -29,37 +29,37 @@ module AmberCLI::Core
       if conditions = rule.conditions
         return [] of NamedTuple(path: String, content: String) unless meets_conditions?(conditions, custom_variables)
       end
-      
+
       # Load template file
       template_path = rule.template_file_path(template_dir)
       unless File.exists?(template_path)
         raise AmberCLI::Exceptions::TemplateError.new("Template file not found: #{template_path}")
       end
-      
+
       template_content = File.read(template_path)
-      
+
       # Build replacement context
       replacements = custom_variables.dup
-      
+
       # Add word transformations
       if transformations = rule.transformations
         transformations.each do |placeholder, transformation|
           replacements[placeholder] = WordTransformer.transform(word, transformation, naming_conventions)
         end
       end
-      
+
       # Add basic transformations
       replacements["snake_case"] = WordTransformer.transform(word, "snake_case", naming_conventions)
       replacements["pascal_case"] = WordTransformer.transform(word, "pascal_case", naming_conventions)
       replacements["snake_case_plural"] = WordTransformer.transform(word, "snake_case_plural", naming_conventions)
       replacements["pascal_case_plural"] = WordTransformer.transform(word, "pascal_case_plural", naming_conventions)
-      
+
       # Process template
       processed_content = process_template(template_content, replacements)
-      
+
       # Process output path
       output_path = process_template(rule.output_path, replacements)
-      
+
       [{path: output_path, content: processed_content}]
     end
 
@@ -69,4 +69,4 @@ module AmberCLI::Core
       end
     end
   end
-end 
+end

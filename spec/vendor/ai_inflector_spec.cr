@@ -9,7 +9,7 @@ describe AmberCLI::Vendor::Inflector::AITransformer do
         config.model = "test-model"
         config.timeout = 10.seconds
       end
-      
+
       # Note: We can't directly access config in tests, but this verifies
       # that the configuration method works without errors
     end
@@ -34,7 +34,7 @@ describe AmberCLI::Vendor::Inflector::AITransformer do
       AmberCLI::Vendor::Inflector::AITransformer.configure do |config|
         config.enabled = false
       end
-      
+
       result = AmberCLI::Vendor::Inflector::AITransformer.transform_with_ai("test", "plural")
       result.should be_nil
     end
@@ -43,7 +43,7 @@ describe AmberCLI::Vendor::Inflector::AITransformer do
       AmberCLI::Vendor::Inflector::AITransformer.configure do |config|
         config.enabled = true
       end
-      
+
       result = AmberCLI::Vendor::Inflector::AITransformer.transform_with_ai("", "plural")
       result.should be_nil
     end
@@ -53,7 +53,7 @@ describe AmberCLI::Vendor::Inflector::AITransformer do
         config.enabled = true
         config.api_key = nil
       end
-      
+
       result = AmberCLI::Vendor::Inflector::AITransformer.transform_with_ai("test", "plural")
       result.should be_nil
     end
@@ -103,4 +103,4 @@ describe AmberCLI::Vendor::Inflector do
       AmberCLI::Vendor::Inflector.singularize("mice").should eq("mouse")
     end
   end
-end 
+end

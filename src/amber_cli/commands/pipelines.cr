@@ -5,8 +5,8 @@ module AmberCLI::Commands
     getter result = Array(NamedTuple(pipes: Array(String), plugs: Array(String))).new
     getter show_plugs : Bool = true
 
-    ROUTES_PATH = "config/routes.cr"
-    LABELS = %w(Pipeline Pipe)
+    ROUTES_PATH          = "config/routes.cr"
+    LABELS               = %w(Pipeline Pipe)
     LABELS_WITHOUT_PLUGS = %w(Pipeline)
 
     PIPELINE_REGEX =
@@ -164,7 +164,7 @@ module AmberCLI::Commands
     private def print_pipelines_only
       # Get unique pipelines
       pipelines = result.flat_map { |pipes_and_plugs| pipes_and_plugs[:pipes] }.uniq!
-      
+
       # Calculate column width
       pipeline_width = [LABELS_WITHOUT_PLUGS[0].size, pipelines.map(&.size).max? || 0].max
       column_widths = [pipeline_width]

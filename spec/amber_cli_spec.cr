@@ -40,7 +40,7 @@ module SpecHelper
   def self.within_temp_directory(&block)
     temp_dir = create_temp_directory
     original_dir = Dir.current
-    
+
     begin
       Dir.cd(temp_dir)
       yield temp_dir
@@ -63,10 +63,10 @@ describe "Amber CLI New Architecture" do
     # Test that all our new classes can be instantiated
     transformer = AmberCLI::Core::WordTransformer
     engine = AmberCLI::Core::TemplateEngine.new
-    
+
     transformer.should_not be_nil
     engine.should_not be_nil
-    
+
     # Basic functionality test
     result = transformer.transform("user", "pascal_case")
     result.should eq("User")
