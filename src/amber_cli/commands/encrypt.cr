@@ -1,7 +1,32 @@
 require "../core/base_command"
 require "../exceptions"
 require "../../support/file_encryptor"
+require "../helpers/helpers"
 
+# The `encrypt` command manages encrypted environment files for secure
+# configuration storage and deployment.
+#
+# ## Usage
+# ```
+# amber encrypt [environment] [options]
+# ```
+#
+# ## Actions
+# - `encrypt` - Encrypt an environment file
+# - `decrypt` - Decrypt an environment file 
+# - `edit` - Edit an encrypted environment file
+#
+# ## Examples
+# ```
+# # Encrypt production environment file
+# amber encrypt production
+#
+# # Edit encrypted staging config
+# amber encrypt staging --edit
+#
+# # Decrypt for debugging
+# amber encrypt production --decrypt
+# ```
 module AmberCLI::Commands
   class EncryptCommand < AmberCLI::Core::BaseCommand
     getter environment : String = "production"

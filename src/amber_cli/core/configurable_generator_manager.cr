@@ -4,6 +4,7 @@ require "./template_engine"
 require "./word_transformer"
 require "../exceptions"
 
+# :nodoc:
 module AmberCLI::Core
   class ConfigurableGeneratorManager
     @config : GeneratorConfig

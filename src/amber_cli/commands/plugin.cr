@@ -1,6 +1,31 @@
 require "../core/base_command"
 require "../plugins/plugin"
 
+# The `plugin` command manages Amber CLI plugins for extending functionality
+# with custom generators, commands, and integrations.
+#
+# ## Usage
+# ```
+# amber plugin [action] [name] [options]
+# ```
+#
+# ## Actions
+# - `install` - Install a plugin from a repository
+# - `uninstall` - Remove an installed plugin
+# - `list` - Show installed plugins
+# - `search` - Search available plugins
+#
+# ## Examples
+# ```
+# # Install a plugin from GitHub
+# amber plugin install myorg/amber-plugin-api
+#
+# # List all installed plugins
+# amber plugin list
+#
+# # Uninstall a plugin
+# amber plugin uninstall amber-plugin-api
+# ```
 module AmberCLI::Commands
   class PluginCommand < AmberCLI::Core::BaseCommand
     getter plugin_name : String = ""

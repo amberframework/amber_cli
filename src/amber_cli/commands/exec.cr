@@ -1,6 +1,31 @@
 require "../core/base_command"
 require "file_utils"
+require "../helpers/helpers"
 
+# The `exec` command executes Crystal code within the context of your
+# Amber application, providing access to models, configuration, and environment.
+#
+# ## Usage
+# ```
+# amber exec 'Crystal code here'
+# amber exec -f script.cr
+# ```
+#
+# ## Options
+# - `-f, --file` - Execute code from a file
+# - `-e, --env` - Environment to run in
+#
+# ## Examples
+# ```
+# # Execute inline Crystal code
+# amber exec 'puts User.count'
+#
+# # Run a script file
+# amber exec -f scripts/data_migration.cr
+#
+# # Query the database in production
+# amber exec -e production 'puts Post.where(published: true).count'
+# ```
 module AmberCLI::Commands
   class ExecCommand < AmberCLI::Core::BaseCommand
     getter code : String = ""

@@ -1,6 +1,31 @@
 require "../core/base_command"
 require "../helpers/process_runner"
+require "../helpers/sentry"
 
+# The `watch` command starts a development server that automatically reloads
+# your application when source files change.
+#
+# ## Usage
+# ```
+# amber watch [options]
+# ```
+#
+# ## Options
+# - `-p, --port` - Port to run the server on (default: 3000)
+# - `-e, --env` - Environment to run in (development, production)
+# - `-v, --verbose` - Enable verbose output
+#
+# ## Examples  
+# ```
+# # Start development server with auto-reload
+# amber watch
+#
+# # Run on specific port
+# amber watch -p 8080
+#
+# # Watch with verbose output
+# amber watch -v
+# ```
 module AmberCLI::Commands
   class WatchCommand < AmberCLI::Core::BaseCommand
     getter name : String = ""

@@ -1,6 +1,7 @@
 # :nodoc:
 require "option_parser"
 
+# :nodoc:
 module AmberCLI::Core
   abstract class BaseCommand
     getter option_parser : OptionParser

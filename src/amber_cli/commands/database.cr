@@ -4,7 +4,37 @@ require "mysql"
 require "sqlite3"
 require "../core/base_command"
 require "../helpers/helpers"
+require "../helpers/migration"
+require "../config"
+require "file_utils"
 
+# The `database` command provides database management operations including
+# migrations, seeding, and database status checks.
+#
+# ## Usage
+# ```
+# amber database [action] [options]
+# ```
+#
+# ## Actions
+# - `migrate` - Run pending migrations
+# - `rollback` - Rollback the last migration
+# - `seed` - Run database seeds
+# - `status` - Show migration status
+# - `create` - Create the database
+# - `drop` - Drop the database
+#
+# ## Examples
+# ```
+# # Run all pending migrations
+# amber database migrate
+#
+# # Rollback the last migration
+# amber database rollback
+#
+# # Check migration status
+# amber database status
+# ```
 module AmberCLI::Commands
   class DatabaseCommand < AmberCLI::Core::BaseCommand
     Log = ::Log.for("database")

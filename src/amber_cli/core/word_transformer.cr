@@ -1,6 +1,7 @@
 # :nodoc:
 require "../vendor/inflector/inflector"
 
+# :nodoc:
 module AmberCLI::Core
   # Provides string transformations for code generation using a hybrid approach.
   #
@@ -71,6 +72,7 @@ module AmberCLI::Core
       # Note: "feet" -> "foot" is now fixed in our vendored inflector
     }
 
+    # :nodoc:
     # Built-in variables that can be used in templates
     BUILT_IN_VARIABLES = {
       "cli_version" => AmberCli::VERSION,

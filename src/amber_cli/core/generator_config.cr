@@ -2,7 +2,9 @@
 require "json"
 require "yaml"
 
+# :nodoc:
 module AmberCLI::Core
+  # :nodoc:
   struct FileGenerationRule
     getter template : String
     getter output_path : String
@@ -17,6 +19,7 @@ module AmberCLI::Core
     end
   end
 
+  # :nodoc:
   class GeneratorConfig
     getter name : String
     getter description : String?

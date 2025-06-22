@@ -1,5 +1,28 @@
 require "../core/base_command"
 
+# The `pipelines` command displays and manages HTTP request pipelines
+# configured in your Amber application.
+#
+# ## Usage
+# ```
+# amber pipelines [options]
+# ```
+#
+# ## Options
+# - `--json` - Output pipelines in JSON format
+# - `--verbose` - Show detailed pipeline information
+#
+# ## Examples
+# ```
+# # Show all configured pipelines
+# amber pipelines
+#
+# # Export pipeline configuration as JSON
+# amber pipelines --json
+#
+# # Show detailed pipeline information
+# amber pipelines --verbose
+# ```
 module AmberCLI::Commands
   class PipelinesCommand < AmberCLI::Core::BaseCommand
     getter result = Array(NamedTuple(pipes: Array(String), plugs: Array(String))).new

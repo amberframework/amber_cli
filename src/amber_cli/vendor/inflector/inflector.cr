@@ -9,6 +9,7 @@
 require "./irregular_words"
 require "./ai_transformer"
 
+# :nodoc:
 module AmberCLI::Vendor::Inflector
   extend self
 

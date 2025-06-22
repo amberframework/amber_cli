@@ -1,6 +1,29 @@
 require "../core/base_command"
 require "json"
+require "../helpers/helpers"
 
+# The `routes` command displays all defined routes in your Amber application.
+#
+# ## Usage
+# ```
+# amber routes [options]
+# ```
+#
+# ## Options
+# - `--json` - Output routes in JSON format
+# - `--filter` - Filter routes by pattern
+#
+# ## Examples
+# ```
+# # Show all routes in table format
+# amber routes
+#
+# # Export routes as JSON
+# amber routes --json
+#
+# # Filter routes containing "api"
+# amber routes --filter api
+# ```
 module AmberCLI::Commands
   class RoutesCommand < AmberCLI::Core::BaseCommand
     RESOURCE_ROUTE_REGEX  = /(\w+)\s+\"([^\"]+)\",\s*([\w:]+)(?:,\s*(\w+)\:\s*\[([^\]]+)\])?/

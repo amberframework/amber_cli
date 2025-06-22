@@ -5,6 +5,7 @@ require "../exceptions"
 require "./word_transformer"
 require "./generator_config"
 
+# :nodoc:
 module AmberCLI::Core
   class TemplateEngine
     def initialize

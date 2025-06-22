@@ -1,5 +1,26 @@
 require "../core/base_command"
 
+# The `new` command creates a new Amber application with a default directory structure
+# and configuration at the specified path.
+#
+# ## Usage
+# ```
+# amber new [app_name] -d [pg | mysql | sqlite] -t [slang | ecr] --no-deps
+# ```
+#
+# ## Options
+# - `-d, --database` - Database type (pg, mysql, sqlite)
+# - `-t, --template` - Template language (slang, ecr) 
+# - `--no-deps` - Skip dependency installation
+#
+# ## Examples
+# ```
+# # Create a new app with PostgreSQL and Slang
+# amber new my_blog -d pg -t slang
+#
+# # Create app with SQLite (for development)
+# amber new quick_app -d sqlite
+# ```
 module AmberCLI::Commands
   class NewCommand < AmberCLI::Core::BaseCommand
     getter database : String = "pg"
