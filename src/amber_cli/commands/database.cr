@@ -13,7 +13,7 @@ require "file_utils"
 #
 # ## Usage
 # ```
-# amber database [action] [options]
+# amber database [action][options]
 # ```
 #
 # ## Actions

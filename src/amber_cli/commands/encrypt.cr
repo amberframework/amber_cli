@@ -8,12 +8,12 @@ require "../helpers/helpers"
 #
 # ## Usage
 # ```
-# amber encrypt [environment] [options]
+# amber encrypt [environment][options]
 # ```
 #
 # ## Actions
 # - `encrypt` - Encrypt an environment file
-# - `decrypt` - Decrypt an environment file 
+# - `decrypt` - Decrypt an environment file
 # - `edit` - Edit an encrypted environment file
 #
 # ## Examples

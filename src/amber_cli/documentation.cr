@@ -645,7 +645,7 @@ module AmberCLI::Documentation
   #
   # ### Framework Version Configuration
   #
-  # The `amber_framework_version` setting determines which version of the Amber 
+  # The `amber_framework_version` setting determines which version of the Amber
   # framework gets used when creating new applications. This is separate from the
   # CLI tool version and allows you to:
   #
@@ -688,8 +688,8 @@ module AmberCLI::Documentation
   # # config/environments/development.yml
   # database_url: "postgres://localhost/myapp_development"
   # amber_framework_version: "1.4.0"
-  # 
-  # # config/environments/production.yml  
+  #
+  # # config/environments/production.yml
   # database_url: ENV["DATABASE_URL"]
   # amber_framework_version: "1.4.0"
   # ```
@@ -703,7 +703,7 @@ module AmberCLI::Documentation
   # ### Database Connection Issues
   #
   # **Problem**: `Connection unsuccessful` error
-  # **Solution**: 
+  # **Solution**:
   # 1. Verify database server is running
   # 2. Check connection string in environment configuration
   # 3. Ensure database exists (run `amber database create`)
@@ -747,4 +747,4 @@ module AmberCLI::Documentation
   # - Report issues on [GitHub](https://github.com/amberframework/amber_cli/issues)
   class Troubleshooting
   end
-end 
+end

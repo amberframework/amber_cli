@@ -10,7 +10,7 @@ require "../core/base_command"
 #
 # ## Options
 # - `-d, --database` - Database type (pg, mysql, sqlite)
-# - `-t, --template` - Template language (slang, ecr) 
+# - `-t, --template` - Template language (slang, ecr)
 # - `--no-deps` - Skip dependency installation
 #
 # ## Examples

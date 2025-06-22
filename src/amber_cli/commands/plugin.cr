@@ -6,7 +6,7 @@ require "../plugins/plugin"
 #
 # ## Usage
 # ```
-# amber plugin [action] [name] [options]
+# amber plugin [action][name][options]
 # ```
 #
 # ## Actions
@@ -18,13 +18,13 @@ require "../plugins/plugin"
 # ## Examples
 # ```
 # # Install a plugin from GitHub
-# amber plugin install myorg/amber-plugin-api
+# amber plugin install myorg/amber - plugin - api
 #
 # # List all installed plugins
 # amber plugin list
 #
 # # Uninstall a plugin
-# amber plugin uninstall amber-plugin-api
+# amber plugin uninstall amber - plugin - api
 # ```
 module AmberCLI::Commands
   class PluginCommand < AmberCLI::Core::BaseCommand

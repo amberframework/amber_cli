@@ -30,7 +30,7 @@ module AmberCLI::Core
         generator_rules.each do |rule|
           # Get amber framework version from config, defaulting to current stable version
           amber_version = template_variables["amber_framework_version"]? || "1.4.0"
-          
+
           generated_files = @template_engine.generate_file_from_rule(rule, name, template_dir, template_variables, naming_conventions, amber_version)
 
           generated_files.each do |file_info|

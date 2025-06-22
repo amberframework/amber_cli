@@ -45,9 +45,9 @@ module AmberCLI::Core
       # Build replacement context
       replacements = custom_variables.dup
 
-              # Add built-in variables
-        replacements["cli_version"] = AmberCli::VERSION
-        replacements["amber_framework_version"] = amber_framework_version
+      # Add built-in variables
+      replacements["cli_version"] = AmberCli::VERSION
+      replacements["amber_framework_version"] = amber_framework_version
 
       # Add word transformations
       if transformations = rule.transformations

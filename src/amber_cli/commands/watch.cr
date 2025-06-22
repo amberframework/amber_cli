@@ -15,7 +15,7 @@ require "../helpers/sentry"
 # - `-e, --env` - Environment to run in (development, production)
 # - `-v, --verbose` - Enable verbose output
 #
-# ## Examples  
+# ## Examples
 # ```
 # # Start development server with auto-reload
 # amber watch
