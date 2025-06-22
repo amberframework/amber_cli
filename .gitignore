@@ -24,8 +24,8 @@ Thumbs.db
 !/docs/.gitkeep
 
 # Build artifacts
-amber
-amber_cli
+/amber
+/amber_cli
 /target/
 
 # Libraries don't need dependency lock
