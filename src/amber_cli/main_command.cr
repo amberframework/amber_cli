@@ -1,7 +1,6 @@
 # :nodoc:
 require "./core/base_command"
 
-# :nodoc:
 module AmberCLI
   class MainCommand < AmberCLI::Core::BaseCommand
     def initialize
