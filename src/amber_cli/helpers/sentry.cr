@@ -1,3 +1,4 @@
+# :nodoc:
 # Legacy CLI import - no longer needed
 require "yaml"
 require "./process_runner"

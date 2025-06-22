@@ -1,3 +1,4 @@
+# :nodoc:
 require "../vendor/inflector/inflector"
 
 module AmberCLI::Core
@@ -68,6 +69,11 @@ module AmberCLI::Core
       "volcanoes" => "volcano",
       "buffaloes" => "buffalo",
       # Note: "feet" -> "foot" is now fixed in our vendored inflector
+    }
+
+    # Built-in variables that can be used in templates
+    BUILT_IN_VARIABLES = {
+      "cli_version" => AmberCli::VERSION,
     }
 
     # Transforms a word using the specified transformation type.

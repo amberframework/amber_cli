@@ -1,3 +1,4 @@
+# :nodoc:
 require "json"
 require "openssl/cipher"
 require "openssl/hmac"

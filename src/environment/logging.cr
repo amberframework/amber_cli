@@ -1,3 +1,4 @@
+# :nodoc:
 module Amber::Environment
   class Logging
     alias OptionsType = Hash(String, String | Bool | Array(String))

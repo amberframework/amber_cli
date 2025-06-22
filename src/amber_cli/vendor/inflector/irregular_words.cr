@@ -1,6 +1,7 @@
 # Irregular word transformations that don't follow standard pluralization rules
 # This includes common English irregulars plus programming-specific terms
 
+# :nodoc:
 module AmberCLI::Vendor::Inflector::IrregularWords
   extend self
 

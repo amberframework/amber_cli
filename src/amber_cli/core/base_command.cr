@@ -1,3 +1,4 @@
+# :nodoc:
 require "option_parser"
 
 module AmberCLI::Core

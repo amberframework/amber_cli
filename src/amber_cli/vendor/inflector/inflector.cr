@@ -1,3 +1,4 @@
+# :nodoc:
 # Vendored Inflector Library
 # Based on phoffer/inflector.cr (MIT License)
 # https://github.com/phoffer/inflector.cr

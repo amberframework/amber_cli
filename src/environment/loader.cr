@@ -1,3 +1,4 @@
+# :nodoc:
 module Amber::Environment
   class Loader
     def initialize(@environment : Amber::Environment::EnvType = Amber.env.to_s,

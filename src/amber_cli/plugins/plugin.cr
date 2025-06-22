@@ -1,3 +1,10 @@
+# :nodoc:
+require "../../support/file_encryptor"
+require "../../environment"
+require "file_utils"
+require "yaml"
+require "colorize"
+
 require "base64"
 
 require "random/secure"

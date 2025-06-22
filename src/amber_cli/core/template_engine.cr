@@ -1,3 +1,6 @@
+# :nodoc:
+require "ecr"
+require "file_utils"
 require "../exceptions"
 require "./word_transformer"
 require "./generator_config"
@@ -24,7 +27,7 @@ module AmberCLI::Core
       result
     end
 
-    def generate_file_from_rule(rule : FileGenerationRule, word : String, template_dir : String, custom_variables : Hash(String, String), naming_conventions : Hash(String, String) = {} of String => String) : Array(NamedTuple(path: String, content: String))
+    def generate_file_from_rule(rule : FileGenerationRule, word : String, template_dir : String, custom_variables : Hash(String, String), naming_conventions : Hash(String, String) = {} of String => String, amber_framework_version : String = "1.4.0") : Array(NamedTuple(path: String, content: String))
       # Check conditions first
       if conditions = rule.conditions
         return [] of NamedTuple(path: String, content: String) unless meets_conditions?(conditions, custom_variables)
@@ -40,6 +43,10 @@ module AmberCLI::Core
 
       # Build replacement context
       replacements = custom_variables.dup
+
+              # Add built-in variables
+        replacements["cli_version"] = AmberCli::VERSION
+        replacements["amber_framework_version"] = amber_framework_version
 
       # Add word transformations
       if transformations = rule.transformations

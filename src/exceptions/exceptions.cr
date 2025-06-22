@@ -1,3 +1,4 @@
+# :nodoc:
 require "colorize"
 
 module Amber

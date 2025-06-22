@@ -1,3 +1,4 @@
+# :nodoc:
 require "../version"
 require "./config"
 

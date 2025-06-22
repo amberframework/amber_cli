@@ -1,3 +1,6 @@
+# :nodoc:
+require "../config"
+
 module Amber::CLI::Helpers
   def add_routes(pipeline, route)
     routes_file = File.read("./config/routes.cr")

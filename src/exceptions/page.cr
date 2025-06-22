@@ -1,3 +1,5 @@
+# :nodoc:
+require "http/server"
 require "exception_page"
 
 module Amber::Exceptions

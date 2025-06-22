@@ -1,5 +1,6 @@
 require "./helpers"
 
+# :nodoc:
 module Sentry
   class ProcessRunner
     Log = ::Log.for("watch")

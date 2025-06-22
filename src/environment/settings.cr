@@ -1,3 +1,4 @@
+# :nodoc:
 require "yaml"
 
 module Amber::Environment

@@ -6,6 +6,7 @@
 require "http/client"
 require "json"
 
+# :nodoc:
 module AmberCLI::Vendor::Inflector::AITransformer
   extend self
 

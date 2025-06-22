@@ -1,5 +1,7 @@
+# :nodoc:
 require "openssl/hmac"
 require "crypto/subtle"
+require "base64"
 
 module Amber::Support
   class MessageVerifier

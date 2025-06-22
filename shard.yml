@@ -35,9 +35,6 @@ dependencies:
     github: crystal-loot/exception_page
     version: ~> 0.2.1
 
-  # inflector library has been vendored into src/amber_cli/vendor/inflector/
-  # with improvements and fixes (foot->feet, tooth->teeth, etc.)
-
   # CLI tool item, specifically for when distributing a compiled binary (like the CLI tool will be)
   compiled_license:
     github: elorest/compiled_license

@@ -1,3 +1,4 @@
+# :nodoc:
 require "./environment/**"
 require "./support/file_encryptor"
 

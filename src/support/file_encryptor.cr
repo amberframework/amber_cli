@@ -1,3 +1,4 @@
+# :nodoc:
 require "./message_encryptor"
 
 module Amber::Support

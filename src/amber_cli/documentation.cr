@@ -594,6 +594,105 @@ module AmberCLI::Documentation
   #     include:
   #       - "./spec/**/*.cr"
   # ```
+  #
+  # # Configuration Reference
+  #
+  # Amber CLI uses several configuration mechanisms to customize behavior
+  # for different project types and development workflows.
+  #
+  # ## Project Configuration (`.amber.yml`)
+  #
+  # The `.amber.yml` file in your project root configures project-specific settings:
+  #
+  # ```yaml
+  # database: pg                    # Database type: pg, mysql, sqlite
+  # language: slang                 # Template language: slang, ecr
+  # model: granite                  # ORM: granite, jennifer
+  # watch:
+  #   run:
+  #     build_commands:
+  #       - "crystal build ./src/my_app.cr -o bin/my_app"
+  #     run_commands:
+  #       - "bin/my_app"
+  #     include:
+  #       - "./config/**/*.cr"
+  #       - "./src/**/*.cr"
+  # ```
+  #
+  # ## Generator Configuration
+  #
+  # Custom generators can be configured using JSON or YAML files in the
+  # `generator_configs/` directory:
+  #
+  # ### Basic Generator Configuration
+  #
+  # ```yaml
+  # name: "custom_model"
+  # description: "Generate a custom model with validation"
+  # template_directory: "templates/models"
+  # amber_framework_version: "1.4.0"    # Amber framework version for new projects
+  # custom_variables:
+  #   author: "Your Name"
+  #   license: "MIT"
+  # naming_conventions:
+  #   table_prefix: "app_"
+  # file_generation_rules:
+  #   - template_file: "model.cr.ecr"
+  #     output_path: "src/models/{{snake_case}}.cr"
+  #     transformations:
+  #       class_name: "pascal_case"
+  # ```
+  #
+  # ### Framework Version Configuration
+  #
+  # The `amber_framework_version` setting determines which version of the Amber 
+  # framework gets used when creating new applications. This is separate from the
+  # CLI tool version and allows you to:
+  #
+  # - Pin projects to specific Amber versions
+  # - Test with different framework versions
+  # - Maintain compatibility with existing projects
+  #
+  # Available template variables:
+  # - `{{cli_version}}` - Current Amber CLI version
+  # - `{{amber_framework_version}}` - Configured Amber framework version
+  # - All word transformations (snake_case, pascal_case, etc.)
+  #
+  # ### Advanced Generator Features
+  #
+  # #### Conditional File Generation
+  #
+  # ```yaml
+  # file_generation_rules:
+  #   - template_file: "api_spec.cr.ecr"
+  #     output_path: "spec/{{snake_case}}_spec.cr"
+  #     conditions:
+  #       generate_specs: "true"
+  # ```
+  #
+  # #### Custom Transformations
+  #
+  # ```yaml
+  # naming_conventions:
+  #   namespace_prefix: "MyApp::"
+  #   table_prefix: "my_app_"
+  # transformations:
+  #   full_class_name: "pascal_case"  # Will use namespace_prefix
+  # ```
+  #
+  # ## Environment Configuration
+  #
+  # Environment-specific settings go in `config/environments/`:
+  #
+  # ```yaml
+  # # config/environments/development.yml
+  # database_url: "postgres://localhost/myapp_development"
+  # amber_framework_version: "1.4.0"
+  # 
+  # # config/environments/production.yml  
+  # database_url: ENV["DATABASE_URL"]
+  # amber_framework_version: "1.4.0"
+  # ```
   class ConfigurationReference
   end
 

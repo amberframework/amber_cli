@@ -1,3 +1,4 @@
+# :nodoc:
 require "./core/base_command"
 
 module AmberCLI
