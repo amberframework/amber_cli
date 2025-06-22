@@ -1,4 +1,4 @@
-require "inflector"
+require "../vendor/inflector/inflector"
 
 module AmberCLI::Core
   # Provides string transformations for code generation using a hybrid approach.
@@ -46,16 +46,17 @@ module AmberCLI::Core
   # WordTransformer.transform("User", "controller_suffix", conventions)  # => "UserController"
   # ```
   class WordTransformer
-    # Common words that inflector.cr doesn't handle correctly or need special handling
+    # Common words that need special handling beyond standard English rules
+    # Note: We now use a vendored, improved inflector library that fixes many issues
     CUSTOM_PLURALS = {
       "hero" => "heroes",
-      "potato" => "potatoes",
+      "potato" => "potatoes", 
       "echo" => "echoes",
       "embargo" => "embargoes",
       "tornado" => "tornadoes",
       "volcano" => "volcanoes",
       "buffalo" => "buffaloes", # though "buffalos" is also acceptable
-      "foot" => "feet", # inflector.cr incorrectly returns "foots"
+      # Note: "foot" -> "feet" is now fixed in our vendored inflector
     }
 
     CUSTOM_SINGULARS = {
@@ -64,9 +65,9 @@ module AmberCLI::Core
       "echoes" => "echo",
       "embargoes" => "embargo", 
       "tornadoes" => "tornado",
-      "volcanoes" => "volcano",
+      "volcanoes" => "volcano", 
       "buffaloes" => "buffalo",
-      "feet" => "foot",
+      # Note: "feet" -> "foot" is now fixed in our vendored inflector
     }
 
     # Transforms a word using the specified transformation type.
@@ -120,10 +121,10 @@ module AmberCLI::Core
       case transformation
       when "singular"
         # Check our custom singulars first, then use inflector for complex cases
-        CUSTOM_SINGULARS[word.downcase]? || Inflector.singularize(word)
+        CUSTOM_SINGULARS[word.downcase]? || AmberCLI::Vendor::Inflector.singularize(word)
       when "plural"
         # Check our custom plurals first, then use inflector for complex cases
-        CUSTOM_PLURALS[word.downcase]? || Inflector.pluralize(word)
+        CUSTOM_PLURALS[word.downcase]? || AmberCLI::Vendor::Inflector.pluralize(word)
       when "pascal_case", "camel_case"
         # Use Crystal's built-in camelcase method - much faster than inflector
         word.includes?("_") ? word.camelcase : word.underscore.camelcase
@@ -148,14 +149,14 @@ module AmberCLI::Core
         word.underscore.gsub("_", " ").capitalize
       when "classify"
         # Use inflector for classify as it handles more complex cases (plurals -> singular class names)
-        Inflector.classify(word)
+        AmberCLI::Vendor::Inflector.classify(word)
       when "tableize"
         # Convert to snake_case and pluralize for table names
         snake_word = word.underscore
         transform(snake_word, "plural") # Use our enhanced plural method
       when "foreign_key"
         # Use inflector for foreign key as it has specific Rails conventions
-        Inflector.foreign_key(word)
+        AmberCLI::Vendor::Inflector.foreign_key(word)
       when "snake_case_plural"
         # Apply snake_case first, then pluralize
         snake_word = transform(word, "snake_case")
