@@ -1,10 +1,10 @@
-require "cli"
+# Legacy CLI import - no longer needed
 require "yaml"
 require "./process_runner"
 
 module Sentry
-  class SentryCommand < Cli::Command
-    command_name "sentry"
+  class SentryCommand
+    property name : String = "sentry"
 
     class Options
       def self.defaults

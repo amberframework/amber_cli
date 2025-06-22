@@ -1,84 +1,233 @@
 # Amber CLI
 
-This tool serves as a replacement for the original AMBER framework CLI tool.
+[![Crystal CI](https://github.com/amberframework/amber_cli/actions/workflows/crystal.yml/badge.svg)](https://github.com/amberframework/amber_cli/actions/workflows/crystal.yml)
+[![GitHub release](https://img.shields.io/github/release/amberframework/amber_cli.svg)](https://github.com/amberframework/amber_cli/releases)
+[![Docs](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://amberframework.github.io/amber_cli/)
 
-The CLI tool is no longer an integrated part of the main amber framework. This means that you do not have to install this helper tool in order to use it.
+A powerful command-line tool for managing Crystal web applications built with the [Amber Framework](https://amberframework.org). This CLI provides generators, database management, development utilities, and more to streamline your Amber development workflow.
 
-There are a few major changes between this version and the original version. 
+## 📖 Documentation
 
-1. I have removed some features that were not being used such as `recipes` and `plugins`.
+**[→ Complete Documentation](https://amberframework.github.io/amber_cli/)**
 
-2. There is an entirely _new_ generator command that is much more flexable than the previous generation. Please read the docs to better understand how to utilize this.
+The comprehensive documentation includes detailed guides, examples, and API references generated from the codebase.
 
+## 🚀 Quick Start
 
+### Installation
 
+**macOS & Linux via Homebrew:**
+```bash
+brew install amber
+```
 
-## Installation
+**From Source:**
+```bash
+git clone https://github.com/amberframework/amber_cli.git
+cd amber_cli
+shards install
+crystal build src/amber_cli.cr -o amber
+sudo mv amber /usr/local/bin/
+```
 
+**Windows:**
+Use WSL2 or a virtual machine. Native Windows support is not currently available.
 
-MacOS & Linux via Homebrew: 
+### Create Your First App
 
-`brew install amber`
+```bash
+# Create a new Amber application
+amber new my_blog
 
-From source:
+# Navigate to your app
+cd my_blog
 
-1. Clone the repo from the latest release tag `git clone git@
-2. Install the dependencies `shards install`
-3. Build the binary `crystal build src/amber_cli.cr -o amber`
-4. (Optional) Build the MCP server `crystal build src/amber_mcp`
+# Set up the database
+amber database create
+amber database migrate
 
+# Start the development server
+amber watch
+```
 
-Windows:
+Your application will be available at `http://localhost:3000`
 
-Not directly supported at this time. This CLI tool should work as expected when using a virtual machine or WSL2.
+## ⚡ Core Commands
 
+| Command | Description | Example |
+|---------|-------------|---------|
+| `new` | Create a new Amber application | `amber new my_app -d pg -t slang` |
+| `generate` | Generate application components | `amber generate model User name:String` |
+| `database` | Database operations and migrations | `amber database migrate` |
+| `watch` | Development server with auto-reload | `amber watch` |
+| `routes` | Display application routes | `amber routes --json` |
+| `exec` | Execute Crystal code in app context | `amber exec 'puts User.count'` |
+| `encrypt` | Manage encrypted environment files | `amber encrypt production` |
+| `pipelines` | Show pipeline configuration | `amber pipelines` |
 
-TODO: Write usage instructions here
+Run `amber --help` or `amber [command] --help` for detailed usage information.
 
-## Development
+## 🔧 Key Features
 
-To get started with development:
+### **Flexible Code Generation**
+- Built-in generators for models, controllers, views, and more
+- Configurable custom generators with YAML/JSON configuration
+- Intelligent word transformations (snake_case, PascalCase, pluralization)
+- Template-based file generation with variable substitution
 
-1. **Install Crystal**: Make sure you have Crystal installed (version 1.0+ recommended)
-   - macOS: `brew install crystal`
-   - Ubuntu/Debian: Follow the [Crystal installation guide](https://crystal-lang.org/install/)
+### **Database Management**
+- Full migration support with rollback capabilities
+- Multi-database support (PostgreSQL, MySQL, SQLite)
+- Database seeding and status reporting
+- Environment-specific configuration
 
-2. **Clone and setup**:
-   ```bash
-   git clone https://github.com/amberframework/amber_cli.git
-   cd amber_cli
-   shards install
-   ```
+### **Development Tools**
+- File watching with automatic rebuild and restart
+- Interactive code execution within application context
+- Route analysis and pipeline inspection
+- Environment file encryption for security
 
-3. **Build and test**:
-   ```bash
-   # Build the CLI
-   crystal build src/amber_cli.cr -o amber
+### **Extensible Architecture**
+- Plugin system for extending functionality
+- Command registration system for custom commands
+- Template engine for flexible file generation
+- Configuration-driven behavior
 
-   # Run tests
-   crystal spec
+## 🏗️ Architecture Highlights
 
-   # Run the CLI locally
-   ./amber --help
-   ```
+### **Zero External Dependencies**
+- Built entirely with Crystal's standard library
+- No external CLI frameworks or template engines
+- Fast compilation and lightweight binary
 
-4. **Development workflow**:
-   - The main CLI entry point is in `src/amber_cli.cr`
-   - Core functionality is organized under `src/amber_cli/core/`
-   - Commands are defined in `src/amber_cli/commands/`
-   - Run `crystal run src/amber_cli.cr -- <args>` to test changes without building
+### **Clean Command Structure**
+- Base command class for consistent behavior
+- Command registry for easy extension
+- Built-in option parsing and validation
+- Comprehensive error handling
 
-5. **Code style**: Follow Crystal's standard formatting with `crystal tool format`
+### **Smart Template System**
+- ECR-based template processing
+- Variable substitution with transformations
+- Conditional file generation
+- Post-generation command execution
 
+## 📚 Examples
 
-## Contributing
+### Generate a Blog Post Resource
+```bash
+# Create model, controller, views, and migration
+amber generate scaffold Post title:String content:Text published:Bool
 
-1. Fork it (<https://github.com/amberframework/amber_cli/fork>)
+# Or generate individually
+amber generate model Post title:String content:Text
+amber generate controller Posts
+amber generate migration add_published_to_posts published:Bool
+```
+
+### Custom Development Workflow
+```bash
+# Watch with custom build commands
+amber watch --build "crystal build src/app.cr --release" --run "./app"
+
+# Execute code in application context
+amber exec 'Post.where(published: true).count'
+
+# Encrypt production environment
+amber encrypt production --editor vim
+```
+
+### Database Operations
+```bash
+# Create and set up database
+amber database create
+amber database migrate
+amber database seed
+
+# Check migration status
+amber database status
+
+# Rollback last migration
+amber database rollback
+```
+
+## 🔍 Configuration
+
+Amber CLI uses several configuration files:
+
+- **`.amber.yml`** - Project-specific settings
+- **`config/environments/`** - Environment configurations  
+- **`generator_configs/`** - Custom generator definitions
+
+Example `.amber.yml`:
+```yaml
+database: pg
+language: slang
+model: granite
+watch:
+  run:
+    build_commands:
+      - "crystal build ./src/my_app.cr -o bin/my_app"
+    run_commands:
+      - "bin/my_app"
+    include:
+      - "./config/**/*.cr"
+      - "./src/**/*.cr"
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) for details.
+
+1. Fork the repository
 2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create a new Pull Request
+3. Write tests for your changes
+4. Ensure all tests pass (`crystal spec`)
+5. Follow Crystal's code formatting (`crystal tool format`)
+6. Commit your changes (`git commit -am 'Add some feature'`)
+7. Push to the branch (`git push origin my-new-feature`)
+8. Create a Pull Request
 
-## Contributors
+## 📋 Requirements
 
-- [crimson-knight](https://github.com/crimson-knight) - creator and maintainer
+- **Crystal** 1.0+ (latest stable recommended)
+- **Git** (for project templates)
+- **Database** (PostgreSQL, MySQL, or SQLite)
+
+## 🐛 Troubleshooting
+
+Common issues and solutions:
+
+**Database connection errors:**
+```bash
+# Verify database is running and check config
+amber database status
+```
+
+**Generation failures:**
+```bash
+# Check template availability
+amber generate --list
+```
+
+**Watch mode not working:**
+```bash
+# Show current configuration
+amber watch --info
+```
+
+For more detailed troubleshooting, see the [full documentation](https://amberframework.github.io/amber_cli/).
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🌟 Acknowledgments
+
+- [Amber Framework](https://amberframework.org) - The Crystal web framework
+- [Crystal Language](https://crystal-lang.org) - The programming language
+- All the amazing [contributors](https://github.com/amberframework/amber_cli/contributors)
+
+---
+
+**[→ View Complete Documentation](https://amberframework.github.io/amber_cli/)**

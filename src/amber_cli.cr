@@ -11,6 +11,9 @@ require "./amber_cli/core/template_engine"
 require "./amber_cli/core/base_command"
 require "./amber_cli/core/configurable_generator_manager"
 
+# Include comprehensive documentation for crystal docs generation
+require "./amber_cli/documentation"
+
 # Load all commands - they will register themselves
 require "./amber_cli/commands/new"
 require "./amber_cli/commands/database"
