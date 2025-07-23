@@ -1,0 +1,76 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: darwin-arm64
+            os: macos-latest
+          - target: linux-x86_64
+            os: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install Crystal (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        curl -fsSL https://crystal-lang.org/install.sh | sudo bash
+    
+    - name: Install Crystal (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew update
+        brew install crystal
+    
+    - name: Cache shards
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/shards
+          ./lib
+        key: ${{ runner.os }}-shards-${{ hashFiles('shard.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-shards-
+    
+    - name: Install dependencies
+      run: shards install
+    
+    - name: Run tests
+      run: crystal spec
+    
+    - name: Build binary (Linux)
+      if: matrix.target == 'linux-x86_64'
+      run: |
+        crystal build src/amber_cli.cr -o amber --release --static
+        
+    - name: Build binary (macOS)
+      if: matrix.target == 'darwin-arm64'
+      run: |
+        crystal build src/amber_cli.cr -o amber --release
+        
+    - name: Test binary
+      run: |
+        ./amber --version
+        ./amber --help
+        
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      if: github.event_name == 'workflow_dispatch'
+      with:
+        name: amber-cli-${{ matrix.target }}-build
+        path: amber
+        retention-days: 7 

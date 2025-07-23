@@ -1,95 +1,121 @@
-name: Release
+name: Build and Release Binaries
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g., v1.0.0)'
+        required: true
+        type: string
 
 jobs:
   build:
+    name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            target: linux
-            binary_name: amber_cli
-            build_cmd: crystal build src/amber_cli.cr --release --static -o amber_cli-linux
-          - os: macos-latest
-            target: macos
-            binary_name: amber_cli
-            build_cmd: crystal build src/amber_cli.cr --release -o amber_cli-macos
-
-    name: Build for ${{ matrix.target }}
-
+          - target: darwin-arm64
+            os: macos-latest
+            crystal_arch: aarch64
+          - target: linux-x86_64
+            os: ubuntu-latest
+            crystal_arch: x86_64
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
+      with:
+        ref: ${{ github.event.release.tag_name || github.event.inputs.tag }}
+    
     - name: Install Crystal (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
       run: |
         curl -fsSL https://crystal-lang.org/install.sh | sudo bash
-
+    
     - name: Install Crystal (macOS)
       if: matrix.os == 'macos-latest'
       run: |
+        brew update
         brew install crystal
-
-
-
-    - name: Cache shards
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/shards
-          ./lib
-        key: ${{ runner.os }}-shards-${{ hashFiles('shard.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-shards-
-
+    
     - name: Install dependencies
       run: shards install --production
-
-    - name: Build binary (Linux)
-      if: matrix.os == 'ubuntu-latest'
+    
+    - name: Build binary (Linux x86_64)
+      if: matrix.target == 'linux-x86_64'
       run: |
-        # Install static build dependencies for Linux
-        sudo apt-get update
-        sudo apt-get install -y build-essential
-        crystal build src/amber_cli.cr --release --static -o amber_cli-linux
-
-    - name: Build binary (macOS)
-      if: matrix.os == 'macos-latest'
-      run: crystal build src/amber_cli.cr --release -o amber_cli-macos
-
-
-
-    - name: Upload artifacts
+        crystal build src/amber_cli.cr -o amber --release --static
+        
+    - name: Build binary (macOS ARM64)
+      if: matrix.target == 'darwin-arm64'
+      run: |
+        crystal build src/amber_cli.cr -o amber --release
+        
+    - name: Verify binary
+      run: |
+        file amber
+        ./amber --version || echo "Version command may not work in cross-compiled binary"
+        
+    - name: Create archive
+      run: |
+        mkdir -p dist
+        tar -czf dist/amber-cli-${{ matrix.target }}.tar.gz amber
+        
+    - name: Calculate checksum
+      id: checksum
+      run: |
+        cd dist
+        sha256sum amber-cli-${{ matrix.target }}.tar.gz > amber-cli-${{ matrix.target }}.tar.gz.sha256
+        echo "sha256=$(cat amber-cli-${{ matrix.target }}.tar.gz.sha256 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+        
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: binaries-${{ matrix.target }}
-        path: amber_cli-*
-
-  release:
+        name: amber-cli-${{ matrix.target }}
+        path: |
+          dist/amber-cli-${{ matrix.target }}.tar.gz
+          dist/amber-cli-${{ matrix.target }}.tar.gz.sha256
+          
+  upload-assets:
+    name: Upload Release Assets
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
+    if: github.event_name == 'release'
+    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
     - name: Download all artifacts
       uses: actions/download-artifact@v4
-
-    - name: Create release
+      with:
+        path: artifacts
+        
+    - name: Upload release assets
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          binaries-linux/amber_cli-linux
-          binaries-macos/amber_cli-macos
-        generate_release_notes: true
+          artifacts/amber-cli-darwin-arm64/dist/amber-cli-darwin-arm64.tar.gz
+          artifacts/amber-cli-darwin-arm64/dist/amber-cli-darwin-arm64.tar.gz.sha256
+          artifacts/amber-cli-linux-x86_64/dist/amber-cli-linux-x86_64.tar.gz
+          artifacts/amber-cli-linux-x86_64/dist/amber-cli-linux-x86_64.tar.gz.sha256
+        tag_name: ${{ github.event.release.tag_name }}
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+  notify-homebrew:
+    name: Notify Homebrew Tap
+    needs: upload-assets
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Repository Dispatch
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        repository: crimsonknight/homebrew-amber-cli
+        event-type: release-published
+        client-payload: '{"version": "${{ github.event.release.tag_name }}"}' 
