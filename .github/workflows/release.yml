@@ -74,7 +74,7 @@ jobs:
         echo "sha256=$(cat amber-cli-${{ matrix.target }}.tar.gz.sha256 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
         
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: amber-cli-${{ matrix.target }}
         path: |
