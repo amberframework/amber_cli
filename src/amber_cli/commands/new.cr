@@ -232,7 +232,6 @@ module AmberCLI::Commands
         Amber::Server.configure do |settings|
           settings.name = "#{name}"
           settings.port = ENV["PORT"]?.try(&.to_i) || 3000
-          settings.env = ENV["AMBER_ENV"]? || "development"
         end
         CONFIG
 
