@@ -210,8 +210,8 @@ module AmberCLI::Commands
 
     private def create_main_file(path : String, name : String)
       main_content = <<-MAIN
-        require "./config/*"
-        require "./src/#{name}/*"
+        require "../config/*"
+        require "./controllers/*"
 
         Amber::Server.configure do |settings|
           settings.name = "#{name}"
@@ -228,13 +228,11 @@ module AmberCLI::Commands
       # Create basic config/application.cr
       app_config = <<-CONFIG
         require "amber"
-        require "../src/controllers/application_controller"
 
         Amber::Server.configure do |settings|
           settings.name = "#{name}"
           settings.port = ENV["PORT"]?.try(&.to_i) || 3000
           settings.env = ENV["AMBER_ENV"]? || "development"
-          settings.secret_key_base = ENV["SECRET_KEY_BASE"]? || "change_me"
         end
         CONFIG
 
