@@ -4,7 +4,7 @@ version: 0.1.0
 authors:
   - {{author_name | "Your Name <email@example.com>"}}
 
-crystal: 1.0.0
+crystal: ">= 1.10.0"
 
 license: UNLICENSED
 
@@ -12,50 +12,34 @@ targets:
   {{snake_case}}:
     main: src/{{snake_case}}.cr
 
-  amber:
-    main: lib/amber/src/amber/cli.cr
-
 dependencies:
+  # Amber Framework V2
   amber:
-    github: amberframework/amber
-    version: ~> {{amber_framework_version}}
+    github: crimson-knight/amber
+    branch: master
 
-  granite:
-    github: amberframework/granite
-    version: ~> 0.24.0
+  # Grant ORM (ActiveRecord-style, replaces Granite in V2)
+  grant:
+    github: crimson-knight/grant
+    branch: main
 
-  quartz_mailer:
-    github: amberframework/quartz-mailer
-    version: ~> 0.8.0
+  # Asset Pipeline (native ESM, no Webpack/npm required)
+  asset_pipeline:
+    github: amberframework/asset_pipeline
 
-  jasper_helpers:
-    github: amberframework/jasper-helpers
-    version: ~> 1.2.2 
+  # File uploads (optional)
+  gemma:
+    github: amberframework/gemma
 
-<% case @database when "pg" -%>
+  # Database adapters (all required by Grant at compile time)
   pg:
     github: will/crystal-pg
-    version: ~> 0.23.2
-<% when "mysql" -%>
   mysql:
     github: crystal-lang/crystal-mysql
-    version: ~> 0.13.0
-<% when "sqlite" -%>
   sqlite3:
     github: crystal-lang/crystal-sqlite3
-    version: ~> 0.18.0
-<% else -%>
-<% end -%>
-
-  citrine-i18n:
-    github: dare892/citrine-i18n
-    version: ~> 1.0.0
 
 development_dependencies:
   ameba:
     github: crystal-ameba/ameba
     version: ~> 1.4.3
-
-  spec-kemal:
-    github: kemalcr/spec-kemal
-    version: ~> 1.0.0

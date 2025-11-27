@@ -149,18 +149,45 @@ module AmberCLI::Commands
         authors:
           - Your Name <your.email@example.com>
 
-        crystal: ">= 1.0.0, < 2.0"
+        crystal: ">= 1.10.0"
 
-        license: MIT
+        license: UNLICENSED
 
         targets:
           #{name}:
             main: src/#{name}.cr
 
         dependencies:
+          # Amber Framework V2
           amber:
-            github: amberframework/amber
-            version: ~> 1.0
+            github: crimson-knight/amber
+            branch: master
+
+          # Grant ORM (ActiveRecord-style, replaces Granite in V2)
+          grant:
+            github: crimson-knight/grant
+            branch: main
+
+          # Asset Pipeline (native ESM, no Webpack/npm required)
+          asset_pipeline:
+            github: amberframework/asset_pipeline
+
+          # File uploads (optional)
+          gemma:
+            github: amberframework/gemma
+
+          # Database adapters (all required by Grant at compile time)
+          pg:
+            github: will/crystal-pg
+          mysql:
+            github: crystal-lang/crystal-mysql
+          sqlite3:
+            github: crystal-lang/crystal-sqlite3
+
+        development_dependencies:
+          ameba:
+            github: crystal-ameba/ameba
+            version: ~> 1.4.3
         SHARD
 
       File.write(File.join(path, "shard.yml"), shard_content)
@@ -173,7 +200,7 @@ module AmberCLI::Commands
         email: your.email@example.com
         database: #{database}
         language: crystal
-        model: granite
+        model: grant
         recipe_source: amberframework/recipes
         template: #{template}
         AMBER
