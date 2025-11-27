@@ -125,6 +125,7 @@ module AmberCLI::Commands
         "config", "config/environments", "config/initializers",
         "db", "db/migrations", "public", "public/css", "public/js", "public/img",
         "spec", "src", "src/controllers", "src/models", "src/views", "src/views/layouts",
+        "src/views/home",
       ]
 
       dirs.each do |dir|
@@ -137,6 +138,9 @@ module AmberCLI::Commands
       create_amber_yml(path, name)
       create_main_file(path, name)
       create_config_files(path, name)
+      create_routes_file(path, name)
+      create_home_controller(path, name)
+      create_views(path, name)
 
       info "Created project structure"
     end
@@ -244,6 +248,76 @@ module AmberCLI::Commands
         CONTROLLER
 
       File.write(File.join(path, "src/controllers/application_controller.cr"), controller_content)
+    end
+
+    private def create_routes_file(path : String, name : String)
+      routes_content = <<-ROUTES
+        Amber::Server.configure do
+          routes :web do
+            get "/", HomeController, :index
+          end
+        end
+        ROUTES
+
+      File.write(File.join(path, "config/routes.cr"), routes_content)
+    end
+
+    private def create_home_controller(path : String, name : String)
+      home_controller = <<-CONTROLLER
+        class HomeController < ApplicationController
+          def index
+            render("index.#{template}")
+          end
+        end
+        CONTROLLER
+
+      File.write(File.join(path, "src/controllers/home_controller.cr"), home_controller)
+    end
+
+    private def create_views(path : String, name : String)
+      # Create layout file
+      if template == "slang"
+        layout_content = <<-LAYOUT
+          doctype html
+          html
+            head
+              meta charset="utf-8"
+              meta name="viewport" content="width=device-width, initial-scale=1"
+              title #{name}
+            body
+              == content
+          LAYOUT
+        File.write(File.join(path, "src/views/layouts/application.slang"), layout_content)
+
+        # Create home/index view
+        index_content = <<-VIEW
+          h1 Welcome to #{name}!
+          p Your Amber V2 application is running successfully.
+          VIEW
+        File.write(File.join(path, "src/views/home/index.slang"), index_content)
+      else
+        layout_content = <<-LAYOUT
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>#{name}</title>
+          </head>
+          <body>
+            <%= content %>
+          </body>
+          </html>
+          LAYOUT
+        File.write(File.join(path, "src/views/layouts/application.ecr"), layout_content)
+
+        # Create home/index view
+        index_content = <<-VIEW
+          <h1>Welcome to #{name}!</h1>
+          <p>Your Amber V2 application is running successfully.</p>
+          VIEW
+        File.write(File.join(path, "src/views/home/index.ecr"), index_content)
+      end
     end
   end
 end
