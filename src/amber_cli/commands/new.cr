@@ -174,7 +174,7 @@ module AmberCLI::Commands
 
           # File uploads (optional)
           gemma:
-            github: amberframework/gemma
+            github: crimson-knight/gemma
 
           # Database adapters (all required by Grant at compile time)
           pg:
