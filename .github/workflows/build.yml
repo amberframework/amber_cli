@@ -68,7 +68,7 @@ jobs:
         ./amber --help
         
     - name: Upload build artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       if: github.event_name == 'workflow_dispatch'
       with:
         name: amber-cli-${{ matrix.target }}-build
