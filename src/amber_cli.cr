@@ -23,6 +23,7 @@ require "./amber_cli/commands/encrypt"
 require "./amber_cli/commands/exec"
 require "./amber_cli/commands/plugin"
 require "./amber_cli/commands/pipelines"
+require "./amber_cli/commands/generate"
 
 backend = Log::IOBackend.new
 backend.formatter = Log::Formatter.new do |entry, io|
@@ -47,6 +48,12 @@ module AmberCLI
     command_name = args[0]
     command_args = args[1..]
 
+    # Handle version flag
+    if command_name == "--version" || command_name == "-v" || command_name == "version"
+      puts "Amber CLI v#{VERSION}"
+      return
+    end
+
     Core::CommandRegistry.execute_command(command_name, command_args)
   end
 
@@ -57,14 +64,18 @@ module AmberCLI
     Usage: amber <command> [options]
 
     Available commands:
-      new (n)        Create a new Amber application
-      database (db)  Database operations and migrations
-      routes (r)     Display application routes
-      watch (w)      Start development server with file watching
-      encrypt (e)    Encrypt/decrypt environment files
-      exec (x)       Execute Crystal code in application context
-      plugin (pl)    Generate application plugins
-      pipelines      Show application pipelines and plugs
+      new (n)         Create a new Amber V2 application
+      generate (g)    Generate models, controllers, scaffolds, jobs, mailers, schemas, channels
+      database (db)   Database operations and migrations
+      routes (r)      Display application routes
+      watch (w)       Start development server with file watching
+      encrypt (e)     Encrypt/decrypt environment files
+      exec (x)        Execute Crystal code in application context
+      plugin (pl)     Generate application plugins
+      pipelines       Show application pipelines and plugs
+
+    Options:
+      --version, -v   Show version number
 
     Use 'amber <command> --help' for more information about a command.
     HELP
