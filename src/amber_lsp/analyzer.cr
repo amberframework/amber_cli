@@ -8,6 +8,32 @@ module AmberLSP
 
     def configure(project_context : ProjectContext) : Nil
       @configuration = Configuration.load(project_context.root_path)
+      register_custom_rules
+    end
+
+    private def register_custom_rules : Nil
+      @configuration.custom_rules.each do |custom_config|
+        severity = case custom_config.severity
+                   when "error"   then Rules::Severity::Error
+                   when "warning" then Rules::Severity::Warning
+                   when "info"    then Rules::Severity::Information
+                   when "hint"    then Rules::Severity::Hint
+                   else                Rules::Severity::Warning
+                   end
+
+        rule = Rules::CustomRule.new(
+          id: custom_config.id,
+          description: custom_config.description,
+          default_severity: severity,
+          applies_to: custom_config.applies_to,
+          pattern: Regex.new(custom_config.pattern),
+          message_template: custom_config.message,
+          negate: custom_config.negate?,
+        )
+        Rules::RuleRegistry.register(rule)
+      end
+    rescue ex
+      STDERR.puts "WARNING: Failed to load custom rules: #{ex.message}"
     end
 
     def analyze(file_path : String, content : String) : Array(Rules::Diagnostic)

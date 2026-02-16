@@ -20,9 +20,13 @@ module AmberLSP::Rules
       @@rules.clear
     end
 
-    private def self.file_matches_pattern?(file_path : String, pattern : String) : Bool
+    def self.file_matches_pattern?(file_path : String, pattern : String) : Bool
       if pattern == "*"
         true
+      elsif pattern.ends_with?("**")
+        # Recursive glob: "src/**" matches anything under "src/"
+        prefix = pattern.rchop("**")
+        file_path.includes?(prefix)
       elsif pattern.starts_with?("*")
         file_path.ends_with?(pattern.lchop("*"))
       elsif pattern.ends_with?("*")

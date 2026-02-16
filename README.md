@@ -64,6 +64,7 @@ Your application will be available at `http://localhost:3000`
 | `exec` | Execute Crystal code in app context | `amber exec 'puts User.count'` |
 | `encrypt` | Manage encrypted environment files | `amber encrypt production` |
 | `pipelines` | Show pipeline configuration | `amber pipelines` |
+| `setup:lsp` | Configure the Amber LSP for Claude Code | `amber setup:lsp` |
 
 Run `amber --help` or `amber [command] --help` for detailed usage information.
 
@@ -86,6 +87,12 @@ Run `amber --help` or `amber [command] --help` for detailed usage information.
 - Interactive code execution within application context
 - Route analysis and pipeline inspection
 - Environment file encryption for security
+
+### **Amber LSP — AI-Assisted Development**
+- Built-in Language Server Protocol (LSP) server for Claude Code integration
+- 15 convention rules that catch framework mistakes as you type
+- Custom YAML-based rules for project-specific conventions
+- One command to set up: `amber setup:lsp`
 
 ### **Extensible Architecture**
 - Plugin system for extending functionality
@@ -111,6 +118,58 @@ Run `amber --help` or `amber [command] --help` for detailed usage information.
 - Variable substitution with transformations
 - Conditional file generation
 - Post-generation command execution
+
+## 🤖 Amber LSP — The Default Development Workflow
+
+Amber ships with a diagnostics-only Language Server that integrates with [Claude Code](https://claude.ai/claude-code). When you develop with Claude Code, the LSP runs in the background and automatically catches framework convention violations — wrong controller names, missing methods, bad inheritance, file naming issues, and more. Claude sees these diagnostics and self-corrects without you having to notice or intervene.
+
+**This is the recommended way to develop with Amber.** The LSP turns Claude Code from a general-purpose coding assistant into one that understands Amber's conventions natively.
+
+### Quick Setup
+
+```bash
+# From your Amber project directory:
+amber setup:lsp
+```
+
+This creates three files:
+
+| File | Purpose |
+|------|---------|
+| `.lsp.json` | Tells Claude Code where the LSP binary is and what files it handles |
+| `.claude-plugin/plugin.json` | Plugin manifest so Claude Code discovers the LSP |
+| `.amber-lsp.yml` | Rule configuration — customize severity, disable rules, add custom rules |
+
+Then open Claude Code in your project. The LSP activates automatically.
+
+### What It Checks
+
+The LSP ships with 15 built-in rules covering controllers, jobs, channels, pipes, mailers, schemas, routing, file naming, directory structure, and more. Every rule maps to an Amber convention — if Claude generates a controller that doesn't end with `Controller`, or a job without a `perform` method, the LSP flags it immediately.
+
+### Custom Rules
+
+You can define project-specific rules in `.amber-lsp.yml` using regex patterns. No recompilation needed:
+
+```yaml
+custom_rules:
+  - id: "project/no-puts"
+    description: "Do not use puts in production code"
+    severity: warning
+    applies_to: ["src/**"]
+    pattern: "^\\s*puts\\b"
+    message: "Avoid 'puts' in production code. Use Log.info instead."
+```
+
+### Building the LSP Binary
+
+If `amber-lsp` is not on your PATH, the `setup:lsp` command will offer to build it:
+
+```bash
+cd ~/open_source_coding_projects/amber_cli
+crystal build src/amber_lsp.cr -o bin/amber-lsp --release
+```
+
+For full documentation on all 15 rules, configuration options, and custom rule syntax, see the [LSP Setup Guide](https://github.com/crimson-knight/amber/blob/master/docs/guides/lsp-setup.md).
 
 ## 📚 Examples
 

@@ -13,11 +13,34 @@ module AmberLSP
       end
     end
 
+    struct CustomRuleConfig
+      getter id : String
+      getter description : String
+      getter severity : String
+      getter applies_to : Array(String)
+      getter pattern : String
+      getter message : String
+      getter? negate : Bool
+
+      def initialize(
+        @id : String,
+        @description : String,
+        @severity : String = "warning",
+        @applies_to : Array(String) = ["src/**"],
+        @pattern : String = "",
+        @message : String = "",
+        @negate : Bool = false,
+      )
+      end
+    end
+
     getter exclude_patterns : Array(String)
+    getter custom_rules : Array(CustomRuleConfig)
 
     def initialize(
       @rule_configs : Hash(String, RuleConfig) = Hash(String, RuleConfig).new,
       @exclude_patterns : Array(String) = DEFAULT_EXCLUDE_PATTERNS.dup,
+      @custom_rules : Array(CustomRuleConfig) = [] of CustomRuleConfig,
     )
     end
 
@@ -58,7 +81,41 @@ module AmberLSP
         exclude_patterns = exclude_node.as_a.map(&.as_s)
       end
 
-      Configuration.new(rule_configs: rule_configs, exclude_patterns: exclude_patterns)
+      custom_rules = [] of CustomRuleConfig
+      if custom_rules_node = yaml["custom_rules"]?
+        custom_rules_node.as_a.each do |rule_node|
+          rule_hash = rule_node.as_h
+          next unless rule_hash["id"]? && rule_hash["pattern"]?
+
+          id = rule_hash["id"].as_s
+          description = rule_hash["description"]?.try(&.as_s) || ""
+          severity = rule_hash["severity"]?.try(&.as_s) || "warning"
+          pattern = rule_hash["pattern"].as_s
+          message = rule_hash["message"]?.try(&.as_s) || ""
+          negate = rule_hash["negate"]?.try(&.as_bool) || false
+
+          applies_to = ["src/**"]
+          if applies_node = rule_hash["applies_to"]?
+            applies_to = applies_node.as_a.map(&.as_s)
+          end
+
+          custom_rules << CustomRuleConfig.new(
+            id: id,
+            description: description,
+            severity: severity,
+            applies_to: applies_to,
+            pattern: pattern,
+            message: message,
+            negate: negate,
+          )
+        end
+      end
+
+      Configuration.new(
+        rule_configs: rule_configs,
+        exclude_patterns: exclude_patterns,
+        custom_rules: custom_rules,
+      )
     rescue YAML::ParseException
       Configuration.new
     end
