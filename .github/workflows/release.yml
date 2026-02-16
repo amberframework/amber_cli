@@ -46,25 +46,29 @@ jobs:
     - name: Install dependencies
       run: shards install --production
     
-    - name: Build binary (Linux x86_64)
+    - name: Build binaries (Linux x86_64)
       if: matrix.target == 'linux-x86_64'
       run: |
         crystal build src/amber_cli.cr -o amber --release --static
-        
-    - name: Build binary (macOS ARM64)
+        crystal build src/amber_lsp.cr -o amber-lsp --release --static
+
+    - name: Build binaries (macOS ARM64)
       if: matrix.target == 'darwin-arm64'
       run: |
         crystal build src/amber_cli.cr -o amber --release
-        
-    - name: Verify binary
+        crystal build src/amber_lsp.cr -o amber-lsp --release
+
+    - name: Verify binaries
       run: |
         file amber
         ./amber --version || echo "Version command may not work in cross-compiled binary"
-        
+        file amber-lsp
+        ./amber-lsp --help || echo "Help command may not work in cross-compiled binary"
+
     - name: Create archive
       run: |
         mkdir -p dist
-        tar -czf dist/amber-cli-${{ matrix.target }}.tar.gz amber
+        tar -czf dist/amber-cli-${{ matrix.target }}.tar.gz amber amber-lsp
         
     - name: Calculate checksum
       id: checksum
@@ -116,6 +120,6 @@ jobs:
       uses: peter-evans/repository-dispatch@v2
       with:
         token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        repository: crimsonknight/homebrew-amber-cli
+        repository: crimson-knight/homebrew-amber-cli
         event-type: release-published
         client-payload: '{"version": "${{ github.event.release.tag_name }}"}' 

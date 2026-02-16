@@ -21,7 +21,9 @@ ARCH=$(uname -m)
 case "${OS}" in
   "darwin")
     TARGET="darwin-arm64"
-    BUILD_CMD="crystal build src/amber_cli.cr -o amber --release"
+    BUILD_CLI="crystal build src/amber_cli.cr -o amber --release"
+    BUILD_LSP="crystal build src/amber_lsp.cr -o amber-lsp --release"
+    CHECKSUM_CMD="shasum -a 256"
     if [ "${ARCH}" != "arm64" ]; then
       echo "⚠️  Warning: Building for ARM64 on ${ARCH} architecture"
       echo "   This will create a native build for your current architecture"
@@ -29,7 +31,9 @@ case "${OS}" in
     ;;
   "linux")
     TARGET="linux-x86_64"
-    BUILD_CMD="crystal build src/amber_cli.cr -o amber --release --static"
+    BUILD_CLI="crystal build src/amber_cli.cr -o amber --release --static"
+    BUILD_LSP="crystal build src/amber_lsp.cr -o amber-lsp --release --static"
+    CHECKSUM_CMD="sha256sum"
     ;;
   *)
     echo "❌ Unsupported OS: ${OS}"
@@ -43,24 +47,29 @@ echo "🎯 Building for target: ${TARGET}"
 echo "📦 Installing dependencies..."
 shards install --production
 
-# Build binary
-echo "🔨 Compiling binary..."
-eval "${BUILD_CMD}"
+# Build binaries
+echo "🔨 Compiling amber CLI..."
+eval "${BUILD_CLI}"
 
-# Verify binary
-echo "✅ Verifying binary..."
+echo "🔨 Compiling amber-lsp..."
+eval "${BUILD_LSP}"
+
+# Verify binaries
+echo "✅ Verifying binaries..."
 file amber
 ./amber
+file amber-lsp
+./amber-lsp --help
 
 # Create archive
 echo "📦 Creating archive..."
-tar -czf "${OUTPUT_DIR}/amber-cli-${TARGET}.tar.gz" amber
+tar -czf "${OUTPUT_DIR}/amber-cli-${TARGET}.tar.gz" amber amber-lsp
 
 # Calculate checksum
 echo "🔢 Calculating checksum..."
 cd "${OUTPUT_DIR}"
-sha256sum "amber-cli-${TARGET}.tar.gz" > "amber-cli-${TARGET}.tar.gz.sha256"
-SHA256=$(cat "amber-cli-${TARGET}.tar.gz.sha256" | cut -d' ' -f1)
+${CHECKSUM_CMD} "amber-cli-${TARGET}.tar.gz" > "amber-cli-${TARGET}.tar.gz.sha256"
+SHA256=$(cut -d' ' -f1 < "amber-cli-${TARGET}.tar.gz.sha256")
 
 echo ""
 echo "🎉 Build complete!"
@@ -69,4 +78,5 @@ echo "🔑 SHA256: ${SHA256}"
 echo ""
 echo "To test the archive:"
 echo "  tar -xzf ${OUTPUT_DIR}/amber-cli-${TARGET}.tar.gz"
-echo "  ./amber --version" 
+echo "  ./amber --version"
+echo "  ./amber-lsp --help"

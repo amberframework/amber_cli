@@ -18,16 +18,18 @@ The comprehensive documentation includes detailed guides, examples, and API refe
 
 **macOS & Linux via Homebrew:**
 ```bash
-brew install amber
+brew tap crimson-knight/amber-cli
+brew install amber-cli
 ```
 
 **From Source:**
 ```bash
-git clone https://github.com/amberframework/amber_cli.git
+git clone https://github.com/crimson-knight/amber_cli.git
 cd amber_cli
 shards install
-crystal build src/amber_cli.cr -o amber
-sudo mv amber /usr/local/bin/
+crystal build src/amber_cli.cr -o amber --release
+crystal build src/amber_lsp.cr -o amber-lsp --release
+sudo mv amber amber-lsp /usr/local/bin/
 ```
 
 **Windows:**

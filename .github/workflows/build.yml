@@ -52,25 +52,30 @@ jobs:
     - name: Run tests
       run: crystal spec
     
-    - name: Build binary (Linux)
+    - name: Build binaries (Linux)
       if: matrix.target == 'linux-x86_64'
       run: |
         crystal build src/amber_cli.cr -o amber --release --static
-        
-    - name: Build binary (macOS)
+        crystal build src/amber_lsp.cr -o amber-lsp --release --static
+
+    - name: Build binaries (macOS)
       if: matrix.target == 'darwin-arm64'
       run: |
         crystal build src/amber_cli.cr -o amber --release
-        
-    - name: Test binary
+        crystal build src/amber_lsp.cr -o amber-lsp --release
+
+    - name: Test binaries
       run: |
         ./amber --version
         ./amber --help
-        
-    - name: Upload build artifact
+        ./amber-lsp --help
+
+    - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       if: github.event_name == 'workflow_dispatch'
       with:
         name: amber-cli-${{ matrix.target }}-build
-        path: amber
+        path: |
+          amber
+          amber-lsp
         retention-days: 7 
