@@ -293,6 +293,8 @@ CONFIG
     private def create_application_controller(path : String)
       controller_content = <<-CONTROLLER
 class ApplicationController < Amber::Controller::Base
+  LAYOUT = "application.#{template}"
+
   # Add shared before_action filters, helpers, etc.
   # All controllers inherit from this class.
 end
@@ -398,7 +400,7 @@ LAYOUT
 
         index_content = <<-VIEW
 .welcome
-  h1 = "Welcome to \#{Amber::Server.settings.name}!"
+  h1 = "Welcome to \#{Amber.settings.name}!"
   p Your Amber V2 application is running successfully.
 
   h2 Getting Started
@@ -434,7 +436,7 @@ LAYOUT
 
         index_content = <<-VIEW
 <div class="welcome">
-  <h1>Welcome to <%= Amber::Server.settings.name %>!</h1>
+  <h1>Welcome to <%= Amber.settings.name %>!</h1>
   <p>Your Amber V2 application is running successfully.</p>
 
   <h2>Getting Started</h2>
