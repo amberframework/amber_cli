@@ -21,7 +21,7 @@ module AmberCLI
 
       option_parser.separator ""
       option_parser.separator "Commands:"
-      option_parser.separator "  new [name]            Create a new Amber application"
+      option_parser.separator "  new [name]            Create a new Amber application (web or native)"
       option_parser.separator "  generate [type] [name] Generate components (model, controller, etc.)"
       option_parser.separator "  routes                Show all routes"
       option_parser.separator "  watch                 Watch and reload application"

@@ -1,33 +1,41 @@
 require "../core/base_command"
+require "../generators/native_app"
 
 # The `new` command creates a new Amber V2 application with a complete directory
 # structure, configuration files, and a working home page.
 #
 # ## Usage
 # ```
-# amber new [app_name] -d [pg | mysql | sqlite] -t [ecr | slang] --no-deps
+# amber new [app_name] -d [pg | mysql | sqlite] -t [ecr | slang] --type [web | native] --no-deps
 # ```
 #
 # ## Options
 # - `-d, --database` - Database type (pg, mysql, sqlite)
 # - `-t, --template` - Template language (ecr, slang)
+# - `--type` - Application type: web (default) or native (cross-platform desktop/mobile)
 # - `--no-deps` - Skip dependency installation
 #
 # ## Examples
 # ```
-# # Create a new app with PostgreSQL and ECR (defaults)
+# # Create a new web app with PostgreSQL and ECR (defaults)
 # amber new my_blog
 #
 # # Create app with MySQL and Slang templates
 # amber new my_blog -d mysql -t slang
+#
+# # Create a native cross-platform app (macOS, iOS, Android)
+# amber new my_native_app --type native
 #
 # # Create app with SQLite (for development)
 # amber new quick_app -d sqlite
 # ```
 module AmberCLI::Commands
   class NewCommand < AmberCLI::Core::BaseCommand
+    VALID_APP_TYPES = %w[web native]
+
     getter database : String = "pg"
     getter template : String = "ecr"
+    getter app_type : String = "web"
     getter assume_yes : Bool = false
     getter no_deps : Bool = false
     getter name : String = ""
@@ -47,6 +55,15 @@ module AmberCLI::Commands
         @template = tmpl
       end
 
+      option_parser.on("--type=TYPE", "Application type: web (default), native (cross-platform)") do |type|
+        unless VALID_APP_TYPES.includes?(type)
+          error "Invalid app type '#{type}'. Valid types: #{VALID_APP_TYPES.join(", ")}"
+          exit(1)
+        end
+        @parsed_options["app_type"] = type
+        @app_type = type
+      end
+
       option_parser.on("-y", "--assume-yes", "Assume yes to disable interactive mode") do
         @parsed_options["assume_yes"] = true
         @assume_yes = true
@@ -60,9 +77,16 @@ module AmberCLI::Commands
       option_parser.separator ""
       option_parser.separator "Usage: amber new [NAME] [options]"
       option_parser.separator ""
+      option_parser.separator "App types:"
+      option_parser.separator "  web     Web application with HTTP server, routes, views (default)"
+      option_parser.separator "  native  Cross-platform native app (macOS, iOS, Android)"
+      option_parser.separator "          Uses Asset Pipeline UI, FSDD process managers,"
+      option_parser.separator "          crystal-audio, and platform build scripts."
+      option_parser.separator ""
       option_parser.separator "Examples:"
       option_parser.separator "  amber new my_app"
       option_parser.separator "  amber new my_app -d mysql -t slang"
+      option_parser.separator "  amber new my_native_app --type native"
       option_parser.separator "  amber new . -d sqlite"
     end
 
@@ -91,6 +115,42 @@ module AmberCLI::Commands
         exit!(error: true)
       end
 
+      if app_type == "native"
+        execute_native(full_path_name, project_name)
+      else
+        execute_web(full_path_name, project_name)
+      end
+    end
+
+    private def execute_native(full_path_name : String, project_name : String)
+      info "Creating new Amber V2 native application: #{project_name}"
+      info "Type: native (cross-platform: macOS, iOS, Android)"
+      info "Location: #{full_path_name}"
+
+      generator = AmberCLI::Generators::NativeApp.new(full_path_name, project_name)
+      generator.generate
+
+      info "Created native project structure"
+
+      success "Successfully created #{project_name}!"
+      puts ""
+      info "To get started:"
+      info "  cd #{name}" unless name == "."
+      info "  make setup          # Install shards + create symlinks"
+      info "  make macos          # Build for macOS"
+      info "  make run            # Build and run"
+      info "  make spec           # Run Crystal specs"
+      puts ""
+      info "Cross-platform builds:"
+      info "  ./mobile/ios/build_crystal_lib.sh simulator    # iOS"
+      info "  ./mobile/android/build_crystal_lib.sh          # Android"
+      puts ""
+      info "Test suite:"
+      info "  ./mobile/run_all_tests.sh          # L1 + L2 tests"
+      info "  ./mobile/run_all_tests.sh --e2e    # Full E2E tests"
+    end
+
+    private def execute_web(full_path_name : String, project_name : String)
       info "Creating new Amber V2 application: #{project_name}"
       info "Database: #{database}"
       info "Template: #{template}"
