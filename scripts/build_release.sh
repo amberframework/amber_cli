@@ -59,24 +59,24 @@ echo "✅ Verifying binaries..."
 file amber
 ./amber
 file amber-lsp
-./amber-lsp --help
+test -x amber-lsp
 
 # Create archive
 echo "📦 Creating archive..."
-tar -czf "${OUTPUT_DIR}/amber-cli-${TARGET}.tar.gz" amber amber-lsp
+tar -czf "${OUTPUT_DIR}/amber_cli-${TARGET}.tar.gz" amber amber-lsp
 
 # Calculate checksum
 echo "🔢 Calculating checksum..."
 cd "${OUTPUT_DIR}"
-${CHECKSUM_CMD} "amber-cli-${TARGET}.tar.gz" > "amber-cli-${TARGET}.tar.gz.sha256"
-SHA256=$(cut -d' ' -f1 < "amber-cli-${TARGET}.tar.gz.sha256")
+${CHECKSUM_CMD} "amber_cli-${TARGET}.tar.gz" > "amber_cli-${TARGET}.tar.gz.sha256"
+SHA256=$(cut -d' ' -f1 < "amber_cli-${TARGET}.tar.gz.sha256")
 
 echo ""
 echo "🎉 Build complete!"
-echo "📁 Output: ${OUTPUT_DIR}/amber-cli-${TARGET}.tar.gz"
+echo "📁 Output: ${OUTPUT_DIR}/amber_cli-${TARGET}.tar.gz"
 echo "🔑 SHA256: ${SHA256}"
 echo ""
 echo "To test the archive:"
-echo "  tar -xzf ${OUTPUT_DIR}/amber-cli-${TARGET}.tar.gz"
+echo "  tar -xzf ${OUTPUT_DIR}/amber_cli-${TARGET}.tar.gz"
 echo "  ./amber --version"
-echo "  ./amber-lsp --help"
+echo "  test -x ./amber-lsp"

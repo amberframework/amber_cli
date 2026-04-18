@@ -9,7 +9,7 @@ The release process consists of:
 1. **GitHub Actions** builds cross-platform binaries when you publish a release
 2. **Release assets** are automatically uploaded (tar.gz files + checksums)
 3. **Homebrew tap** is automatically notified to update the formula
-4. **Users** can install via `brew install crimsonknight/amber-cli/amber-cli`
+4. **Users** can install via `brew tap amberframework/amber_cli && brew install amber_cli`
 
 ## Setup Steps
 
@@ -29,12 +29,12 @@ You need to set up a GitHub token for the Homebrew tap automation:
 
 ### 2. Homebrew Tap Repository
 
-Create a new repository called `homebrew-amber-cli` with this structure:
+Create a new repository called `homebrew-amber_cli` with this structure:
 
 ```
-homebrew-amber-cli/
+ homebrew-amber_cli/
 ├── Formula/
-│   └── amber-cli.rb          # Homebrew formula
+│   └── amber_cli.rb          # Homebrew formula
 ├── .github/
 │   └── workflows/
 │       └── update-formula.yml # Auto-update workflow
@@ -52,8 +52,8 @@ Before creating a release, test the build process locally:
 ./scripts/build_release.sh v0.1.0
 
 # This should create:
-# - dist/amber-cli-{platform}.tar.gz
-# - dist/amber-cli-{platform}.tar.gz.sha256
+# - dist/amber_cli-{platform}.tar.gz
+# - dist/amber_cli-{platform}.tar.gz.sha256
 ```
 
 ### 4. Test GitHub Actions
@@ -96,8 +96,8 @@ When you publish the release:
    - `darwin-arm64` (macOS Apple Silicon)
    - `linux-x86_64` (Linux)
 3. **Assets** are uploaded to the release:
-   - `amber-cli-darwin-arm64.tar.gz`
-   - `amber-cli-linux-x86_64.tar.gz`
+   - `amber_cli-darwin-arm64.tar.gz`
+   - `amber_cli-linux-x86_64.tar.gz`
    - `.sha256` checksum files for each
 4. **Homebrew tap** is notified to update the formula
 
@@ -115,8 +115,8 @@ The automated builds create binaries for:
 If automatic updates don't work, you can manually update the Homebrew formula:
 
 1. Download the release assets
-2. Calculate SHA256 checksums: `sha256sum amber-cli-*.tar.gz`
-3. Update `Formula/amber-cli.rb` with new version and checksums
+2. Calculate SHA256 checksums: `sha256sum amber_cli-*.tar.gz`
+3. Update `Formula/amber_cli.rb` with new version and checksums
 4. Commit and push to the homebrew tap repository
 
 ## Testing Installation
@@ -125,10 +125,10 @@ After releasing, test the Homebrew installation:
 
 ```bash
 # Add the tap
-brew tap crimsonknight/amber-cli
+brew tap amberframework/amber_cli
 
-# Install amber-cli
-brew install amber-cli
+# Install amber_cli
+brew install amber_cli
 
 # Test it works
 amber --help
@@ -151,7 +151,7 @@ amber --help
 
 - Verify SHA256 checksums match the uploaded assets
 - Check that download URLs are correct
-- Test formula locally: `brew install --build-from-source ./Formula/amber-cli.rb`
+- Test formula locally: `brew install --build-from-source ./Formula/amber_cli.rb`
 
 ### Missing Dependencies
 

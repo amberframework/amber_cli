@@ -16,6 +16,11 @@ targets:
 
 dependencies:
 
+  # Temporary branch until the Apple shell export APIs land in a tagged release.
+  asset_pipeline:
+    github: amberframework/asset_pipeline
+    branch: feature/utility-first-css-asset-pipeline
+
   micrate:
     github: amberframework/micrate
     # version: ~> 0.15.0

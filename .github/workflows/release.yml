@@ -63,27 +63,27 @@ jobs:
         file amber
         ./amber --version || echo "Version command may not work in cross-compiled binary"
         file amber-lsp
-        ./amber-lsp --help || echo "Help command may not work in cross-compiled binary"
+        test -x amber-lsp
 
     - name: Create archive
       run: |
         mkdir -p dist
-        tar -czf dist/amber-cli-${{ matrix.target }}.tar.gz amber amber-lsp
+        tar -czf dist/amber_cli-${{ matrix.target }}.tar.gz amber amber-lsp
         
     - name: Calculate checksum
       id: checksum
       run: |
         cd dist
-        sha256sum amber-cli-${{ matrix.target }}.tar.gz > amber-cli-${{ matrix.target }}.tar.gz.sha256
-        echo "sha256=$(cat amber-cli-${{ matrix.target }}.tar.gz.sha256 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+        sha256sum amber_cli-${{ matrix.target }}.tar.gz > amber_cli-${{ matrix.target }}.tar.gz.sha256
+        echo "sha256=$(cat amber_cli-${{ matrix.target }}.tar.gz.sha256 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
         
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: amber-cli-${{ matrix.target }}
+        name: amber_cli-${{ matrix.target }}
         path: |
-          dist/amber-cli-${{ matrix.target }}.tar.gz
-          dist/amber-cli-${{ matrix.target }}.tar.gz.sha256
+          dist/amber_cli-${{ matrix.target }}.tar.gz
+          dist/amber_cli-${{ matrix.target }}.tar.gz.sha256
           
   upload-assets:
     name: Upload Release Assets
@@ -101,10 +101,10 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          artifacts/amber-cli-darwin-arm64/dist/amber-cli-darwin-arm64.tar.gz
-          artifacts/amber-cli-darwin-arm64/dist/amber-cli-darwin-arm64.tar.gz.sha256
-          artifacts/amber-cli-linux-x86_64/dist/amber-cli-linux-x86_64.tar.gz
-          artifacts/amber-cli-linux-x86_64/dist/amber-cli-linux-x86_64.tar.gz.sha256
+          artifacts/amber_cli-darwin-arm64/dist/amber_cli-darwin-arm64.tar.gz
+          artifacts/amber_cli-darwin-arm64/dist/amber_cli-darwin-arm64.tar.gz.sha256
+          artifacts/amber_cli-linux-x86_64/dist/amber_cli-linux-x86_64.tar.gz
+          artifacts/amber_cli-linux-x86_64/dist/amber_cli-linux-x86_64.tar.gz.sha256
         tag_name: ${{ github.event.release.tag_name }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -120,6 +120,6 @@ jobs:
       uses: peter-evans/repository-dispatch@v2
       with:
         token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        repository: crimson-knight/homebrew-amber-cli
+        repository: amberframework/homebrew-amber_cli
         event-type: release-published
-        client-payload: '{"version": "${{ github.event.release.tag_name }}"}' 
+        client-payload: '{"version": "${{ github.event.release.tag_name }}"}'

@@ -131,6 +131,8 @@ module AmberCLI::Commands
       generator.generate
 
       info "Created native project structure"
+      info "Native manifest: config/native.yml"
+      info "Generator-owned Apple shell files: mobile/apple/generated/"
 
       success "Successfully created #{project_name}!"
       puts ""
@@ -266,7 +268,7 @@ dependencies:
 development_dependencies:
   ameba:
     github: crystal-ameba/ameba
-    version: ~> 1.4.3
+    version: ~> 1.6.4
 SHARD
 
       File.write(File.join(path, "shard.yml"), shard_content)

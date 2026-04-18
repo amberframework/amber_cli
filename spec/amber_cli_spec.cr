@@ -58,6 +58,7 @@ require "./core/generator_config_spec"
 require "./core/template_engine_spec"
 require "./commands/base_command_spec"
 require "./commands/new_command_spec"
+require "./native/capability_manifest_spec"
 require "./generators/native_app_spec"
 require "./integration/generator_manager_spec"
 

@@ -13,6 +13,9 @@
 # - _main symbol conflict resolution for iOS (ld -r -unexported_symbol _main)
 # - crystal-audio symlink requirement (crystal-audio -> crystal_audio)
 # - GCD usage instead of Crystal spawn in NSApp applications
+require "../native/apple_shell_generator"
+require "../native/capability_manifest"
+
 module AmberCLI::Generators
   class NativeApp
     getter path : String
@@ -22,6 +25,8 @@ module AmberCLI::Generators
     end
 
     def generate
+      manifest = AmberCLI::Native::CapabilityManifest.default_for(name)
+
       create_directories
       create_shard_yml
       create_amber_yml
@@ -41,7 +46,8 @@ module AmberCLI::Generators
       create_mobile_shared_bridge
       create_mobile_shared_spec
       create_ios_build_script
-      create_ios_project_yml
+      create_ios_project_yml(manifest)
+      create_apple_shell_files(manifest)
       create_ios_ui_tests
       create_ios_e2e_script
       create_android_build_script
@@ -68,7 +74,9 @@ module AmberCLI::Generators
         # Mobile shared
         "mobile/shared", "mobile/shared/spec",
         # iOS
-        "mobile/ios", "mobile/ios/UITests",
+        "mobile/ios", "mobile/ios/Sources", "mobile/ios/UITests",
+        # Apple shell outputs
+        "mobile/apple/generated",
         # Android
         "mobile/android", "mobile/android/app/src/main/jniLibs/arm64-v8a",
         "mobile/android/app/src/androidTest/java/com/#{name}/app",
@@ -138,7 +146,7 @@ dependencies:
 development_dependencies:
   ameba:
     github: crystal-ameba/ameba
-    version: ~> 1.4.3
+    version: ~> 1.6.4
 SHARD
 
       File.write(File.join(path, "shard.yml"), content)
@@ -153,6 +161,7 @@ database: sqlite
 language: crystal
 model: grant
 type: native
+native_manifest: config/native.yml
 AMBER
 
       File.write(File.join(path, ".amber.yml"), content)
@@ -332,6 +341,14 @@ Use `Amber.settings` directly — do NOT use `Amber::Server.configure` or start 
 Amber.settings.name = "#{pascal_name}"  # Correct
 # Amber::Server.configure { ... }       # WRONG for native apps
 ```
+
+## Native Capability Manifest
+
+Apple shell surfaces are declared in `config/native.yml`.
+
+- Edit `config/native.yml` to turn widgets, live activities, App Shortcuts, notifications, or quick actions on and off.
+- Amber CLI owns `mobile/apple/generated/**/*` and can safely rewrite it from the manifest later.
+- Keep host-level edits in `mobile/ios/Sources/**/*`.
 
 ## Build (macOS Development)
 
@@ -891,8 +908,16 @@ MOBILE_DIR="\$(cd "\$SCRIPT_DIR/.." && pwd)"
 PROJECT_ROOT="\$(cd "\$MOBILE_DIR/.." && pwd)"
 BUILD_DIR="\$SCRIPT_DIR/build"
 OUTPUT_LIB="\$BUILD_DIR/lib#{name}.a"
+GC_OUTPUT_LIB="\$BUILD_DIR/libgc.a"
 BRIDGE_SRC="\$MOBILE_DIR/shared/bridge.cr"
 BRIDGE_BASE="\$BUILD_DIR/bridge"
+GC_VERSION="8.2.12"
+GC_ARCHIVE_URL="https://github.com/bdwgc/bdwgc/releases/download/v\${GC_VERSION}/gc-\${GC_VERSION}.tar.gz"
+GC_ROOT="\$BUILD_DIR/bdwgc-\${BUILD_TARGET}"
+GC_ARCHIVE="\$GC_ROOT/gc-\${GC_VERSION}.tar.gz"
+GC_SOURCE_ROOT="\$GC_ROOT/src"
+GC_SOURCE_DIR="\$GC_SOURCE_ROOT/gc-\${GC_VERSION}"
+GC_BUILD_DIR="\$GC_ROOT/build"
 
 # crystal-audio ext directory
 CRYSTAL_AUDIO_EXT=""
@@ -902,7 +927,7 @@ elif [[ -d "\$PROJECT_ROOT/lib/crystal_audio/ext" ]]; then
     CRYSTAL_AUDIO_EXT="\$PROJECT_ROOT/lib/crystal_audio/ext"
 fi
 
-MIN_IOS_VER="16.0"
+MIN_IOS_VER="16.1"
 
 case "\$BUILD_TARGET" in
     simulator)
@@ -938,6 +963,9 @@ require_cmd() {
 require_cmd "\$CRYSTAL"
 require_cmd xcrun
 require_cmd xcodebuild
+require_cmd cmake
+require_cmd curl
+require_cmd tar
 
 [[ ! -f "\$BRIDGE_SRC" ]] && fail "Bridge source not found: \$BRIDGE_SRC"
 
@@ -949,6 +977,32 @@ info "SDK            : \$SDK_PATH"
 info "Bridge source  : \$BRIDGE_SRC"
 
 mkdir -p "\$BUILD_DIR"
+
+prepare_boehm_gc() {
+    info "Building Boehm GC for \$BUILD_TARGET..."
+
+    mkdir -p "\$GC_ROOT" "\$GC_SOURCE_ROOT"
+
+    if [[ ! -f "\$GC_ARCHIVE" ]]; then
+        curl -L "\$GC_ARCHIVE_URL" -o "\$GC_ARCHIVE"
+    fi
+
+    if [[ ! -d "\$GC_SOURCE_DIR" ]]; then
+        tar -xzf "\$GC_ARCHIVE" -C "\$GC_SOURCE_ROOT"
+    fi
+
+    cmake -S "\$GC_SOURCE_DIR" -B "\$GC_BUILD_DIR" \\
+        -DBUILD_SHARED_LIBS=OFF \\
+        -Denable_threads=OFF \\
+        -DCMAKE_SYSTEM_NAME=iOS \\
+        -DCMAKE_OSX_SYSROOT="\$SDK_NAME" \\
+        -DCMAKE_OSX_ARCHITECTURES=arm64 \\
+        -DCMAKE_OSX_DEPLOYMENT_TARGET="\$MIN_IOS_VER"
+
+    cmake --build "\$GC_BUILD_DIR" --target gc -j"\$(sysctl -n hw.ncpu 2>/dev/null || echo 4)"
+    cp "\$GC_BUILD_DIR/libgc.a" "\$GC_OUTPUT_LIB"
+    ok "Boehm GC ready: \$GC_OUTPUT_LIB"
+}
 
 # ---------------------------------------------------------------------------
 # Step 1: Compile native extensions for iOS
@@ -986,7 +1040,13 @@ info "Cross-compiling Crystal bridge..."
 ok "Crystal cross-compilation complete"
 
 # ---------------------------------------------------------------------------
-# Step 3: Fix _main symbol conflict
+# Step 3: Build Boehm GC for the target Apple SDK
+# ---------------------------------------------------------------------------
+
+prepare_boehm_gc
+
+# ---------------------------------------------------------------------------
+# Step 4: Fix _main symbol conflict
 # ---------------------------------------------------------------------------
 # CRITICAL: Crystal emits a _main symbol that conflicts with Swift's @main.
 # We must hide it using ld -r -unexported_symbol _main.
@@ -1000,7 +1060,7 @@ if [[ -f "\$BRIDGE_BASE.o" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Step 4: Pack into static library
+# Step 5: Pack into static library
 # ---------------------------------------------------------------------------
 
 info "Creating static library..."
@@ -1021,47 +1081,14 @@ BASH
       File.chmod(script_path, 0o755)
     end
 
-    private def create_ios_project_yml
-      pascal_name = name.split(/[-_]/).map(&.capitalize).join
+    private def create_ios_project_yml(manifest : AmberCLI::Native::CapabilityManifest)
+      generator = AmberCLI::Native::AppleShellGenerator.new(manifest, name)
+      File.write(File.join(path, "mobile/ios/project.yml"), generator.ios_project_yml)
+    end
 
-      content = <<-YML
-name: #{pascal_name}
-options:
-  bundleIdPrefix: com.#{name}.app
-  deploymentTarget:
-    iOS: "16.0"
-settings:
-  # CRITICAL: Crystal only compiles arm64. Exclude x86_64 from simulator builds.
-  EXCLUDED_ARCHS[sdk=iphonesimulator*]: x86_64
-targets:
-  #{pascal_name}:
-    type: application
-    platform: iOS
-    sources:
-      - path: Sources
-    settings:
-      LIBRARY_SEARCH_PATHS: $(PROJECT_DIR)/build
-      OTHER_LDFLAGS:
-        - -l#{name}
-        - -lgc
-        - -framework AVFoundation
-        - -framework AudioToolbox
-        - -framework CoreAudio
-        - -framework CoreFoundation
-        - -framework Foundation
-        - -framework UIKit
-        - -lobjc
-    dependencies: []
-  #{pascal_name}UITests:
-    type: bundle.ui-testing
-    platform: iOS
-    sources:
-      - path: UITests
-    dependencies:
-      - target: #{pascal_name}
-YML
-
-      File.write(File.join(path, "mobile/ios/project.yml"), content)
+    private def create_apple_shell_files(manifest : AmberCLI::Native::CapabilityManifest)
+      generator = AmberCLI::Native::AppleShellGenerator.new(manifest, name)
+      generator.write(path)
     end
 
     private def create_ios_ui_tests
