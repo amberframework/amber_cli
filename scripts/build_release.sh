@@ -45,7 +45,11 @@ echo "🎯 Building for target: ${TARGET}"
 
 # Install dependencies
 echo "📦 Installing dependencies..."
-shards install --production
+if [ -f shard.lock ]; then
+  shards install --production
+else
+  shards install
+fi
 
 # Build binaries
 echo "🔨 Compiling amber CLI..."
@@ -57,7 +61,7 @@ eval "${BUILD_LSP}"
 # Verify binaries
 echo "✅ Verifying binaries..."
 file amber
-./amber
+./amber --version
 file amber-lsp
 test -x amber-lsp
 
@@ -68,7 +72,11 @@ tar -czf "${OUTPUT_DIR}/amber_cli-${TARGET}.tar.gz" amber amber-lsp
 # Calculate checksum
 echo "🔢 Calculating checksum..."
 cd "${OUTPUT_DIR}"
-${CHECKSUM_CMD} "amber_cli-${TARGET}.tar.gz" > "amber_cli-${TARGET}.tar.gz.sha256"
+if command -v sha256sum >/dev/null 2>&1; then
+  sha256sum "amber_cli-${TARGET}.tar.gz" > "amber_cli-${TARGET}.tar.gz.sha256"
+else
+  ${CHECKSUM_CMD} "amber_cli-${TARGET}.tar.gz" > "amber_cli-${TARGET}.tar.gz.sha256"
+fi
 SHA256=$(cut -d' ' -f1 < "amber_cli-${TARGET}.tar.gz.sha256")
 
 echo ""

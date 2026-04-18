@@ -1,12 +1,15 @@
 name: Build and Release Binaries
 
+permissions:
+  contents: write
+
 on:
   release:
     types: [published]
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Tag to build (e.g., v1.0.0)'
+      ref:
+        description: 'Git ref to build (tag or branch)'
         required: true
         type: string
 
@@ -28,20 +31,14 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
-        ref: ${{ github.event.release.tag_name || github.event.inputs.tag }}
-    
-    - name: Install Crystal (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        curl -fsSL https://crystal-lang.org/install.sh | sudo bash
-    
-    - name: Install Crystal (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew update
-        brew install crystal
+        ref: ${{ github.event.release.tag_name || github.event.inputs.ref }}
+
+    - name: Install Crystal
+      uses: crystal-lang/install-crystal@v1
+      with:
+        crystal: latest
     
     - name: Install dependencies
       run: |
@@ -66,7 +63,7 @@ jobs:
     - name: Verify binaries
       run: |
         file amber
-        ./amber --version || echo "Version command may not work in cross-compiled binary"
+        ./amber --version
         file amber-lsp
         test -x amber-lsp
 
@@ -79,11 +76,15 @@ jobs:
       id: checksum
       run: |
         cd dist
-        sha256sum amber_cli-${{ matrix.target }}.tar.gz > amber_cli-${{ matrix.target }}.tar.gz.sha256
+        if command -v sha256sum >/dev/null 2>&1; then
+          sha256sum amber_cli-${{ matrix.target }}.tar.gz > amber_cli-${{ matrix.target }}.tar.gz.sha256
+        else
+          shasum -a 256 amber_cli-${{ matrix.target }}.tar.gz > amber_cli-${{ matrix.target }}.tar.gz.sha256
+        fi
         echo "sha256=$(cat amber_cli-${{ matrix.target }}.tar.gz.sha256 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
         
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: amber_cli-${{ matrix.target }}
         path: |
@@ -98,12 +99,12 @@ jobs:
     
     steps:
     - name: Download all artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         path: artifacts
         
     - name: Upload release assets
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v3
       with:
         files: |
           artifacts/amber_cli-darwin-arm64/dist/amber_cli-darwin-arm64.tar.gz
@@ -122,7 +123,7 @@ jobs:
     
     steps:
     - name: Repository Dispatch
-      uses: peter-evans/repository-dispatch@v2
+      uses: peter-evans/repository-dispatch@v4
       with:
         token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         repository: amberframework/homebrew-amber_cli
