@@ -243,7 +243,7 @@ all: macos
 # --- First-time setup ---
 
 setup:
-	shards-alpha install || shards install || true
+	shards install || shards-alpha install || true
 	@# crystal-audio shard name has a hyphen but source uses underscore
 	@# Crystal's require resolution needs the underscore directory
 	@if [ ! -e lib/crystal_audio ]; then \\
