@@ -35,6 +35,14 @@ sudo mv amber amber-lsp /usr/local/bin/
 **Windows:**
 Use WSL2 or a virtual machine. Native Windows support is not currently available.
 
+### Package Manager Compatibility
+
+Amber CLI is designed to work with upstream `crystal-lang/shards`, and we also
+validate it against the additive fork currently distributed as `shards-alpha`.
+The goal is straightforward: standard Amber workflows should continue to work
+with plain `shards` commands, while compatible forks can add tooling without
+changing how a new Amber project gets started.
+
 ### Create Your First App
 
 ```bash
