@@ -18,6 +18,17 @@ A successful release means all of the following happen without manual file editi
 
 If any one of those steps is red, the release is not ready to announce.
 
+## PR Expectations For Release Work
+
+Every PR that changes installation, packaging, generated scaffolds, or release automation should document:
+
+- why the change is needed now
+- whether it affects the release or install path
+- what verification proves it works
+- which ADR or SOP entry explains the longer-lived decision
+
+Use the repository PR template for this so release context stays attached to the code review itself.
+
 ## Repositories and Workflows
 
 - `amberframework/amber_cli`
