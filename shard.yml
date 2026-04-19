@@ -4,15 +4,22 @@ version: 2.0.0
 authors:
   - crimson-knight <crimsonknightstudios@gmail.com>
 
-crystal: ">= 1.0.0, < 2.0"
+crystal: ">= 1.10.0, < 2.0"
 
 license: MIT
 
 targets:
   amber:
     main: src/amber_cli.cr
+  amber-lsp:
+    main: src/amber_lsp.cr
 
 dependencies:
+
+  # Temporary branch until the Apple shell export APIs land in a tagged release.
+  asset_pipeline:
+    github: amberframework/asset_pipeline
+    branch: feature/utility-first-css-asset-pipeline
 
   micrate:
     github: amberframework/micrate
@@ -39,3 +46,8 @@ dependencies:
   compiled_license:
     github: elorest/compiled_license
     version: ~> 1.2.2
+
+development_dependencies:
+  ameba:
+    github: crystal-ameba/ameba
+    version: ~> 1.6.4

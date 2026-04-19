@@ -14,32 +14,17 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         crystal: [latest]
-        include:
-          - os: ubuntu-latest
-            crystal-install: |
-              curl -fsSL https://crystal-lang.org/install.sh | sudo bash
-          - os: macos-latest
-            crystal-install: |
-              brew install crystal
 
     name: Test on ${{ matrix.os }} with Crystal ${{ matrix.crystal }}
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
-    - name: Install Crystal (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        curl -fsSL https://crystal-lang.org/install.sh | sudo bash
-        crystal version
-
-    - name: Install Crystal (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew install crystal
-        crystal version
-
+    - name: Install Crystal
+      uses: crystal-lang/install-crystal@v1
+      with:
+        crystal: ${{ matrix.crystal }}
 
 
     - name: Cache shards
@@ -56,29 +41,40 @@ jobs:
       run: shards install
 
     - name: Check code formatting
-      run: crystal tool format --check
+      run: crystal tool format --check src spec
+
+    - name: Run code climate checks
+      run: ./bin/ameba src/amber_cli/native src/amber_lsp
       continue-on-error: true
 
-    - name: Run ameba linter
-      run: ./bin/ameba
-      continue-on-error: true
+    - name: Compile CLI
+      run: crystal build src/amber_cli.cr --no-debug -o amber
 
-    - name: Compile project
-      run: crystal build src/amber_cli.cr --no-debug
+    - name: Compile LSP
+      run: crystal build src/amber_lsp.cr --no-debug -o amber-lsp
+
+    - name: Build LSP binary for integration specs
+      run: |
+        mkdir -p bin
+        crystal build src/amber_lsp.cr --no-debug -o bin/amber-lsp
 
     - name: Run tests
       run: crystal spec
 
-    - name: Build release binary
-      run: crystal build src/amber_cli.cr --release --no-debug -o amber_cli
+    - name: Build release binaries
       if: matrix.os == 'ubuntu-latest'
+      run: |
+        crystal build src/amber_cli.cr --release --no-debug -o amber_cli
+        crystal build src/amber_lsp.cr --release --no-debug -o amber_lsp
 
-    - name: Upload binary artifact (Linux)
-      uses: actions/upload-artifact@v4
+    - name: Upload binary artifacts (Linux)
+      uses: actions/upload-artifact@v7
       if: matrix.os == 'ubuntu-latest'
       with:
-        name: amber_cli-linux
-        path: amber_cli
+        name: amber-cli-linux
+        path: |
+          amber_cli
+          amber_lsp
 
   # Separate job for additional platform-specific tests
   platform-specific:
@@ -92,17 +88,12 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
-    - name: Install Crystal (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        curl -fsSL https://crystal-lang.org/install.sh | sudo bash
-
-    - name: Install Crystal (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew install crystal
+    - name: Install Crystal
+      uses: crystal-lang/install-crystal@v1
+      with:
+        crystal: latest
 
     - name: Install dependencies
       run: shards install
@@ -113,6 +104,11 @@ jobs:
         ./amber_cli --help || true
         ./amber_cli --version || true
 
+    - name: Test LSP functionality
+      run: |
+        crystal build src/amber_lsp.cr -o amber_lsp
+        test -x ./amber_lsp
+
   # Job to run integration tests
   integration:
     runs-on: ubuntu-latest
@@ -121,11 +117,12 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Install Crystal
-      run: |
-        curl -fsSL https://crystal-lang.org/install.sh | sudo bash
+      uses: crystal-lang/install-crystal@v1
+      with:
+        crystal: latest
 
     - name: Install dependencies
       run: shards install

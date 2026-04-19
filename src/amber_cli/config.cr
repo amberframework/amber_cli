@@ -3,7 +3,7 @@ require "yaml"
 
 module Amber::CLI
   AMBER_YML = ".amber.yml" # TODO: move to config/amber.yml
-  
+
   def self.config
     if File.exists? AMBER_YML
       begin
@@ -28,9 +28,7 @@ module Amber::CLI
 
     property database : String = "pg"
     property language : String = "slang"
-    property model : String = "granite"
-    property recipe : (String | Nil) = nil
-    property recipe_source : (String | Nil) = nil
+    property model : String = "grant"
     property watch : WatchOptions?
 
     def initialize

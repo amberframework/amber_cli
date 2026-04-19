@@ -1,0 +1,12 @@
+{
+  "amber": {
+    "command": "amber-lsp",
+    "args": [],
+    "extensionToLanguage": {
+      ".cr": "crystal"
+    },
+    "transport": "stdio",
+    "restartOnCrash": true,
+    "maxRestarts": 3
+  }
+}

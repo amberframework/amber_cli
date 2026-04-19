@@ -4,6 +4,7 @@ require "json"
 require "yaml"
 
 # Only require our new core modules directly, avoiding the main amber_cli.cr which has dependencies
+require "../src/version"
 require "../src/amber_cli/exceptions"
 require "../src/amber_cli/core/word_transformer"
 require "../src/amber_cli/core/generator_config"
@@ -56,6 +57,9 @@ require "./core/word_transformer_spec"
 require "./core/generator_config_spec"
 require "./core/template_engine_spec"
 require "./commands/base_command_spec"
+require "./commands/new_command_spec"
+require "./native/capability_manifest_spec"
+require "./generators/native_app_spec"
 require "./integration/generator_manager_spec"
 
 describe "Amber CLI New Architecture" do

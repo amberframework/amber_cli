@@ -1,0 +1,10 @@
+{
+  "name": "amber-framework-lsp",
+  "version": "1.0.0",
+  "description": "Convention diagnostics for Amber V2 web framework projects.",
+  "author": {
+    "name": "Amber Framework"
+  },
+  "homepage": "https://github.com/amberframework/amber",
+  "lspServers": "./.lsp.json"
+}

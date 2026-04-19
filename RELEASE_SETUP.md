@@ -1,185 +1,154 @@
-# Release Automation Setup
+# Release Process
 
-This guide explains how to set up automated binary building and Homebrew formula updates for Amber CLI.
+This guide documents the current Amber CLI release path and the checks we expect before updating any public install instructions.
 
-## Overview
+## What "Done" Looks Like
 
-The release process consists of:
+A successful release means all of the following happen without manual file editing:
 
-1. **GitHub Actions** builds cross-platform binaries when you publish a release
-2. **Release assets** are automatically uploaded (tar.gz files + checksums)
-3. **Homebrew tap** is automatically notified to update the formula
-4. **Users** can install via `brew install crimsonknight/amber-cli/amber-cli`
+1. A published GitHub release in `amberframework/amber_cli` builds macOS and Linux binaries.
+2. The workflow uploads release archives and checksum files to that release.
+3. The workflow dispatches `amberframework/homebrew-amber_cli`.
+4. The tap rewrites `Formula/amber_cli.rb` with the new version and checksums.
+5. The tap's smoke test proves a clean machine can:
+   - `brew tap amberframework/amber_cli`
+   - `brew install amber_cli`
+   - `brew test amber_cli`
+   - `amber new smoke_app -y --no-deps`
 
-## Setup Steps
+If any one of those steps is red, the release is not ready to announce.
 
-### 1. GitHub Repository Secrets
+## PR Expectations For Release Work
 
-You need to set up a GitHub token for the Homebrew tap automation:
+Every PR that changes installation, packaging, generated scaffolds, or release automation should document:
 
-1. Go to GitHub Settings → Developer settings → Personal access tokens
-2. Create a new **Classic token** with these permissions:
-   - `repo` (Full control of private repositories)
-   - `workflow` (Update GitHub Action workflows)
-3. Copy the token
-4. In your `amber_cli` repository, go to Settings → Secrets and variables → Actions
-5. Add a new repository secret:
-   - **Name**: `HOMEBREW_TAP_TOKEN`
-   - **Value**: Your personal access token
+- why the change is needed now
+- whether it affects the release or install path
+- what verification proves it works
+- which ADR or SOP entry explains the longer-lived decision
 
-### 2. Homebrew Tap Repository
+Use the repository PR template for this so release context stays attached to the code review itself.
 
-Create a new repository called `homebrew-amber-cli` with this structure:
+## Repositories and Workflows
 
-```
-homebrew-amber-cli/
-├── Formula/
-│   └── amber-cli.rb          # Homebrew formula
-├── .github/
-│   └── workflows/
-│       └── update-formula.yml # Auto-update workflow
-└── README.md                 # Installation instructions
-```
+- `amberframework/amber_cli`
+  - [`.github/workflows/release.yml`](.github/workflows/release.yml)
+  - [`scripts/build_release.sh`](scripts/build_release.sh)
+- `amberframework/homebrew-amber_cli`
+  - `Formula/amber_cli.rb`
+  - `.github/workflows/update-formula.yml`
+  - `.github/workflows/validate-install.yml`
 
-**Files to create**: (Get the content from the previous assistance where I created these files)
+## Required Secrets
 
-### 3. Test Local Build
+`amberframework/amber_cli` needs a `HOMEBREW_TAP_TOKEN` secret that can dispatch workflows in `amberframework/homebrew-amber_cli`.
 
-Before creating a release, test the build process locally:
+Recommended scopes for a classic PAT:
 
-```bash
-# Test local build
-./scripts/build_release.sh v0.1.0
+- `repo`
+- `workflow`
 
-# This should create:
-# - dist/amber-cli-{platform}.tar.gz
-# - dist/amber-cli-{platform}.tar.gz.sha256
-```
+## Release Flow
 
-### 4. Test GitHub Actions
+### 1. Update the version
 
-Push your changes and test the build workflow:
+Update `shard.yml` to the release version you want to publish.
+
+### 2. Run the local release build
+
+From the CLI repo:
 
 ```bash
-git add .
-git commit -m "Add release automation"
-git push origin main
+./scripts/build_release.sh 2.0.1
 ```
 
-This should trigger the build workflow and test compilation on multiple platforms.
+That should produce:
 
-## Creating a Release
+- `dist/amber_cli-darwin-arm64.tar.gz` or `dist/amber_cli-linux-x86_64.tar.gz`
+- matching `.sha256` output
 
-### 1. Version Management
+### 3. Dry-run the GitHub build matrix
 
-Update the version in `shard.yml`:
-
-```yaml
-name: amber_cli
-version: 1.0.0  # Update this
-```
-
-### 2. Create Release
-
-1. Go to your GitHub repository
-2. Click "Releases" → "Create a new release"
-3. Create a new tag (e.g., `v1.0.0`)
-4. Fill in the release title and description
-5. Click "Publish release"
-
-### 3. Automatic Process
-
-When you publish the release:
-
-1. **Build workflow** triggers automatically
-2. **Binaries** are compiled for:
-   - `darwin-arm64` (macOS Apple Silicon)
-   - `linux-x86_64` (Linux)
-3. **Assets** are uploaded to the release:
-   - `amber-cli-darwin-arm64.tar.gz`
-   - `amber-cli-linux-x86_64.tar.gz`
-   - `.sha256` checksum files for each
-4. **Homebrew tap** is notified to update the formula
-
-## Supported Platforms
-
-The automated builds create binaries for:
-
-- **macOS**: Apple Silicon (M-series chips) - ARM64 architecture
-- **Linux**: x86_64 architecture
-
-**Note for Intel Mac users**: The ARM64 macOS binary will run via Rosetta 2, or you can build from source if needed.
-
-## Manual Formula Update
-
-If automatic updates don't work, you can manually update the Homebrew formula:
-
-1. Download the release assets
-2. Calculate SHA256 checksums: `sha256sum amber-cli-*.tar.gz`
-3. Update `Formula/amber-cli.rb` with new version and checksums
-4. Commit and push to the homebrew tap repository
-
-## Testing Installation
-
-After releasing, test the Homebrew installation:
+Before publishing a release, test the exact workflow on the branch you plan to tag:
 
 ```bash
-# Add the tap
-brew tap crimsonknight/amber-cli
-
-# Install amber-cli
-brew install amber-cli
-
-# Test it works
-amber --help
+gh workflow run release.yml \
+  --repo amberframework/amber_cli \
+  --ref <branch> \
+  -f ref=<branch>
 ```
 
-## Troubleshooting
+This exercises the same build matrix as the release workflow without uploading assets or touching the tap.
 
-### Build Failures
+### 4. Publish the release
 
-- Check the GitHub Actions logs
-- Test locally with `./scripts/build_release.sh`
-- Ensure all dependencies are properly specified in `shard.yml`
+After the dry-run is green:
 
-### Cross-compilation Issues
-
-- macOS ARM64 cross-compilation might need adjustments
-- Consider using native runners for each platform if cross-compilation fails
-
-### Homebrew Formula Issues
-
-- Verify SHA256 checksums match the uploaded assets
-- Check that download URLs are correct
-- Test formula locally: `brew install --build-from-source ./Formula/amber-cli.rb`
-
-### Missing Dependencies
-
-If builds fail due to missing system dependencies, update the workflows to install them:
-
-```yaml
-- name: Install system dependencies (Linux)
-  if: matrix.os == 'ubuntu-latest'
-  run: |
-    sudo apt-get update
-    sudo apt-get install -y build-essential libssl-dev
+```bash
+git tag v2.0.1
+git push origin v2.0.1
+gh release create v2.0.1 --repo amberframework/amber_cli --generate-notes
 ```
 
-## Files Created
+Publishing the release triggers the automated flow:
 
-This setup created the following files:
+1. build macOS and Linux binaries
+2. upload archives and checksums to the release
+3. dispatch the Homebrew tap update
+4. run the tap smoke test on macOS and Linux
 
-- `.github/workflows/release.yml` - Main release workflow
-- `.github/workflows/build.yml` - Build testing workflow  
-- `scripts/build_release.sh` - Local build script
-- `RELEASE_SETUP.md` - This setup guide
+## CI Gates To Check
 
-## Next Steps
+### Release build
 
-1. Set up the GitHub token secret
-2. Create the Homebrew tap repository
-3. Test a local build
-4. Create your first release
-5. Verify the Homebrew installation works
+In `amberframework/amber_cli`, the release workflow must be green for:
 
-Once this is working, your release process will be fully automated! 
+- `Build darwin-arm64`
+- `Build linux-x86_64`
+- `Upload Release Assets`
+- `Notify Homebrew Tap`
+
+### Tap update
+
+In `amberframework/homebrew-amber_cli`, the formula update workflow must be green for:
+
+- `Update Formula`
+
+### Tap install smoke
+
+In `amberframework/homebrew-amber_cli`, the install smoke workflow must be green for:
+
+- `Install Smoke Test (macos-latest)`
+- `Install Smoke Test (ubuntu-latest)`
+
+That workflow explicitly runs:
+
+```bash
+brew tap amberframework/amber_cli
+brew install amber_cli
+brew test amber_cli
+amber new smoke_app -y --no-deps
+```
+
+and then verifies the scaffolded app can resolve shards and compile.
+
+## Manual Recovery
+
+If the tap update fails after a release:
+
+1. Download the release assets and checksum files from GitHub.
+2. Update `Formula/amber_cli.rb` in `amberframework/homebrew-amber_cli`.
+3. Commit and push to `main`.
+4. Re-run `.github/workflows/validate-install.yml`.
+
+If the release build fails before the tap update:
+
+1. fix the workflow on a branch
+2. re-run the dry-run build with `workflow_dispatch`
+3. cut a new tag or recreate the release once the build is green
+
+## Current Packaging Direction
+
+The Homebrew tap is our supported install path today.
+
+For eventual `homebrew/core` inclusion, we should plan for a source-building formula and a clean `brew audit --new --formula amber_cli` story. The current tap keeps release onboarding fast, while the source-build path is the more likely route for upstream Homebrew acceptance.

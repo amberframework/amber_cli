@@ -4,7 +4,6 @@ require "./config"
 
 module Amber::CLI
   include Amber::Environment
-  AMBER_YML = ".amber.yml"
 
   def self.toggle_colors(on_off)
     Colorize.enabled = !on_off
