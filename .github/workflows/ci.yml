@@ -40,9 +40,6 @@ jobs:
     - name: Install dependencies
       run: shards install
 
-    - name: Build development tools
-      run: shards build ameba
-
     - name: Check code formatting
       run: crystal tool format --check src spec
 
