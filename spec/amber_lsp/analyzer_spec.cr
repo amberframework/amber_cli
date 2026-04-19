@@ -104,6 +104,41 @@ describe AmberLSP::Analyzer do
       rules.should be_empty
     end
 
+    it "evaluates exclude patterns relative to the project root" do
+      AmberLSP::Rules::RuleRegistry.register(MockTestRule.new)
+
+      with_tempdir do |dir|
+        analyzer = AmberLSP::Analyzer.new
+        ctx = AmberLSP::ProjectContext.new(dir, amber_project: true)
+        analyzer.configure(ctx)
+
+        diagnostics = analyzer.analyze(
+          File.join(dir, "src", "controllers", "home_controller.cr"),
+          "bad_pattern here"
+        )
+
+        diagnostics.size.should eq(1)
+        diagnostics[0].code.should eq("mock/test-rule")
+      end
+    end
+
+    it "still excludes project tmp files when using absolute paths" do
+      AmberLSP::Rules::RuleRegistry.register(MockTestRule.new)
+
+      with_tempdir do |dir|
+        analyzer = AmberLSP::Analyzer.new
+        ctx = AmberLSP::ProjectContext.new(dir, amber_project: true)
+        analyzer.configure(ctx)
+
+        diagnostics = analyzer.analyze(
+          File.join(dir, "tmp", "cache", "artifact.cr"),
+          "bad_pattern here"
+        )
+
+        diagnostics.should be_empty
+      end
+    end
+
     it "applies severity overrides from configuration" do
       AmberLSP::Rules::RuleRegistry.register(MockTestRule.new)
 

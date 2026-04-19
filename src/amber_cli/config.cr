@@ -3,7 +3,7 @@ require "yaml"
 
 module Amber::CLI
   AMBER_YML = ".amber.yml" # TODO: move to config/amber.yml
-  
+
   def self.config
     if File.exists? AMBER_YML
       begin

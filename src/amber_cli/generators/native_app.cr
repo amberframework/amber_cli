@@ -900,36 +900,36 @@ set -euo pipefail
 # Configuration
 # ---------------------------------------------------------------------------
 
-CRYSTAL=\${CRYSTAL:-crystal-alpha}
-BUILD_TARGET="\${1:-simulator}"
+CRYSTAL=${CRYSTAL:-crystal-alpha}
+BUILD_TARGET="${1:-simulator}"
 
-SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
-MOBILE_DIR="\$(cd "\$SCRIPT_DIR/.." && pwd)"
-PROJECT_ROOT="\$(cd "\$MOBILE_DIR/.." && pwd)"
-BUILD_DIR="\$SCRIPT_DIR/build"
-OUTPUT_LIB="\$BUILD_DIR/lib#{name}.a"
-GC_OUTPUT_LIB="\$BUILD_DIR/libgc.a"
-BRIDGE_SRC="\$MOBILE_DIR/shared/bridge.cr"
-BRIDGE_BASE="\$BUILD_DIR/bridge"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+MOBILE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$MOBILE_DIR/.." && pwd)"
+BUILD_DIR="$SCRIPT_DIR/build"
+OUTPUT_LIB="$BUILD_DIR/lib#{name}.a"
+GC_OUTPUT_LIB="$BUILD_DIR/libgc.a"
+BRIDGE_SRC="$MOBILE_DIR/shared/bridge.cr"
+BRIDGE_BASE="$BUILD_DIR/bridge"
 GC_VERSION="8.2.12"
-GC_ARCHIVE_URL="https://github.com/bdwgc/bdwgc/releases/download/v\${GC_VERSION}/gc-\${GC_VERSION}.tar.gz"
-GC_ROOT="\$BUILD_DIR/bdwgc-\${BUILD_TARGET}"
-GC_ARCHIVE="\$GC_ROOT/gc-\${GC_VERSION}.tar.gz"
-GC_SOURCE_ROOT="\$GC_ROOT/src"
-GC_SOURCE_DIR="\$GC_SOURCE_ROOT/gc-\${GC_VERSION}"
-GC_BUILD_DIR="\$GC_ROOT/build"
+GC_ARCHIVE_URL="https://github.com/bdwgc/bdwgc/releases/download/v${GC_VERSION}/gc-${GC_VERSION}.tar.gz"
+GC_ROOT="$BUILD_DIR/bdwgc-${BUILD_TARGET}"
+GC_ARCHIVE="$GC_ROOT/gc-${GC_VERSION}.tar.gz"
+GC_SOURCE_ROOT="$GC_ROOT/src"
+GC_SOURCE_DIR="$GC_SOURCE_ROOT/gc-${GC_VERSION}"
+GC_BUILD_DIR="$GC_ROOT/build"
 
 # crystal-audio ext directory
 CRYSTAL_AUDIO_EXT=""
-if [[ -d "\$PROJECT_ROOT/lib/crystal-audio/ext" ]]; then
-    CRYSTAL_AUDIO_EXT="\$PROJECT_ROOT/lib/crystal-audio/ext"
-elif [[ -d "\$PROJECT_ROOT/lib/crystal_audio/ext" ]]; then
-    CRYSTAL_AUDIO_EXT="\$PROJECT_ROOT/lib/crystal_audio/ext"
+if [[ -d "$PROJECT_ROOT/lib/crystal-audio/ext" ]]; then
+    CRYSTAL_AUDIO_EXT="$PROJECT_ROOT/lib/crystal-audio/ext"
+elif [[ -d "$PROJECT_ROOT/lib/crystal_audio/ext" ]]; then
+    CRYSTAL_AUDIO_EXT="$PROJECT_ROOT/lib/crystal_audio/ext"
 fi
 
 MIN_IOS_VER="16.1"
 
-case "\$BUILD_TARGET" in
+case "$BUILD_TARGET" in
     simulator)
         LLVM_TARGET="arm64-apple-ios-simulator"
         SDK_NAME="iphonesimulator"
@@ -939,7 +939,7 @@ case "\$BUILD_TARGET" in
         SDK_NAME="iphoneos"
         ;;
     *)
-        echo "Usage: \$0 [simulator|device]"
+        echo "Usage: $0 [simulator|device]"
         exit 1
         ;;
 esac
@@ -948,76 +948,76 @@ esac
 # Helpers
 # ---------------------------------------------------------------------------
 
-info()  { printf '\\033[0;34m[build]\\033[0m %s\\n' "\$*"; }
-ok()    { printf '\\033[0;32m[ok]\\033[0m    %s\\n' "\$*"; }
-fail()  { printf '\\033[0;31m[fail]\\033[0m  %s\\n' "\$*" >&2; exit 1; }
+info()  { printf '\\033[0;34m[build]\\033[0m %s\\n' "$*"; }
+ok()    { printf '\\033[0;32m[ok]\\033[0m    %s\\n' "$*"; }
+fail()  { printf '\\033[0;31m[fail]\\033[0m  %s\\n' "$*" >&2; exit 1; }
 
 require_cmd() {
-    command -v "\$1" >/dev/null 2>&1 || fail "Required command not found: \$1"
+    command -v "$1" >/dev/null 2>&1 || fail "Required command not found: $1"
 }
 
 # ---------------------------------------------------------------------------
 # Preflight
 # ---------------------------------------------------------------------------
 
-require_cmd "\$CRYSTAL"
+require_cmd "$CRYSTAL"
 require_cmd xcrun
 require_cmd xcodebuild
 require_cmd cmake
 require_cmd curl
 require_cmd tar
 
-[[ ! -f "\$BRIDGE_SRC" ]] && fail "Bridge source not found: \$BRIDGE_SRC"
+[[ ! -f "$BRIDGE_SRC" ]] && fail "Bridge source not found: $BRIDGE_SRC"
 
-SDK_PATH="\$(xcrun --sdk \$SDK_NAME --show-sdk-path)"
-CLANG="\$(xcrun --sdk \$SDK_NAME --find clang)"
+SDK_PATH="$(xcrun --sdk $SDK_NAME --show-sdk-path)"
+CLANG="$(xcrun --sdk $SDK_NAME --find clang)"
 
-info "Target         : \$LLVM_TARGET"
-info "SDK            : \$SDK_PATH"
-info "Bridge source  : \$BRIDGE_SRC"
+info "Target         : $LLVM_TARGET"
+info "SDK            : $SDK_PATH"
+info "Bridge source  : $BRIDGE_SRC"
 
-mkdir -p "\$BUILD_DIR"
+mkdir -p "$BUILD_DIR"
 
 prepare_boehm_gc() {
-    info "Building Boehm GC for \$BUILD_TARGET..."
+    info "Building Boehm GC for $BUILD_TARGET..."
 
-    mkdir -p "\$GC_ROOT" "\$GC_SOURCE_ROOT"
+    mkdir -p "$GC_ROOT" "$GC_SOURCE_ROOT"
 
-    if [[ ! -f "\$GC_ARCHIVE" ]]; then
-        curl -L "\$GC_ARCHIVE_URL" -o "\$GC_ARCHIVE"
+    if [[ ! -f "$GC_ARCHIVE" ]]; then
+        curl -L "$GC_ARCHIVE_URL" -o "$GC_ARCHIVE"
     fi
 
-    if [[ ! -d "\$GC_SOURCE_DIR" ]]; then
-        tar -xzf "\$GC_ARCHIVE" -C "\$GC_SOURCE_ROOT"
+    if [[ ! -d "$GC_SOURCE_DIR" ]]; then
+        tar -xzf "$GC_ARCHIVE" -C "$GC_SOURCE_ROOT"
     fi
 
-    cmake -S "\$GC_SOURCE_DIR" -B "\$GC_BUILD_DIR" \\
+    cmake -S "$GC_SOURCE_DIR" -B "$GC_BUILD_DIR" \\
         -DBUILD_SHARED_LIBS=OFF \\
         -Denable_threads=OFF \\
         -DCMAKE_SYSTEM_NAME=iOS \\
-        -DCMAKE_OSX_SYSROOT="\$SDK_NAME" \\
+        -DCMAKE_OSX_SYSROOT="$SDK_NAME" \\
         -DCMAKE_OSX_ARCHITECTURES=arm64 \\
-        -DCMAKE_OSX_DEPLOYMENT_TARGET="\$MIN_IOS_VER"
+        -DCMAKE_OSX_DEPLOYMENT_TARGET="$MIN_IOS_VER"
 
-    cmake --build "\$GC_BUILD_DIR" --target gc -j"\$(sysctl -n hw.ncpu 2>/dev/null || echo 4)"
-    cp "\$GC_BUILD_DIR/libgc.a" "\$GC_OUTPUT_LIB"
-    ok "Boehm GC ready: \$GC_OUTPUT_LIB"
+    cmake --build "$GC_BUILD_DIR" --target gc -j"$(sysctl -n hw.ncpu 2>/dev/null || echo 4)"
+    cp "$GC_BUILD_DIR/libgc.a" "$GC_OUTPUT_LIB"
+    ok "Boehm GC ready: $GC_OUTPUT_LIB"
 }
 
 # ---------------------------------------------------------------------------
 # Step 1: Compile native extensions for iOS
 # ---------------------------------------------------------------------------
 
-info "Compiling native extensions for \$BUILD_TARGET..."
+info "Compiling native extensions for $BUILD_TARGET..."
 
-if [[ -n "\$CRYSTAL_AUDIO_EXT" ]]; then
-    for src_file in "\$CRYSTAL_AUDIO_EXT"/*.c "\$CRYSTAL_AUDIO_EXT"/*.m; do
-        [[ ! -f "\$src_file" ]] && continue
-        obj_name="\$(basename "\$src_file" | sed 's/\\.[cm]\$//')_ios.o"
-        "\$CLANG" -c "\$src_file" -o "\$BUILD_DIR/\$obj_name" \\
-            -target "\$LLVM_TARGET" \\
-            -isysroot "\$SDK_PATH" \\
-            -mios-version-min=\$MIN_IOS_VER \\
+if [[ -n "$CRYSTAL_AUDIO_EXT" ]]; then
+    for src_file in "$CRYSTAL_AUDIO_EXT"/*.c "$CRYSTAL_AUDIO_EXT"/*.m; do
+        [[ ! -f "$src_file" ]] && continue
+        obj_name="$(basename "$src_file" | sed 's/\\.[cm]$//')_ios.o"
+        "$CLANG" -c "$src_file" -o "$BUILD_DIR/$obj_name" \\
+            -target "$LLVM_TARGET" \\
+            -isysroot "$SDK_PATH" \\
+            -mios-version-min=$MIN_IOS_VER \\
             -fno-objc-arc 2>/dev/null || true
     done
     ok "Native extensions compiled"
@@ -1031,11 +1031,11 @@ fi
 
 info "Cross-compiling Crystal bridge..."
 
-"\$CRYSTAL" build "\$BRIDGE_SRC" \\
+"$CRYSTAL" build "$BRIDGE_SRC" \\
     --cross-compile \\
-    --target="\$LLVM_TARGET" \\
+    --target="$LLVM_TARGET" \\
     -Dios \\
-    -o "\$BRIDGE_BASE"
+    -o "$BRIDGE_BASE"
 
 ok "Crystal cross-compilation complete"
 
@@ -1053,9 +1053,9 @@ prepare_boehm_gc
 
 info "Fixing _main symbol conflict..."
 
-if [[ -f "\$BRIDGE_BASE.o" ]]; then
-    ld -r -unexported_symbol _main "\$BRIDGE_BASE.o" -o "\$BUILD_DIR/bridge_fixed.o"
-    mv "\$BUILD_DIR/bridge_fixed.o" "\$BRIDGE_BASE.o"
+if [[ -f "$BRIDGE_BASE.o" ]]; then
+    ld -r -unexported_symbol _main "$BRIDGE_BASE.o" -o "$BUILD_DIR/bridge_fixed.o"
+    mv "$BUILD_DIR/bridge_fixed.o" "$BRIDGE_BASE.o"
     ok "_main symbol hidden"
 fi
 
@@ -1065,15 +1065,15 @@ fi
 
 info "Creating static library..."
 
-OBJ_FILES="\$BRIDGE_BASE.o"
-for obj in "\$BUILD_DIR"/*_ios.o; do
-    [[ -f "\$obj" ]] && OBJ_FILES="\$OBJ_FILES \$obj"
+OBJ_FILES="$BRIDGE_BASE.o"
+for obj in "$BUILD_DIR"/*_ios.o; do
+    [[ -f "$obj" ]] && OBJ_FILES="$OBJ_FILES $obj"
 done
 
-ar rcs "\$OUTPUT_LIB" \$OBJ_FILES
-ok "Static library created: \$OUTPUT_LIB"
+ar rcs "$OUTPUT_LIB" $OBJ_FILES
+ok "Static library created: $OUTPUT_LIB"
 
-info "Done! Link with: -L\$BUILD_DIR -l#{name}"
+info "Done! Link with: -L$BUILD_DIR -l#{name}"
 BASH
 
       script_path = File.join(path, "mobile/ios/build_crystal_lib.sh")
@@ -1146,29 +1146,29 @@ SWIFT
 
 set -euo pipefail
 
-SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
-PROJECT_ROOT="\$(cd "\$SCRIPT_DIR/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-info()  { printf '\\033[0;34m[test]\\033[0m %s\\n' "\$*"; }
-ok()    { printf '\\033[0;32m[pass]\\033[0m %s\\n' "\$*"; }
-fail()  { printf '\\033[0;31m[fail]\\033[0m %s\\n' "\$*" >&2; exit 1; }
+info()  { printf '\\033[0;34m[test]\\033[0m %s\\n' "$*"; }
+ok()    { printf '\\033[0;32m[pass]\\033[0m %s\\n' "$*"; }
+fail()  { printf '\\033[0;31m[fail]\\033[0m %s\\n' "$*" >&2; exit 1; }
 
 PASS=0
 TOTAL=0
 
 check() {
-    TOTAL=\$((TOTAL + 1))
-    if eval "\$2"; then
-        ok "\$1"
-        PASS=\$((PASS + 1))
+    TOTAL=$((TOTAL + 1))
+    if eval "$2"; then
+        ok "$1"
+        PASS=$((PASS + 1))
     else
-        fail "\$1"
+        fail "$1"
     fi
 }
 
 # Step 1: Build Crystal static library
 info "Step 1/6: Building Crystal library for iOS simulator..."
-cd "\$PROJECT_ROOT"
+cd "$PROJECT_ROOT"
 check "Crystal lib builds" "./mobile/ios/build_crystal_lib.sh simulator"
 
 # Step 2: Verify static library exists
@@ -1177,7 +1177,7 @@ check "lib#{name}.a exists" "[ -f mobile/ios/build/lib#{name}.a ]"
 
 # Step 3: Generate Xcode project
 info "Step 3/6: Generating Xcode project..."
-cd "\$SCRIPT_DIR"
+cd "$SCRIPT_DIR"
 check "xcodegen succeeds" "command -v xcodegen >/dev/null && xcodegen generate"
 
 # Step 4: Build the iOS app
@@ -1192,7 +1192,7 @@ check "UI tests pass" "xcodebuild test -project #{pascal_name}.xcodeproj -scheme
 info "Step 6/6: Results"
 echo ""
 echo "===================="
-echo "  \$PASS / \$TOTAL passed"
+echo "  $PASS / $TOTAL passed"
 echo "===================="
 BASH
 
@@ -1227,63 +1227,63 @@ set -euo pipefail
 # Configuration
 # ---------------------------------------------------------------------------
 
-CRYSTAL="\${CRYSTAL:-crystal-alpha}"
+CRYSTAL="${CRYSTAL:-crystal-alpha}"
 TARGET="aarch64-linux-android26"
 API_LEVEL=26
 HOST_TAG="darwin-x86_64"
 
-SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
-MOBILE_DIR="\$(cd "\$SCRIPT_DIR/.." && pwd)"
-PROJECT_ROOT="\$(cd "\$MOBILE_DIR/.." && pwd)"
-BUILD_DIR="\$SCRIPT_DIR/build"
-JNILIBS_DIR="\$SCRIPT_DIR/app/src/main/jniLibs/arm64-v8a"
-BRIDGE_SRC="\$MOBILE_DIR/shared/bridge.cr"
-BRIDGE_BASE="\$BUILD_DIR/bridge"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+MOBILE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$MOBILE_DIR/.." && pwd)"
+BUILD_DIR="$SCRIPT_DIR/build"
+JNILIBS_DIR="$SCRIPT_DIR/app/src/main/jniLibs/arm64-v8a"
+BRIDGE_SRC="$MOBILE_DIR/shared/bridge.cr"
+BRIDGE_BASE="$BUILD_DIR/bridge"
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-info()  { printf '\\033[0;34m[build]\\033[0m %s\\n' "\$*"; }
-ok()    { printf '\\033[0;32m[ok]\\033[0m    %s\\n' "\$*"; }
-fail()  { printf '\\033[0;31m[fail]\\033[0m  %s\\n' "\$*" >&2; exit 1; }
+info()  { printf '\\033[0;34m[build]\\033[0m %s\\n' "$*"; }
+ok()    { printf '\\033[0;32m[ok]\\033[0m    %s\\n' "$*"; }
+fail()  { printf '\\033[0;31m[fail]\\033[0m  %s\\n' "$*" >&2; exit 1; }
 
 require_cmd() {
-    command -v "\$1" >/dev/null 2>&1 || fail "Required command not found: \$1"
+    command -v "$1" >/dev/null 2>&1 || fail "Required command not found: $1"
 }
 
 # ---------------------------------------------------------------------------
 # Preflight
 # ---------------------------------------------------------------------------
 
-require_cmd "\$CRYSTAL"
+require_cmd "$CRYSTAL"
 
-[[ ! -f "\$BRIDGE_SRC" ]] && fail "Bridge source not found: \$BRIDGE_SRC"
+[[ ! -f "$BRIDGE_SRC" ]] && fail "Bridge source not found: $BRIDGE_SRC"
 
 # Locate NDK
-ANDROID_SDK_ROOT="\${ANDROID_SDK_ROOT:-/opt/homebrew/share/android-commandlinetools}"
-NDK_ROOT="\${NDK_ROOT:-\$(ls -d "\$ANDROID_SDK_ROOT"/ndk/*/ 2>/dev/null | sort -V | tail -1)}"
-NDK_ROOT="\${NDK_ROOT%/}"
+ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-/opt/homebrew/share/android-commandlinetools}"
+NDK_ROOT="${NDK_ROOT:-$(ls -d "$ANDROID_SDK_ROOT"/ndk/*/ 2>/dev/null | sort -V | tail -1)}"
+NDK_ROOT="${NDK_ROOT%/}"
 
-if [[ -z "\$NDK_ROOT" ]] || [[ ! -d "\$NDK_ROOT" ]]; then
-    fail "NDK not found. Set NDK_ROOT or install NDK under \\\$ANDROID_SDK_ROOT/ndk/"
+if [[ -z "$NDK_ROOT" ]] || [[ ! -d "$NDK_ROOT" ]]; then
+    fail "NDK not found. Set NDK_ROOT or install NDK under \\$ANDROID_SDK_ROOT/ndk/"
 fi
 
-NDK_CLANG="\$NDK_ROOT/toolchains/llvm/prebuilt/\$HOST_TAG/bin/\${TARGET}-clang"
+NDK_CLANG="$NDK_ROOT/toolchains/llvm/prebuilt/$HOST_TAG/bin/${TARGET}-clang"
 CLANG_FLAGS=""
-if [[ ! -f "\$NDK_CLANG" ]]; then
-    NDK_CLANG="\$NDK_ROOT/toolchains/llvm/prebuilt/\$HOST_TAG/bin/clang"
-    CLANG_FLAGS="--target=\$TARGET"
-    [[ ! -f "\$NDK_CLANG" ]] && fail "NDK clang not found at: \$NDK_CLANG"
+if [[ ! -f "$NDK_CLANG" ]]; then
+    NDK_CLANG="$NDK_ROOT/toolchains/llvm/prebuilt/$HOST_TAG/bin/clang"
+    CLANG_FLAGS="--target=$TARGET"
+    [[ ! -f "$NDK_CLANG" ]] && fail "NDK clang not found at: $NDK_CLANG"
 fi
 
-SYSROOT="\$NDK_ROOT/toolchains/llvm/prebuilt/\$HOST_TAG/sysroot"
+SYSROOT="$NDK_ROOT/toolchains/llvm/prebuilt/$HOST_TAG/sysroot"
 
-info "Target         : \$TARGET"
-info "NDK root       : \$NDK_ROOT"
-info "Bridge source  : \$BRIDGE_SRC"
+info "Target         : $TARGET"
+info "NDK root       : $NDK_ROOT"
+info "Bridge source  : $BRIDGE_SRC"
 
-mkdir -p "\$BUILD_DIR" "\$JNILIBS_DIR"
+mkdir -p "$BUILD_DIR" "$JNILIBS_DIR"
 
 # ---------------------------------------------------------------------------
 # Step 1: Compile JNI bridge
@@ -1291,7 +1291,7 @@ mkdir -p "\$BUILD_DIR" "\$JNILIBS_DIR"
 
 info "Compiling JNI bridge..."
 
-cat > "\$BUILD_DIR/jni_bridge.c" << 'JNIC'
+cat > "$BUILD_DIR/jni_bridge.c" << 'JNIC'
 #include <android/log.h>
 #include <jni.h>
 
@@ -1301,8 +1301,8 @@ void crystal_trace(const char *msg) {
 }
 JNIC
 
-"\$NDK_CLANG" \$CLANG_FLAGS -c "\$BUILD_DIR/jni_bridge.c" -o "\$BUILD_DIR/jni_bridge.o" \\
-    --sysroot="\$SYSROOT"
+"$NDK_CLANG" $CLANG_FLAGS -c "$BUILD_DIR/jni_bridge.c" -o "$BUILD_DIR/jni_bridge.o" \\
+    --sysroot="$SYSROOT"
 
 ok "JNI bridge compiled"
 
@@ -1312,11 +1312,11 @@ ok "JNI bridge compiled"
 
 info "Cross-compiling Crystal bridge for Android..."
 
-"\$CRYSTAL" build "\$BRIDGE_SRC" \\
+"$CRYSTAL" build "$BRIDGE_SRC" \\
     --cross-compile \\
-    --target="\$TARGET" \\
+    --target="$TARGET" \\
     -Dandroid \\
-    -o "\$BRIDGE_BASE"
+    -o "$BRIDGE_BASE"
 
 ok "Crystal cross-compilation complete"
 
@@ -1328,14 +1328,14 @@ ok "Crystal cross-compilation complete"
 
 info "Linking shared library..."
 
-"\$NDK_CLANG" \$CLANG_FLAGS \\
-    "\$BRIDGE_BASE.o" "\$BUILD_DIR/jni_bridge.o" \\
-    -shared -o "\$JNILIBS_DIR/lib#{name}.so" \\
-    --sysroot="\$SYSROOT" \\
+"$NDK_CLANG" $CLANG_FLAGS \\
+    "$BRIDGE_BASE.o" "$BUILD_DIR/jni_bridge.o" \\
+    -shared -o "$JNILIBS_DIR/lib#{name}.so" \\
+    --sysroot="$SYSROOT" \\
     -laaudio -llog -landroid \\
     -lm -ldl -lc
 
-ok "Shared library created: \$JNILIBS_DIR/lib#{name}.so"
+ok "Shared library created: $JNILIBS_DIR/lib#{name}.so"
 
 info "Done!"
 BASH
@@ -1475,33 +1475,33 @@ KOTLIN
 
 set -euo pipefail
 
-SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
-PROJECT_ROOT="\$(cd "\$SCRIPT_DIR/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # JDK 17 required for Android Gradle Plugin
-export JAVA_HOME="\${JAVA_HOME:-/opt/homebrew/Cellar/openjdk@17/17.0.18/libexec/openjdk.jdk/Contents/Home}"
+export JAVA_HOME="${JAVA_HOME:-/opt/homebrew/Cellar/openjdk@17/17.0.18/libexec/openjdk.jdk/Contents/Home}"
 
-info()  { printf '\\033[0;34m[test]\\033[0m %s\\n' "\$*"; }
-ok()    { printf '\\033[0;32m[pass]\\033[0m %s\\n' "\$*"; }
-fail()  { printf '\\033[0;31m[fail]\\033[0m %s\\n' "\$*" >&2; exit 1; }
+info()  { printf '\\033[0;34m[test]\\033[0m %s\\n' "$*"; }
+ok()    { printf '\\033[0;32m[pass]\\033[0m %s\\n' "$*"; }
+fail()  { printf '\\033[0;31m[fail]\\033[0m %s\\n' "$*" >&2; exit 1; }
 
 PASS=0
 TOTAL=0
 
 check() {
-    TOTAL=\$((TOTAL + 1))
-    if eval "\$2"; then
-        ok "\$1"
-        PASS=\$((PASS + 1))
+    TOTAL=$((TOTAL + 1))
+    if eval "$2"; then
+        ok "$1"
+        PASS=$((PASS + 1))
     else
-        fail "\$1"
+        fail "$1"
     fi
 }
 
 # Step 1: Build Crystal shared library
 info "Step 1/6: Building Crystal library for Android..."
-cd "\$PROJECT_ROOT"
-check "Crystal lib builds" "ANDROID_SDK_ROOT=\${ANDROID_SDK_ROOT:-/opt/homebrew/share/android-commandlinetools} ./mobile/android/build_crystal_lib.sh"
+cd "$PROJECT_ROOT"
+check "Crystal lib builds" "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-/opt/homebrew/share/android-commandlinetools} ./mobile/android/build_crystal_lib.sh"
 
 # Step 2: Verify shared library exists
 info "Step 2/6: Verifying shared library..."
@@ -1509,7 +1509,7 @@ check "lib#{name}.so exists" "[ -f mobile/android/app/src/main/jniLibs/arm64-v8a
 
 # Step 3: Build Android APK
 info "Step 3/6: Building Android APK..."
-cd "\$SCRIPT_DIR"
+cd "$SCRIPT_DIR"
 check "Gradle build succeeds" "./gradlew assembleDebug 2>/dev/null"
 
 # Step 4: Verify APK exists
@@ -1524,7 +1524,7 @@ check "Android tests pass" "./gradlew connectedAndroidTest 2>/dev/null || echo '
 info "Step 6/6: Results"
 echo ""
 echo "===================="
-echo "  \$PASS / \$TOTAL passed"
+echo "  $PASS / $TOTAL passed"
 echo "===================="
 BASH
 
@@ -1556,20 +1556,20 @@ PROPS
 
 set -euo pipefail
 
-info()  { printf '\\033[0;34m[test]\\033[0m %s\\n' "\$*"; }
-ok()    { printf '\\033[0;32m[pass]\\033[0m %s\\n' "\$*"; }
-fail()  { printf '\\033[0;31m[fail]\\033[0m %s\\n' "\$*" >&2; }
+info()  { printf '\\033[0;34m[test]\\033[0m %s\\n' "$*"; }
+ok()    { printf '\\033[0;32m[pass]\\033[0m %s\\n' "$*"; }
+fail()  { printf '\\033[0;31m[fail]\\033[0m %s\\n' "$*" >&2; }
 
 PASS=0
 TOTAL=0
 
 check() {
-    TOTAL=\$((TOTAL + 1))
-    if eval "\$2" >/dev/null 2>&1; then
-        ok "\$1"
-        PASS=\$((PASS + 1))
+    TOTAL=$((TOTAL + 1))
+    if eval "$2" >/dev/null 2>&1; then
+        ok "$1"
+        PASS=$((PASS + 1))
     else
-        fail "\$1"
+        fail "$1"
     fi
 }
 
@@ -1579,11 +1579,11 @@ APP_NAME="#{pascal_name}"
 check "App is running" "pgrep -x #{name}"
 
 # Check main window exists via accessibility
-check "Main window accessible" "osascript -e 'tell application \"System Events\" to tell process \"#{pascal_name}\" to get name of window 1'"
+check "Main window accessible" "osascript -e 'tell application \\"System Events\\" to tell process \\"#{pascal_name}\\" to get name of window 1'"
 
 echo ""
 echo "===================="
-echo "  \$PASS / \$TOTAL passed"
+echo "  $PASS / $TOTAL passed"
 echo "===================="
 BASH
 
@@ -1604,27 +1604,27 @@ BASH
 
 set -euo pipefail
 
-SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
-PROJECT_ROOT="\$(cd "\$SCRIPT_DIR/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-info()  { printf '\\033[0;34m[test]\\033[0m %s\\n' "\$*"; }
-ok()    { printf '\\033[0;32m[pass]\\033[0m %s\\n' "\$*"; }
-fail()  { printf '\\033[0;31m[fail]\\033[0m %s\\n' "\$*" >&2; exit 1; }
+info()  { printf '\\033[0;34m[test]\\033[0m %s\\n' "$*"; }
+ok()    { printf '\\033[0;32m[pass]\\033[0m %s\\n' "$*"; }
+fail()  { printf '\\033[0;31m[fail]\\033[0m %s\\n' "$*" >&2; exit 1; }
 
 PASS=0
 TOTAL=0
 
 check() {
-    TOTAL=\$((TOTAL + 1))
-    if eval "\$2"; then
-        ok "\$1"
-        PASS=\$((PASS + 1))
+    TOTAL=$((TOTAL + 1))
+    if eval "$2"; then
+        ok "$1"
+        PASS=$((PASS + 1))
     else
-        fail "\$1"
+        fail "$1"
     fi
 }
 
-cd "\$PROJECT_ROOT"
+cd "$PROJECT_ROOT"
 
 # Step 1: Setup
 info "Step 1/6: Running setup..."
@@ -1645,13 +1645,13 @@ check "Crystal specs pass" "make spec 2>/dev/null"
 
 # Step 5: Quick launch test (start and immediately stop)
 info "Step 5/6: Launch test..."
-check "App starts" "timeout 3 ./bin/#{name} 2>/dev/null || [ \$? -eq 124 ]"
+check "App starts" "timeout 3 ./bin/#{name} 2>/dev/null || [ $? -eq 124 ]"
 
 # Step 6: Summary
 info "Step 6/6: Results"
 echo ""
 echo "===================="
-echo "  \$PASS / \$TOTAL passed"
+echo "  $PASS / $TOTAL passed"
 echo "===================="
 BASH
 
@@ -1678,33 +1678,33 @@ BASH
 
 set -euo pipefail
 
-SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
-PROJECT_ROOT="\$(cd "\$SCRIPT_DIR/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 RUN_E2E=false
 
-if [[ "\${1:-}" == "--e2e" ]]; then
+if [[ "${1:-}" == "--e2e" ]]; then
     RUN_E2E=true
 fi
 
-info()  { printf '\\033[0;34m[ci]\\033[0m %s\\n' "\$*"; }
-ok()    { printf '\\033[0;32m[pass]\\033[0m %s\\n' "\$*"; }
-fail()  { printf '\\033[0;31m[fail]\\033[0m %s\\n' "\$*" >&2; }
+info()  { printf '\\033[0;34m[ci]\\033[0m %s\\n' "$*"; }
+ok()    { printf '\\033[0;32m[pass]\\033[0m %s\\n' "$*"; }
+fail()  { printf '\\033[0;31m[fail]\\033[0m %s\\n' "$*" >&2; }
 
 PASS=0
 FAIL=0
 
 run_step() {
-    info "\$1"
-    if eval "\$2"; then
-        ok "\$1"
-        PASS=\$((PASS + 1))
+    info "$1"
+    if eval "$2"; then
+        ok "$1"
+        PASS=$((PASS + 1))
     else
-        fail "\$1"
-        FAIL=\$((FAIL + 1))
+        fail "$1"
+        FAIL=$((FAIL + 1))
     fi
 }
 
-cd "\$PROJECT_ROOT"
+cd "$PROJECT_ROOT"
 
 echo "============================================"
 echo "  #{pascal_name} Test Suite"
@@ -1721,7 +1721,7 @@ info "=== L2: Platform UI Tests ==="
 run_step "macOS accessibility tests" "test/macos/test_macos_ui.sh 2>/dev/null || true"
 
 # --- L3: E2E Tests (optional) ---
-if [[ "\$RUN_E2E" == "true" ]]; then
+if [[ "$RUN_E2E" == "true" ]]; then
     info "=== L3: E2E Tests ==="
     run_step "macOS E2E" "test/macos/test_macos_e2e.sh 2>/dev/null"
     run_step "iOS E2E" "mobile/ios/test_ios.sh 2>/dev/null || true"
@@ -1731,14 +1731,14 @@ fi
 # --- Summary ---
 echo ""
 echo "============================================"
-TOTAL=\$((PASS + FAIL))
-echo "  Results: \$PASS / \$TOTAL passed"
-if [[ \$FAIL -gt 0 ]]; then
-    echo "  \$FAIL FAILED"
+TOTAL=$((PASS + FAIL))
+echo "  Results: $PASS / $TOTAL passed"
+if [[ $FAIL -gt 0 ]]; then
+    echo "  $FAIL FAILED"
 fi
 echo "============================================"
 
-[[ \$FAIL -gt 0 ]] && exit 1 || exit 0
+[[ $FAIL -gt 0 ]] && exit 1 || exit 0
 BASH
 
       script_path = File.join(path, "mobile/run_all_tests.sh")

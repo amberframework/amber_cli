@@ -260,7 +260,7 @@ module AmberCLI::Native
         @shortcuts : ShortcutsCapability = ShortcutsCapability.new,
         @quick_actions : QuickActionsCapability = QuickActionsCapability.new,
         @widgets : WidgetsCapability = WidgetsCapability.new,
-        @live_activities : LiveActivitiesCapability = LiveActivitiesCapability.new
+        @live_activities : LiveActivitiesCapability = LiveActivitiesCapability.new,
       )
       end
 
@@ -373,7 +373,7 @@ module AmberCLI::Native
         @actions : Array(NotificationActionSpec) = [] of NotificationActionSpec,
         @intent_identifiers : Array(String) = [] of String,
         @options : Array(String) = [] of String,
-        @is_enabled : Bool = true
+        @is_enabled : Bool = true,
       )
       end
 
@@ -412,7 +412,7 @@ module AmberCLI::Native
         @options : Array(String) = [] of String,
         @text_input_button_title : String? = nil,
         @text_input_placeholder : String? = nil,
-        @is_enabled : Bool = true
+        @is_enabled : Bool = true,
       )
       end
 
@@ -471,7 +471,7 @@ module AmberCLI::Native
         @phrases : Array(String) = [] of String,
         @parameters : Array(AppShortcutParameterSpec) = [] of AppShortcutParameterSpec,
         @is_enabled : Bool = true,
-        @is_discoverable : Bool = true
+        @is_discoverable : Bool = true,
       )
       end
 
@@ -502,7 +502,7 @@ module AmberCLI::Native
         @prompt : String? = nil,
         @type : String? = nil,
         @default_value : String? = nil,
-        @is_required : Bool = true
+        @is_required : Bool = true,
       )
       end
 
@@ -552,7 +552,7 @@ module AmberCLI::Native
         @title : String = "",
         @subtitle : String? = nil,
         @system_image : String? = nil,
-        @user_info : Hash(String, String) = {} of String => String
+        @user_info : Hash(String, String) = {} of String => String,
       )
       end
 
@@ -603,7 +603,7 @@ module AmberCLI::Native
         @identifier : String = "",
         @summary : String? = nil,
         @placements : Array(WidgetPlacementSpec) = [] of WidgetPlacementSpec,
-        @is_enabled : Bool = true
+        @is_enabled : Bool = true,
       )
       end
 
@@ -634,7 +634,7 @@ module AmberCLI::Native
         @families : Array(String) = [] of String,
         @timeline_intent : String = "snapshot",
         @refresh_policy : String? = nil,
-        @notes : String? = nil
+        @notes : String? = nil,
       )
       end
 
@@ -687,7 +687,7 @@ module AmberCLI::Native
         @attributes : Hash(String, String) = {} of String => String,
         @content_state : Hash(String, String) = {} of String => String,
         @update_intent : LiveActivityUpdateIntentSpec? = nil,
-        @is_active : Bool = true
+        @is_active : Bool = true,
       )
       end
 
@@ -720,7 +720,7 @@ module AmberCLI::Native
         @subtitle : String? = nil,
         @system_image : String? = nil,
         @user_info : Hash(String, String) = {} of String => String,
-        @is_enabled : Bool = true
+        @is_enabled : Bool = true,
       )
       end
 

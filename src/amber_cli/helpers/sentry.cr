@@ -3,7 +3,7 @@ require "yaml"
 require "./process_runner"
 
 # Sentry module provides file watching and process management for Amber CLI
-# This is used by the watch command to automatically rebuild and restart 
+# This is used by the watch command to automatically rebuild and restart
 # the application when source files change.
 module Sentry
   # ProcessRunner handles the actual file watching and process management

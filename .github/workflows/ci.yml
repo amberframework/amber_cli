@@ -24,7 +24,7 @@ jobs:
     - name: Install Crystal
       uses: crystal-lang/install-crystal@v1
       with:
-        crystal: latest
+        crystal: ${{ matrix.crystal }}
 
 
     - name: Cache shards
@@ -40,12 +40,14 @@ jobs:
     - name: Install dependencies
       run: shards install
 
-    - name: Check code formatting
-      run: crystal tool format --check
-      continue-on-error: true
+    - name: Build development tools
+      run: shards build ameba
 
-    - name: Run ameba linter
-      run: ./bin/ameba
+    - name: Check code formatting
+      run: crystal tool format --check src spec
+
+    - name: Run code climate checks
+      run: ./bin/ameba src/amber_cli/native src/amber_lsp
       continue-on-error: true
 
     - name: Compile CLI
@@ -69,7 +71,7 @@ jobs:
         crystal build src/amber_lsp.cr --release --no-debug -o amber_lsp
 
     - name: Upload binary artifacts (Linux)
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: matrix.os == 'ubuntu-latest'
       with:
         name: amber-cli-linux
@@ -108,7 +110,7 @@ jobs:
     - name: Test LSP functionality
       run: |
         crystal build src/amber_lsp.cr -o amber_lsp
-        ./amber_lsp --help || true
+        test -x ./amber_lsp
 
   # Job to run integration tests
   integration:

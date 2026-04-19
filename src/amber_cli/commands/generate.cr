@@ -5,7 +5,7 @@ require "../core/base_command"
 #
 # ## Usage
 # ```
-# amber generate [TYPE] [NAME] [FIELDS...]
+# amber generate [TYPE][NAME][FIELDS...]
 # ```
 #
 # ## Types
@@ -494,15 +494,15 @@ SCHEMA
       # Build valid test data from fields
       valid_data_entries = schema_fields.map do |field_name, field_type, _|
         value = case field_type
-                when "string", "text", "uuid"    then "\"test_value\""
-                when "email"                     then "\"test@example.com\""
-                when "integer", "int", "int32"   then "1"
-                when "int64"                     then "1_i64"
-                when "float", "float64"          then "1.0"
-                when "decimal"                   then "1.0"
-                when "bool", "boolean"           then "false"
-                when "time", "timestamp"         then "\"2024-01-01T00:00:00Z\""
-                else                                  "\"test_value\""
+                when "string", "text", "uuid"  then "\"test_value\""
+                when "email"                   then "\"test@example.com\""
+                when "integer", "int", "int32" then "1"
+                when "int64"                   then "1_i64"
+                when "float", "float64"        then "1.0"
+                when "decimal"                 then "1.0"
+                when "bool", "boolean"         then "false"
+                when "time", "timestamp"       then "\"2024-01-01T00:00:00Z\""
+                else                                "\"test_value\""
                 end
         "    \"#{field_name}\" => JSON::Any.new(#{value}),"
       end.join("\n")
@@ -511,15 +511,15 @@ SCHEMA
       if valid_data_entries.empty? && !fields.empty?
         valid_data_entries = fields.map do |field_name, field_type|
           value = case field_type
-                  when "string", "text", "uuid"    then "\"test_value\""
-                  when "email"                     then "\"test@example.com\""
-                  when "integer", "int", "int32"   then "1"
-                  when "int64"                     then "1_i64"
-                  when "float", "float64"          then "1.0"
-                  when "decimal"                   then "1.0"
-                  when "bool", "boolean"           then "false"
-                  when "time", "timestamp"         then "\"2024-01-01T00:00:00Z\""
-                  else                                  "\"test_value\""
+                  when "string", "text", "uuid"  then "\"test_value\""
+                  when "email"                   then "\"test@example.com\""
+                  when "integer", "int", "int32" then "1"
+                  when "int64"                   then "1_i64"
+                  when "float", "float64"        then "1.0"
+                  when "decimal"                 then "1.0"
+                  when "bool", "boolean"         then "false"
+                  when "time", "timestamp"       then "\"2024-01-01T00:00:00Z\""
+                  else                                "\"test_value\""
                   end
           "    \"#{field_name}\" => JSON::Any.new(#{value}),"
         end.join("\n")
@@ -1513,10 +1513,10 @@ VIEW
       if ext == "slang"
         form_fields = fields.map do |field_name, field_type|
           input_type = case field_type
-                       when "text"               then "textarea"
-                       when "bool", "boolean"    then "checkbox"
+                       when "text"                                                 then "textarea"
+                       when "bool", "boolean"                                      then "checkbox"
                        when "integer", "int", "int32", "int64", "float", "decimal" then "number"
-                       else "text"
+                       else                                                             "text"
                        end
 
           if input_type == "textarea"

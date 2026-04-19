@@ -1,13 +1,16 @@
 module AmberLSP
   class Analyzer
     getter configuration : Configuration
+    @project_root : String?
 
     def initialize
       @configuration = Configuration.new
+      @project_root = nil
     end
 
     def configure(project_context : ProjectContext) : Nil
       @configuration = Configuration.load(project_context.root_path)
+      @project_root = project_context.root_path
       register_custom_rules
     end
 
@@ -37,10 +40,11 @@ module AmberLSP
     end
 
     def analyze(file_path : String, content : String) : Array(Rules::Diagnostic)
-      return [] of Rules::Diagnostic if @configuration.excluded?(file_path)
+      relative_file_path = project_relative_path(file_path)
+      return [] of Rules::Diagnostic if @configuration.excluded?(relative_file_path)
 
       diagnostics = [] of Rules::Diagnostic
-      rules = Rules::RuleRegistry.rules_for_file(file_path)
+      rules = Rules::RuleRegistry.rules_for_file(relative_file_path)
 
       rules.each do |rule|
         next unless @configuration.rule_enabled?(rule.id)
@@ -64,6 +68,18 @@ module AmberLSP
       end
 
       diagnostics
+    end
+
+    private def project_relative_path(file_path : String) : String
+      project_root = @project_root
+      return file_path unless project_root
+
+      separator = File::SEPARATOR.to_s
+      root_prefix = project_root.ends_with?(separator) ? project_root : "#{project_root}#{separator}"
+
+      return file_path unless file_path.starts_with?(root_prefix)
+
+      file_path[root_prefix.size..]
     end
   end
 end
