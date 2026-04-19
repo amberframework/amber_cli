@@ -23,18 +23,12 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Install Crystal (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        curl -fsSL https://crystal-lang.org/install.sh | sudo bash
-    
-    - name: Install Crystal (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew update
-        brew install crystal
+      uses: actions/checkout@v6
+
+    - name: Install Crystal
+      uses: crystal-lang/install-crystal@v1
+      with:
+        crystal: latest
     
     - name: Cache shards
       uses: actions/cache@v4
@@ -49,6 +43,11 @@ jobs:
     - name: Install dependencies
       run: shards install
     
+    - name: Build LSP binary for integration specs
+      run: |
+        mkdir -p bin
+        crystal build src/amber_lsp.cr --no-debug -o bin/amber-lsp
+
     - name: Run tests
       run: crystal spec
     
@@ -71,7 +70,7 @@ jobs:
         ./amber-lsp --help
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: github.event_name == 'workflow_dispatch'
       with:
         name: amber-cli-${{ matrix.target }}-build

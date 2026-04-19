@@ -14,32 +14,17 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         crystal: [latest]
-        include:
-          - os: ubuntu-latest
-            crystal-install: |
-              curl -fsSL https://crystal-lang.org/install.sh | sudo bash
-          - os: macos-latest
-            crystal-install: |
-              brew install crystal
 
     name: Test on ${{ matrix.os }} with Crystal ${{ matrix.crystal }}
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
-    - name: Install Crystal (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        curl -fsSL https://crystal-lang.org/install.sh | sudo bash
-        crystal version
-
-    - name: Install Crystal (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew install crystal
-        crystal version
-
+    - name: Install Crystal
+      uses: crystal-lang/install-crystal@v1
+      with:
+        crystal: latest
 
 
     - name: Cache shards
@@ -68,6 +53,11 @@ jobs:
 
     - name: Compile LSP
       run: crystal build src/amber_lsp.cr --no-debug -o amber-lsp
+
+    - name: Build LSP binary for integration specs
+      run: |
+        mkdir -p bin
+        crystal build src/amber_lsp.cr --no-debug -o bin/amber-lsp
 
     - name: Run tests
       run: crystal spec
@@ -99,17 +89,12 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
-    - name: Install Crystal (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        curl -fsSL https://crystal-lang.org/install.sh | sudo bash
-
-    - name: Install Crystal (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew install crystal
+    - name: Install Crystal
+      uses: crystal-lang/install-crystal@v1
+      with:
+        crystal: latest
 
     - name: Install dependencies
       run: shards install
@@ -133,11 +118,12 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Install Crystal
-      run: |
-        curl -fsSL https://crystal-lang.org/install.sh | sudo bash
+      uses: crystal-lang/install-crystal@v1
+      with:
+        crystal: latest
 
     - name: Install dependencies
       run: shards install
