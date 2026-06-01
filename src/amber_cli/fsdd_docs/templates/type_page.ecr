@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title><%= HTML.escape(type.full_name) %> — FSDD Docs</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+  <a href="index.html">← Index</a>
+  <span class="badge <%= HTML.escape(type.kind) %>"><%= HTML.escape(type.kind) %></span>
+  <span class="nav-title"><%= HTML.escape(type.full_name) %></span>
+  <% if v = current_version %>
+  <span class="ver"><%= HTML.escape(v) %></span>
+  <% end %>
+</nav>
+<main>
+
+  <%
+    type_key = type.full_name
+    ramp_entry = ramp.ramp_for(type_key)
+    sym = ramp.ramp_symbol(type_key, current_version)
+  %>
+  <% if ramp_entry || current_version %>
+  <div class="ramp">
+    <% if re = ramp_entry %>
+    <span><strong>First appeared:</strong> v<%= HTML.escape(re.first_version) %></span>
+    <% end %>
+    <% if v = current_version %>
+    <span><strong>Current:</strong> v<%= HTML.escape(v) %></span>
+    <% end %>
+    <% unless sym.empty? %>
+    <span class="sym"><%= HTML.escape(sym) %></span>
+    <% end %>
+  </div>
+  <% end %>
+
+  <% if loc = type.primary_location %>
+  <p class="mloc">Source: <%= HTML.escape(loc) %></p>
+  <% end %>
+
+  <% fsdd = type.fsdd %>
+  <% if fsdd.has_fsdd_content? %>
+  <section class="fsdd">
+    <% if p = fsdd.personas %><div class="fsdd-row"><span class="lbl">Personas</span><span><%= HTML.escape(p) %></span></div><% end %>
+    <% if r = fsdd.requires %><div class="fsdd-row"><span class="lbl">Requires</span><span><%= HTML.escape(r) %></span></div><% end %>
+    <% if s = fsdd.since_version %><div class="fsdd-row"><span class="lbl">Since</span><span><%= HTML.escape(s) %></span></div><% end %>
+    <% if r = fsdd.ramp %><div class="fsdd-row"><span class="lbl">Ramp</span><span><%= HTML.escape(r) %></span></div><% end %>
+    <% if u = fsdd.use %><div class="fsdd-row"><span class="lbl">Use</span><code><%= HTML.escape(u) %></code></div><% end %>
+    <% if r = fsdd.result %><div class="fsdd-row"><span class="lbl">Result</span><span><%= HTML.escape(r) %></span></div><% end %>
+    <% if st = fsdd.story %>
+    <div class="story-block"><strong>Refined story:</strong>
+<%= HTML.escape(st) %></div>
+    <% end %>
+  </section>
+  <% end %>
+
+  <% public_methods = type.methods.select { |m| m.visibility == "Public" } %>
+  <% unless public_methods.empty? %>
+  <section>
+    <h2>Methods</h2>
+    <% public_methods.each do |m| %>
+    <%
+      mkey_sep = m.is_class_method ? "." : "#"
+      mkey = "#{type.full_name}#{mkey_sep}#{m.name}"
+      msym = ramp.ramp_symbol(mkey, current_version)
+      mramp = ramp.ramp_for(mkey)
+    %>
+    <div class="method">
+      <div class="msig">
+        <span class="mkind"><%= HTML.escape(m.kind_label) %></span>
+        <code class="mname"><%= HTML.escape(m.signature) %></code>
+        <% unless msym.empty? %><span class="sym"><%= HTML.escape(msym) %></span><% end %>
+      </div>
+      <% if mloc = m.location %>
+      <p class="mloc">Source: <%= HTML.escape(mloc) %></p>
+      <% end %>
+      <% if mre = mramp %>
+      <p class="mloc">First appeared: v<%= HTML.escape(mre.first_version) %></p>
+      <% end %>
+      <% mfsdd = m.fsdd %>
+      <% if mfsdd.has_fsdd_content? %>
+      <div class="fsdd">
+        <% if p = mfsdd.personas %><div class="fsdd-row"><span class="lbl">Personas</span><span><%= HTML.escape(p) %></span></div><% end %>
+        <% if r = mfsdd.requires %><div class="fsdd-row"><span class="lbl">Requires</span><span><%= HTML.escape(r) %></span></div><% end %>
+        <% if s = mfsdd.since_version %><div class="fsdd-row"><span class="lbl">Since</span><span><%= HTML.escape(s) %></span></div><% end %>
+        <% if r = mfsdd.ramp %><div class="fsdd-row"><span class="lbl">Ramp</span><span><%= HTML.escape(r) %></span></div><% end %>
+        <% if u = mfsdd.use %><div class="fsdd-row"><span class="lbl">Use</span><code><%= HTML.escape(u) %></code></div><% end %>
+        <% if r = mfsdd.result %><div class="fsdd-row"><span class="lbl">Result</span><span><%= HTML.escape(r) %></span></div><% end %>
+        <% if st = mfsdd.story %>
+        <div class="story-block"><strong>Refined story:</strong>
+<%= HTML.escape(st) %></div>
+        <% end %>
+      </div>
+      <% end %>
+    </div>
+    <% end %>
+  </section>
+  <% end %>
+
+</main>
+</body>
+</html>

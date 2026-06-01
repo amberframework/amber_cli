@@ -121,11 +121,11 @@ module Sentry
             ok_to_run = true
           else
             log :run, "Building..."
-            time = Time.monotonic
+            time = Time.instant
             build_result = Amber::CLI::Helpers.run(build_command_run)
             exit 1 unless build_result.is_a? Process::Status
             if build_result.success?
-              log :run, "Compiled in #{(Time.monotonic - time)}"
+              log :run, "Compiled in #{(Time.instant - time)}"
               stop_processes("run") if @app_running
               ok_to_run = true
             elsif !@app_running # first run

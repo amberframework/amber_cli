@@ -25,6 +25,7 @@ require "./amber_cli/commands/plugin"
 require "./amber_cli/commands/pipelines"
 require "./amber_cli/commands/generate"
 require "./amber_cli/commands/setup_lsp"
+require "./amber_cli/commands/docs_fsdd"
 
 backend = Log::IOBackend.new
 backend.formatter = Log::Formatter.new do |entry, io|
@@ -75,6 +76,7 @@ module AmberCLI
       plugin (pl)     Generate application plugins
       pipelines       Show application pipelines and plugs
       setup:lsp (lsp) Set up Amber LSP for Claude Code integration
+      docs:fsdd       Generate FSDD static HTML doc site from crystal docs JSON
 
     Options:
       --version, -v   Show version number

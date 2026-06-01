@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FSDD Docs</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+  <span class="nav-title">FSDD Documentation</span>
+  <% if v = current_version %>
+  <span class="ver"><%= HTML.escape(v) %></span>
+  <% end %>
+</nav>
+<main>
+  <h2>Types (<%= types.size %>)</h2>
+  <ul class="type-list">
+  <% types.each do |t| %>
+    <li class="type-item">
+      <a class="type-link" href="<%= HTML.escape(t.slug) %>.html">
+        <span class="badge <%= HTML.escape(t.kind) %>"><%= HTML.escape(t.kind) %></span>
+        <span class="type-name"><%= HTML.escape(t.full_name) %></span>
+      </a>
+      <% if s = t.summary %>
+      <p class="summary"><%= HTML.escape(s) %></p>
+      <% end %>
+      <% if t.fsdd.has_fsdd_content? %>
+      <span class="fsdd-marker">FSDD</span>
+      <% end %>
+    </li>
+  <% end %>
+  </ul>
+</main>
+</body>
+</html>
