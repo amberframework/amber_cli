@@ -78,7 +78,10 @@ module AmberCLI::Commands
 
       if code.empty? || File.exists?(code)
         prepare_file
-        system("#{editor} #{filename}")
+        editor_parts = Process.parse_arguments(editor)
+        editor_cmd = editor_parts.first
+        editor_args = editor_parts[1..] + [filename]
+        Process.run(editor_cmd, editor_args, input: Process::Redirect::Inherit, output: Process::Redirect::Inherit, error: Process::Redirect::Inherit)
       else
         File.write(filename, wrap(code))
       end

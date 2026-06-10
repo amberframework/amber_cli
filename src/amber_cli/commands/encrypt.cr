@@ -88,7 +88,10 @@ module AmberCLI::Commands
 
         unless no_edit
           info "Opening #{unencrypted_file} in #{editor}..."
-          system("#{editor} #{unencrypted_file}")
+          editor_parts = Process.parse_arguments(editor)
+          editor_cmd = editor_parts.first
+          editor_args = editor_parts[1..] + [unencrypted_file]
+          Process.run(editor_cmd, editor_args, input: Process::Redirect::Inherit, output: Process::Redirect::Inherit, error: Process::Redirect::Inherit)
         end
       end
 
