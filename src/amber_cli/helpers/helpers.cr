@@ -77,11 +77,13 @@ module Amber::CLI::Helpers
     File.write(app_file_path, application.gsub(injection_marker, replacement)) if deps.size > 0
   end
 
-  def self.run(command, wait = true, shell = true)
+  def self.run(command : String, wait = true)
+    parsed_args = Process.parse_arguments(command)
+    cmd = parsed_args.shift? || ""
     if wait
-      Process.run(command, shell: shell, output: Process::Redirect::Inherit, error: Process::Redirect::Inherit)
+      Process.run(cmd, args: parsed_args, shell: false, output: Process::Redirect::Inherit, error: Process::Redirect::Inherit)
     else
-      Process.new(command, shell: shell, output: Process::Redirect::Inherit, error: Process::Redirect::Inherit)
+      Process.new(cmd, args: parsed_args, shell: false, output: Process::Redirect::Inherit, error: Process::Redirect::Inherit)
     end
   rescue ex : IO::Error
     # typically means we could not find the executable

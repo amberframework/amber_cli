@@ -171,7 +171,7 @@ module Sentry
     end
 
     private def start_process(run_command_run)
-      process = Amber::CLI::Helpers.run(run_command_run, wait: false, shell: false)
+      process = Amber::CLI::Helpers.run(run_command_run, wait: false)
       if process.is_a? Process
         @processes["run"] ||= Array(Process).new
         @processes["run"] << process
@@ -201,7 +201,7 @@ module Sentry
         end
 
         log task, "Starting..."
-        process = Amber::CLI::Helpers.run(run_command, wait: false, shell: true)
+        process = Amber::CLI::Helpers.run(run_command, wait: false)
         if process.is_a? Process
           @processes[task] ||= Array(Process).new
           @processes[task] << process
