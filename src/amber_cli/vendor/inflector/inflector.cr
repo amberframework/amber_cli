@@ -25,7 +25,6 @@ module AmberCLI::Vendor::Inflector
   #   pluralize("sheep")            # => "sheep"
   #   pluralize("foot")             # => "feet"  # Fixed!
   #   pluralize("child")            # => "children"
-  @[TargetFeature("+avx2")]
   def pluralize(word : String) : String
     # Try local rules first
     local_result = apply_inflections(word, @@plurals)
@@ -48,7 +47,6 @@ module AmberCLI::Vendor::Inflector
   #   singularize('sheep')          # => "sheep"
   #   singularize('feet')           # => "foot"  # Fixed!
   #   singularize('children')       # => "child"
-  @[TargetFeature("+avx2")]
   def singularize(word : String) : String
     # Try local rules first
     local_result = apply_inflections(word, @@singulars)
@@ -68,7 +66,6 @@ module AmberCLI::Vendor::Inflector
   #
   #   classify("egg_and_hams") # => "EggAndHam"
   #   classify("posts")        # => "Post"
-  @[TargetFeature("+avx2")]
   def classify(table_name : String) : String
     # Use Crystal's built-in camelcase method instead of custom implementation
     singularize(table_name.sub(/.*\./, "")).camelcase
@@ -82,7 +79,6 @@ module AmberCLI::Vendor::Inflector
   #
   #   foreign_key("Message")        # => "message_id"
   #   foreign_key("Admin::Post")    # => "post_id"
-  @[TargetFeature("+avx2")]
   def foreign_key(class_name : String, separate_class_name_and_id_with_underscore = true) : String
     # Use Crystal's built-in underscore method and simple demodulize
     demodulized = demodulize(class_name)
@@ -97,7 +93,6 @@ module AmberCLI::Vendor::Inflector
   #
   #   demodulize("ActiveRecord::CoreExtensions::String::Inflections") # => "Inflections"
   #   demodulize("Inflections")                                       # => "Inflections"
-  @[TargetFeature("+avx2")]
   private def demodulize(path : String) : String
     if i = path.rindex("::")
       path[(i + 2)..-1]
@@ -107,7 +102,6 @@ module AmberCLI::Vendor::Inflector
   end
 
   # Apply inflection rules for pluralize and singularize
-  @[TargetFeature("+avx2")]
   private def apply_inflections(word : String, rules : Array({Regex, String})) : String
     result = word.to_s
 
