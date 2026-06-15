@@ -1,5 +1,6 @@
 Amber::Server.configure do
   pipeline :web do
+    plug Amber::Pipe::SecureHeaders.new
     plug Amber::Pipe::Error.new
     plug Amber::Pipe::Logger.new
     plug Amber::Pipe::Session.new
