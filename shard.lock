@@ -1,0 +1,42 @@
+version: 2.0
+shards:
+  ameba:
+    git: https://github.com/crystal-ameba/ameba.git
+    version: 1.7.0-dev+git.commit.cdd58b34b0d8a9c785d67183a7a8f07541549e55
+
+  asset_pipeline:
+    git: https://github.com/amberframework/asset_pipeline.git
+    version: 0.36.0+git.commit.ded6af312d667b93db29e678ac4b8ff8dc26774e
+
+  backtracer:
+    git: https://github.com/sija/backtracer.cr.git
+    version: 1.2.4
+
+  compiled_license:
+    git: https://github.com/elorest/compiled_license.git
+    version: 1.2.2
+
+  db:
+    git: https://github.com/crystal-lang/crystal-db.git
+    version: 0.13.1
+
+  exception_page:
+    git: https://github.com/crystal-loot/exception_page.git
+    version: 0.2.2
+
+  micrate:
+    git: https://github.com/amberframework/micrate.git
+    version: 0.15.1+git.commit.647fac0490a522956fef305c720e8ebf1422a87d
+
+  mysql:
+    git: https://github.com/crystal-lang/crystal-mysql.git
+    version: 0.16.0
+
+  pg:
+    git: https://github.com/will/crystal-pg.git
+    version: 0.29.0
+
+  sqlite3:
+    git: https://github.com/crystal-lang/crystal-sqlite3.git
+    version: 0.21.0
+

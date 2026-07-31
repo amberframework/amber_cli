@@ -50,7 +50,7 @@ describe "End-to-End Integration Tests" do
           # Create model template
           model_template = <<-CRYSTAL
           require "./application_record"
-          
+
           module {{namespace}}
             class {{class_name}} < {{base_class}}
               # {{class_name}} model
@@ -68,7 +68,7 @@ describe "End-to-End Integration Tests" do
           # Create spec template
           spec_template = <<-CRYSTAL
           require "../spec_helper"
-          
+
           describe {{namespace}}::{{class_name}} do
             describe "{{spec_name}}" do
               it "should be valid" do
@@ -171,7 +171,7 @@ describe "End-to-End Integration Tests" do
           service_template = <<-CRYSTAL
           require "../interfaces/i_{{snake_case}}_service"
           require "../repositories/{{snake_case}}_repository"
-          
+
           module {{company_namespace}}::Services
             # {{service_name}}Service
             # Maintained by: {{team}}

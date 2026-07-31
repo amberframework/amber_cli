@@ -25,10 +25,15 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v6
 
-    - name: Install Crystal
+    - name: Install Crystal (Linux)
+      if: matrix.target == 'linux-x86_64'
       uses: crystal-lang/install-crystal@v1
       with:
         crystal: latest
+
+    - name: Install Crystal and OpenSSL (macOS)
+      if: matrix.target == 'darwin-arm64'
+      run: brew install crystal openssl@3
     
     - name: Cache shards
       uses: actions/cache@v4
@@ -69,6 +74,16 @@ jobs:
         ./amber
         ./amber new --help
         ./amber-lsp --help
+
+    - name: Reject retired OpenSSL linkage (macOS)
+      if: matrix.target == 'darwin-arm64'
+      run: |
+        otool -L amber
+        otool -L amber-lsp
+        ! otool -L amber amber-lsp | grep -F 'openssl@1.1'
+
+    - name: Smoke test generated Amber V2 web app
+      run: scripts/smoke_generated_web.sh ./amber
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v7

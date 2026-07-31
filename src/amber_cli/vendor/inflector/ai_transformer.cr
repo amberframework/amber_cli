@@ -97,42 +97,42 @@ module AmberCLI::Vendor::Inflector::AITransformer
       <<-PROMPT
       Transform this English word to its plural form. 
       Return only the plural form, nothing else.
-      
+
       Word: #{word}
-      
+
       Examples:
       - mouse → mice
       - child → children  
       - person → people
       - foot → feet
       - datum → data
-      
+
       Plural:
       PROMPT
     when "singular"
       <<-PROMPT
       Transform this English word to its singular form.
       Return only the singular form, nothing else.
-      
+
       Word: #{word}
-      
+
       Examples:
       - mice → mouse
       - children → child
       - people → person
       - feet → foot
       - data → datum
-      
+
       Singular:
       PROMPT
     else
       <<-PROMPT
       Transform this English word using the transformation: #{transformation}
       Return only the transformed word, nothing else.
-      
+
       Word: #{word}
       Transformation: #{transformation}
-      
+
       Result:
       PROMPT
     end

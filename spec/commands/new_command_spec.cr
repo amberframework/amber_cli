@@ -45,9 +45,9 @@ describe AmberCLI::Commands::NewCommand do
       command.app_type.should eq("web")
     end
 
-    it "preserves database and template flags alongside --type" do
+    it "preserves database and ECR flags alongside --type" do
       command = AmberCLI::Commands::NewCommand.new("new")
-      args = ["my_app", "-d", "sqlite", "-t", "slang", "--type=web"]
+      args = ["my_app", "-d", "sqlite", "-t", "ecr", "--type=web"]
 
       command.option_parser.unknown_args do |unknown_args, _|
         command.remaining_arguments.concat(unknown_args)
@@ -55,7 +55,7 @@ describe AmberCLI::Commands::NewCommand do
       command.option_parser.parse(args)
 
       command.database.should eq("sqlite")
-      command.template.should eq("slang")
+      command.template.should eq("ecr")
       command.app_type.should eq("web")
     end
 
@@ -70,6 +70,39 @@ describe AmberCLI::Commands::NewCommand do
 
       command.app_type.should eq("native")
       command.no_deps.should be_true
+    end
+  end
+
+  describe "#execute" do
+    it "creates the supported web template at an absolute path" do
+      SpecHelper.within_temp_directory do |temp_dir|
+        destination = File.join(temp_dir, "outside", "beta_smoke")
+        command = AmberCLI::Commands::NewCommand.new("new")
+
+        command.parse_and_execute([destination, "--type=web", "--no-deps", "-d", "sqlite"])
+
+        File.exists?(File.join(destination, "src/beta_smoke.cr")).should be_true
+        Dir.exists?(File.join(destination, "bin")).should be_true
+
+        shard = File.read(File.join(destination, "shard.yml"))
+        shard.should contain("github: amberframework/amber")
+        shard.should contain("version: 2.0.0-beta.2")
+        shard.should_not contain("crimson-knight")
+        shard.should_not contain("grant:")
+        shard.should_not contain("slang")
+
+        config = YAML.parse(File.read(File.join(destination, "config/environments/development.yml")))
+        config["server"]["port"].as_i.should eq(3000)
+        config["database"]["url"].as_s.should contain("sqlite3:")
+
+        routes = File.read(File.join(destination, "config/routes.cr"))
+        routes.should contain("pipeline :static")
+        routes.should contain("Amber::Pipe::Static.new")
+        routes.should contain(%(get "/*", Amber::Controller::Static, :index))
+
+        File.exists?(File.join(destination, "src/views/home/index.ecr")).should be_true
+        File.exists?(File.join(destination, "src/views/home/index.slang")).should be_false
+      end
     end
   end
 end

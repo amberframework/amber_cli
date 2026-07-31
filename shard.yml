@@ -1,5 +1,5 @@
 name: amber_cli
-version: 2.0.1
+version: 2.0.2
 
 authors:
   - crimson-knight <crimsonknightstudios@gmail.com>
@@ -50,4 +50,5 @@ dependencies:
 development_dependencies:
   ameba:
     github: crystal-ameba/ameba
-    version: ~> 1.6.4
+    # Includes upstream Crystal 1.21+ compatibility pending Ameba 1.7.0.
+    commit: cdd58b34b0d8a9c785d67183a7a8f07541549e55

@@ -6,12 +6,12 @@ require "../generators/native_app"
 #
 # ## Usage
 # ```
-# amber new [app_name] -d [pg | mysql | sqlite] -t [ecr | slang] --type [web | native] --no-deps
+# amber new [app_name] -d [pg | mysql | sqlite] -t ecr --type [web | native] --no-deps
 # ```
 #
 # ## Options
 # - `-d, --database` - Database type (pg, mysql, sqlite)
-# - `-t, --template` - Template language (ecr, slang)
+# - `-t, --template` - Template language (ECR is the only V2 engine)
 # - `--type` - Application type: web (default) or native (cross-platform desktop/mobile)
 # - `--no-deps` - Skip dependency installation
 #
@@ -20,8 +20,8 @@ require "../generators/native_app"
 # # Create a new web app with PostgreSQL and ECR (defaults)
 # amber new my_blog
 #
-# # Create app with MySQL and Slang templates
-# amber new my_blog -d mysql -t slang
+# # Record MySQL as the database for future persistence tooling
+# amber new my_blog -d mysql
 #
 # # Create a native cross-platform app (macOS, iOS, Android)
 # amber new my_native_app --type native
@@ -32,6 +32,8 @@ require "../generators/native_app"
 module AmberCLI::Commands
   class NewCommand < AmberCLI::Core::BaseCommand
     VALID_APP_TYPES = %w[web native]
+    VALID_DATABASES = %w[pg mysql sqlite]
+    VALID_TEMPLATES = %w[ecr]
 
     getter database : String = "pg"
     getter template : String = "ecr"
@@ -46,11 +48,19 @@ module AmberCLI::Commands
 
     def setup_command_options
       option_parser.on("-d DATABASE", "--database=DATABASE", "Select the database engine (pg, mysql, sqlite)") do |db|
+        unless VALID_DATABASES.includes?(db)
+          error "Invalid database '#{db}'. Valid databases: #{VALID_DATABASES.join(", ")}"
+          exit(1)
+        end
         @parsed_options["database"] = db
         @database = db
       end
 
-      option_parser.on("-t TEMPLATE", "--template=TEMPLATE", "Select template engine (ecr, slang)") do |tmpl|
+      option_parser.on("-t TEMPLATE", "--template=TEMPLATE", "Template engine (ecr; the only V2 engine)") do |tmpl|
+        unless VALID_TEMPLATES.includes?(tmpl)
+          error "Invalid template '#{tmpl}'. Amber V2 supports ECR only."
+          exit(1)
+        end
         @parsed_options["template"] = tmpl
         @template = tmpl
       end
@@ -79,13 +89,13 @@ module AmberCLI::Commands
       option_parser.separator ""
       option_parser.separator "App types:"
       option_parser.separator "  web     Web application with HTTP server, routes, views (default)"
-      option_parser.separator "  native  Cross-platform native app (macOS, iOS, Android)"
+      option_parser.separator "  native  Preview: cross-platform native app (macOS, iOS, Android)"
       option_parser.separator "          Uses Asset Pipeline UI, FSDD process managers,"
       option_parser.separator "          crystal-audio, and platform build scripts."
       option_parser.separator ""
       option_parser.separator "Examples:"
       option_parser.separator "  amber new my_app"
-      option_parser.separator "  amber new my_app -d mysql -t slang"
+      option_parser.separator "  amber new my_app -d mysql -t ecr"
       option_parser.separator "  amber new my_native_app --type native"
       option_parser.separator "  amber new . -d sqlite"
     end
@@ -105,7 +115,7 @@ module AmberCLI::Commands
         full_path_name = Dir.current
       else
         project_name = File.basename(name)
-        full_path_name = File.join(Dir.current, name)
+        full_path_name = File.expand_path(name, Dir.current)
       end
 
       if full_path_name =~ /\s+/
@@ -124,6 +134,7 @@ module AmberCLI::Commands
 
     private def execute_native(full_path_name : String, project_name : String)
       info "Creating new Amber V2 native application: #{project_name}"
+      warning "Native application generation is a preview surface in this beta."
       info "Type: native (cross-platform: macOS, iOS, Android)"
       info "Location: #{full_path_name}"
 
@@ -160,6 +171,8 @@ module AmberCLI::Commands
 
       create_project_structure(full_path_name, project_name)
 
+      install_dependencies(full_path_name) unless no_deps
+
       # Encrypt production.yml by default
       if File.exists?(File.join(full_path_name, "config", "environments", "production.yml"))
         cwd = Dir.current
@@ -173,10 +186,33 @@ module AmberCLI::Commands
       puts ""
       info "To get started:"
       info "  cd #{name}" unless name == "."
-      info "  shards install" unless no_deps
-      info "  amber database create"
-      info "  amber database migrate"
+      info "  shards install" if no_deps
+      info "  crystal spec"
       info "  amber watch"
+      puts ""
+      info "Persistence, auth, API-resource, and native generators are preview surfaces."
+      info "The generated web app intentionally has no ORM or database driver."
+    end
+
+    private def install_dependencies(path : String)
+      info "Installing dependencies..."
+      status = Process.run(
+        "shards",
+        ["install"],
+        chdir: path,
+        input: Process::Redirect::Inherit,
+        output: Process::Redirect::Inherit,
+        error: Process::Redirect::Inherit
+      )
+      return if status.success?
+
+      warning "Dependency installation failed; the project files were kept."
+      warning "Run 'shards install' in #{path} after resolving the error."
+      exit!(error: true)
+    rescue ex : File::NotFoundError
+      warning "The 'shards' executable was not found; the project files were kept."
+      warning "Install Crystal and run 'shards install' in #{path}."
+      exit!(error: true)
     end
 
     private def create_project_structure(path : String, name : String)
@@ -186,8 +222,8 @@ module AmberCLI::Commands
         "config", "config/environments", "config/initializers",
         # Database
         "db", "db/migrations",
-        # Public assets
-        "public", "public/css", "public/js", "public/img",
+        # Build output and public assets
+        "bin", "public", "public/css", "public/js", "public/img",
         # Spec directories
         "spec", "spec/controllers", "spec/models", "spec/schemas",
         "spec/jobs", "spec/mailers", "spec/channels", "spec/requests",
@@ -230,7 +266,7 @@ version: 0.1.0
 authors:
   - Your Name <your.email@example.com>
 
-crystal: ">= 1.10.0"
+crystal: ">= 1.20.0, < 2.0"
 
 license: UNLICENSED
 
@@ -239,53 +275,27 @@ targets:
     main: src/#{name}.cr
 
 dependencies:
-  # Amber Framework V2
   amber:
-    github: crimson-knight/amber
-    branch: master
-
-  # Grant ORM (ActiveRecord-style, replaces Granite in V2)
-  grant:
-    github: crimson-knight/grant
-    branch: main
-
-  # Asset Pipeline (native ESM, no Webpack/npm required)
-  asset_pipeline:
-    github: amberframework/asset_pipeline
-
-  # File uploads (optional)
-  gemma:
-    github: crimson-knight/gemma
-
-  # Database adapters (all required by Grant at compile time)
-  pg:
-    github: will/crystal-pg
-  mysql:
-    github: crystal-lang/crystal-mysql
-  sqlite3:
-    github: crystal-lang/crystal-sqlite3
-
-development_dependencies:
-  ameba:
-    github: crystal-ameba/ameba
-    version: ~> 1.6.4
+    github: amberframework/amber
+    version: 2.0.0-beta.2
 SHARD
 
-      File.write(File.join(path, "shard.yml"), shard_content)
+      write_text(File.join(path, "shard.yml"), shard_content)
     end
 
     private def create_amber_yml(path : String, name : String)
       amber_content = <<-AMBER
 app: #{name}
+type: web
 author: Your Name
 email: your.email@example.com
 database: #{database}
 language: crystal
-model: grant
-template: #{template}
+model: none
+template: ecr
 AMBER
 
-      File.write(File.join(path, ".amber.yml"), amber_content)
+      write_text(File.join(path, ".amber.yml"), amber_content)
     end
 
     private def create_gitignore(path : String)
@@ -308,9 +318,9 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Environment files (encrypted versions are safe to commit)
-/config/environments/*.yml
-!/config/environments/*.yml.enc
+# Local secrets
+.env
+/config/environments/*.local.yml
 
 # Dependencies
 /node_modules/
@@ -319,7 +329,7 @@ Thumbs.db
 /tmp/
 GITIGNORE
 
-      File.write(File.join(path, ".gitignore"), gitignore_content)
+      write_text(File.join(path, ".gitignore"), gitignore_content)
     end
 
     private def create_main_file(path : String, name : String)
@@ -335,21 +345,15 @@ require "./channels/**"
 Amber::Server.start
 MAIN
 
-      File.write(File.join(path, "src/#{name}.cr"), main_content)
+      write_text(File.join(path, "src/#{name}.cr"), main_content)
     end
 
     private def create_config_files(path : String, name : String)
       app_config = <<-CONFIG
 require "amber"
-
-Amber::Server.configure do |settings|
-  settings.name = "#{name}"
-  settings.port = ENV["PORT"]?.try(&.to_i) || 3000
-  settings.secret_key_base = ENV["SECRET_KEY_BASE"]? || "#{Random::Secure.hex(64)}"
-end
 CONFIG
 
-      File.write(File.join(path, "config/application.cr"), app_config)
+      write_text(File.join(path, "config/application.cr"), app_config)
     end
 
     private def create_application_controller(path : String)
@@ -362,7 +366,7 @@ class ApplicationController < Amber::Controller::Base
 end
 CONTROLLER
 
-      File.write(File.join(path, "src/controllers/application_controller.cr"), controller_content)
+      write_text(File.join(path, "src/controllers/application_controller.cr"), controller_content)
     end
 
     private def create_routes_file(path : String, name : String)
@@ -376,6 +380,11 @@ Amber::Server.configure do
     plug Amber::Pipe::CSRF.new
   end
 
+  pipeline :static do
+    plug Amber::Pipe::Error.new
+    plug Amber::Pipe::Static.new("./public")
+  end
+
   pipeline :api do
     plug Amber::Pipe::Error.new
     plug Amber::Pipe::Logger.new
@@ -385,51 +394,61 @@ Amber::Server.configure do
     get "/", HomeController, :index
   end
 
+  routes :static do
+    get "/*", Amber::Controller::Static, :index
+  end
+
   # routes :api do
   # end
 end
 ROUTES
 
-      File.write(File.join(path, "config/routes.cr"), routes_content)
+      write_text(File.join(path, "config/routes.cr"), routes_content)
     end
 
     private def create_environment_files(path : String, name : String)
-      dev_config = <<-YML
-database_url: postgres://localhost:5432/#{name}_development
-YML
+      database_urls = case database
+                      when "mysql"
+                        {"mysql://localhost:3306/#{name}_development", "mysql://localhost:3306/#{name}_test"}
+                      when "sqlite"
+                        {"sqlite3:./db/#{name}_development.db", "sqlite3:./db/#{name}_test.db"}
+                      else
+                        {"postgres://localhost:5432/#{name}_development", "postgres://localhost:5432/#{name}_test"}
+                      end
 
-      test_config = <<-YML
-database_url: postgres://localhost:5432/#{name}_test
-YML
+      dev_config = environment_config(name, database_urls[0], "debug")
+      test_config = environment_config(name, database_urls[1], "warn")
+      prod_config = environment_config(name, "", "info", host: "0.0.0.0", secret: "")
 
-      prod_config = <<-YML
-database_url: <%= ENV["DATABASE_URL"] %>
-YML
+      write_text(File.join(path, "config/environments/development.yml"), dev_config)
+      write_text(File.join(path, "config/environments/test.yml"), test_config)
+      write_text(File.join(path, "config/environments/production.yml"), prod_config)
+    end
 
-      # Adjust database URLs based on selected database
-      case database
-      when "mysql"
-        dev_config = <<-YML
-database_url: mysql://localhost:3306/#{name}_development
-YML
-        test_config = <<-YML
-database_url: mysql://localhost:3306/#{name}_test
-YML
-      when "sqlite"
-        dev_config = <<-YML
-database_url: sqlite3:./db/#{name}_development.db
-YML
-        test_config = <<-YML
-database_url: sqlite3:./db/#{name}_test.db
-YML
-        prod_config = <<-YML
-database_url: sqlite3:./db/#{name}_production.db
-YML
-      end
+    private def environment_config(name : String, database_url : String, severity : String,
+                                   host : String = "127.0.0.1",
+                                   secret : String = Random::Secure.hex(32)) : String
+      <<-YML
+name: #{name}
 
-      File.write(File.join(path, "config/environments/development.yml"), dev_config)
-      File.write(File.join(path, "config/environments/test.yml"), test_config)
-      File.write(File.join(path, "config/environments/production.yml"), prod_config)
+server:
+  host: #{host}
+  port: 3000
+  secret_key_base: "#{secret}"
+
+database:
+  url: "#{database_url}"
+
+session:
+  key: "#{name}.session"
+  store: "signed_cookie"
+  adapter: "memory"
+  expires: 0
+
+logging:
+  severity: "#{severity}"
+  colorize: true
+YML
     end
 
     private def create_home_controller(path : String, name : String)
@@ -441,45 +460,11 @@ class HomeController < ApplicationController
 end
 CONTROLLER
 
-      File.write(File.join(path, "src/controllers/home_controller.cr"), home_controller)
+      write_text(File.join(path, "src/controllers/home_controller.cr"), home_controller)
     end
 
     private def create_views(path : String, name : String)
-      if template == "slang"
-        layout_content = <<-LAYOUT
-doctype html
-html
-  head
-    meta charset="utf-8"
-    meta name="viewport" content="width=device-width, initial-scale=1"
-    title #{name}
-    link rel="stylesheet" href="/css/app.css"
-  body
-    == content
-    script src="/js/app.js"
-LAYOUT
-        File.write(File.join(path, "src/views/layouts/application.slang"), layout_content)
-
-        index_content = <<-VIEW
-.welcome
-  h1 = "Welcome to \#{Amber.settings.name}!"
-  p Your Amber V2 application is running successfully.
-
-  h2 Getting Started
-  ul
-    li
-      | Edit this page:
-      code src/views/home/index.slang
-    li
-      | Add routes:
-      code config/routes.cr
-    li
-      | Generate a resource:
-      code amber generate scaffold Post title:string body:text
-VIEW
-        File.write(File.join(path, "src/views/home/index.slang"), index_content)
-      else
-        layout_content = <<-LAYOUT
+      layout_content = <<-LAYOUT
 <!DOCTYPE html>
 <html>
 <head>
@@ -494,9 +479,9 @@ VIEW
 </body>
 </html>
 LAYOUT
-        File.write(File.join(path, "src/views/layouts/application.ecr"), layout_content)
+      write_text(File.join(path, "src/views/layouts/application.ecr"), layout_content)
 
-        index_content = <<-VIEW
+      index_content = <<-VIEW
 <div class="welcome">
   <h1>Welcome to <%= Amber.settings.name %>!</h1>
   <p>Your Amber V2 application is running successfully.</p>
@@ -505,20 +490,23 @@ LAYOUT
   <ul>
     <li>Edit this page: <code>src/views/home/index.ecr</code></li>
     <li>Add routes: <code>config/routes.cr</code></li>
-    <li>Generate a resource: <code>amber generate scaffold Post title:string body:text</code></li>
+    <li>Add a controller: <code>amber generate controller Posts</code></li>
   </ul>
 </div>
 VIEW
-        File.write(File.join(path, "src/views/home/index.ecr"), index_content)
-      end
+      write_text(File.join(path, "src/views/home/index.ecr"), index_content)
     end
 
     private def create_spec_helper(path : String, name : String)
       spec_helper = <<-SPEC
 require "spec"
-require "../config/application"
-require "../config/routes"
-require "../src/**"
+require "../config/*"
+require "../src/controllers/**"
+require "../src/models/**"
+require "../src/schemas/**"
+require "../src/jobs/**"
+require "../src/mailers/**"
+require "../src/channels/**"
 
 # Amber Testing Framework
 require "amber/testing/testing"
@@ -528,7 +516,7 @@ include Amber::Testing::RequestHelpers
 include Amber::Testing::Assertions
 SPEC
 
-      File.write(File.join(path, "spec/spec_helper.cr"), spec_helper)
+      write_text(File.join(path, "spec/spec_helper.cr"), spec_helper)
     end
 
     private def create_home_controller_spec(path : String)
@@ -536,9 +524,6 @@ SPEC
 require "../spec_helper"
 
 describe HomeController do
-  include Amber::Testing::RequestHelpers
-  include Amber::Testing::Assertions
-
   describe "GET /" do
     it "responds successfully" do
       response = get("/")
@@ -548,7 +533,7 @@ describe HomeController do
 end
 SPEC
 
-      File.write(File.join(path, "spec/controllers/home_controller_spec.cr"), spec_content)
+      write_text(File.join(path, "spec/controllers/home_controller_spec.cr"), spec_content)
     end
 
     private def create_seeds_file(path : String)
@@ -570,7 +555,7 @@ puts "Seeding database..."
 puts "Done!"
 SEEDS
 
-      File.write(File.join(path, "db/seeds.cr"), seeds_content)
+      write_text(File.join(path, "db/seeds.cr"), seeds_content)
     end
 
     private def create_keep_files(path : String)
@@ -682,7 +667,7 @@ th {
 }
 CSS
 
-      File.write(File.join(path, "public/css/app.css"), css_content)
+      write_text(File.join(path, "public/css/app.css"), css_content)
 
       # JavaScript
       js_content = <<-JS
@@ -690,7 +675,7 @@ CSS
 console.log("Amber V2 application loaded");
 JS
 
-      File.write(File.join(path, "public/js/app.js"), js_content)
+      write_text(File.join(path, "public/js/app.js"), js_content)
 
       # robots.txt
       robots_content = <<-ROBOTS
@@ -698,13 +683,17 @@ User-agent: *
 Disallow:
 ROBOTS
 
-      File.write(File.join(path, "public/robots.txt"), robots_content)
+      write_text(File.join(path, "public/robots.txt"), robots_content)
 
       # Placeholder favicon
       File.write(File.join(path, "public/favicon.ico"), "")
 
       # .keep for img
       File.write(File.join(path, "public/img/.keep"), "")
+    end
+
+    private def write_text(path : String, content : String)
+      File.write(path, content.ends_with?("\n") ? content : "#{content}\n")
     end
   end
 end

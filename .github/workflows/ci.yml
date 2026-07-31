@@ -40,6 +40,9 @@ jobs:
     - name: Install dependencies
       run: shards install
 
+    - name: Check Amber V2 beta contract
+      run: scripts/check_beta_contract.sh
+
     - name: Check code formatting
       run: crystal tool format --check src spec
 
@@ -94,6 +97,16 @@ jobs:
       uses: crystal-lang/install-crystal@v1
       with:
         crystal: latest
+
+    - name: Restore tested shard cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/shards
+          ./lib
+        key: ${{ runner.os }}-shards-${{ hashFiles('shard.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-shards-
 
     - name: Install dependencies
       run: shards install

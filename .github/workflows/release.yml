@@ -35,10 +35,25 @@ jobs:
       with:
         ref: ${{ github.event.release.tag_name || github.event.inputs.ref }}
 
-    - name: Install Crystal
+    - name: Install Crystal (Linux)
+      if: matrix.target == 'linux-x86_64'
       uses: crystal-lang/install-crystal@v1
       with:
         crystal: latest
+
+    - name: Install Crystal and OpenSSL (macOS)
+      if: matrix.target == 'darwin-arm64'
+      run: brew install crystal openssl@3
+
+    - name: Verify release versions agree
+      run: |
+        shard_version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
+        cli_version="$(sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' src/amber_cli.cr | head -1)"
+        test "$shard_version" = "$cli_version"
+        requested_ref="${{ github.event.release.tag_name || github.event.inputs.ref }}"
+        if [[ "$requested_ref" == v* ]]; then
+          test "v$shard_version" = "$requested_ref"
+        fi
     
     - name: Install dependencies
       run: |
@@ -66,6 +81,16 @@ jobs:
         ./amber --version
         file amber-lsp
         test -x amber-lsp
+
+    - name: Reject retired OpenSSL linkage (macOS)
+      if: matrix.target == 'darwin-arm64'
+      run: |
+        otool -L amber
+        otool -L amber-lsp
+        ! otool -L amber amber-lsp | grep -F 'openssl@1.1'
+
+    - name: Smoke test generated Amber V2 web app
+      run: scripts/smoke_generated_web.sh ./amber
 
     - name: Create archive
       run: |
