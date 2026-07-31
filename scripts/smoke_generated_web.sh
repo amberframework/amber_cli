@@ -28,7 +28,7 @@ trap cleanup EXIT
 "$cli_path" new "$app_path" --type web --no-deps
 
 grep -F "github: amberframework/amber" "$app_path/shard.yml"
-grep -F "version: 2.0.0-beta.1" "$app_path/shard.yml"
+grep -F "version: 2.0.0-beta.2" "$app_path/shard.yml"
 grep -F "template: ecr" "$app_path/.amber.yml"
 if grep -Eiq 'crimson-knight|grant:|gemma:|slang' "$app_path/shard.yml" "$app_path/.amber.yml"; then
   echo "generated app contains an unsupported beta dependency or template" >&2

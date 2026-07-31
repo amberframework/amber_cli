@@ -4,7 +4,7 @@
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://amberframework.github.io/amber_cli/)
 
 Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.2`
-creates the supported Amber `2.0.0-beta.1` ECR web application and includes
+creates the supported Amber `2.0.0-beta.2` ECR web application and includes
 development, generator, database, and LSP tooling.
 
 Amber V2 is a beta. The release-gated path is a web application on Apple
@@ -61,7 +61,7 @@ workflow needs to run `shards install` later. Open <http://127.0.0.1:3000> and
 
 The web template is deliberately small:
 
-- Amber from `amberframework/amber`, pinned to `2.0.0-beta.1`
+- Amber from `amberframework/amber`, pinned to `2.0.0-beta.2`
 - ECR views (Slang and Kilt are not supported in Amber V2)
 - typed development, test, and production YAML
 - homepage, controller spec, and static CSS/JavaScript
@@ -114,7 +114,7 @@ The release archive includes `amber-lsp`. From an Amber project:
 amber setup:lsp
 ```
 
-See the [LSP setup guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.1/docs/guides/lsp-setup.md).
+See the [LSP setup guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.2/docs/guides/lsp-setup.md).
 
 ## Contributing
 

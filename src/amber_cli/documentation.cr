@@ -89,7 +89,7 @@ module AmberCLI::Documentation
   # - **.amber.yml** - Project configuration
   # - **.gitignore** - Git ignore rules
   #
-  # The web template pins Amber `2.0.0-beta.1`, uses ECR, and intentionally
+  # The web template pins Amber `2.0.0-beta.2`, uses ECR, and intentionally
   # does not add an ORM or database driver. Model, scaffold, API-resource,
   # authentication, and native generators are preview surfaces during the beta.
   class NewCommand

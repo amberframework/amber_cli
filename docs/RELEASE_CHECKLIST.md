@@ -6,9 +6,9 @@ Homebrew formula pins CLI archives and checksums.
 ## 1. Framework prerelease
 
 1. Confirm `shard.yml`, `src/amber/version.cr`, and the changelog all say
-   `2.0.0-beta.1`.
+   `2.0.0-beta.2`.
 2. Run framework specs and formatting on macOS and Linux.
-3. Tag the reviewed `v2-dev` commit as `v2.0.0-beta.1`.
+3. Tag the reviewed `v2-dev` commit as `v2.0.0-beta.2`.
 4. Publish it as a GitHub prerelease with migration and support-matrix links.
 
 ## 2. CLI release

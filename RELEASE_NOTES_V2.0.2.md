@@ -1,7 +1,7 @@
 # Amber CLI 2.0.2
 
 Amber CLI 2.0.2 is the supported standalone CLI for Amber
-`2.0.0-beta.1`.
+`2.0.0-beta.2`.
 
 ## Install
 
@@ -17,7 +17,7 @@ installing `amber` and `amber-lsp`.
 
 ## What changed
 
-- Web apps now pin `amberframework/amber` at `2.0.0-beta.1`.
+- Web apps now pin `amberframework/amber` at `2.0.0-beta.2`.
 - The generated web app is ECR-only and uses typed V2 environment YAML.
 - Personal fork, implicit Grant/Gemma, asset pipeline, and all-database-driver
   dependencies were removed from the core template.

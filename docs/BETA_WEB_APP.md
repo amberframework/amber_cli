@@ -1,7 +1,7 @@
 # Amber V2 Beta Web App
 
 This guide is the consumer smoke test for Amber CLI `2.0.2` and Amber
-`2.0.0-beta.1`. It is expected to pass on Apple Silicon macOS and x86_64 Linux.
+`2.0.0-beta.2`. It is expected to pass on Apple Silicon macOS and x86_64 Linux.
 
 ## 1. Verify the toolchain
 
@@ -29,7 +29,7 @@ grep -A2 'amber:' shard.yml
 grep 'template:' .amber.yml
 ```
 
-The dependency must be `amberframework/amber` version `2.0.0-beta.1`; the
+The dependency must be `amberframework/amber` version `2.0.0-beta.2`; the
 template must be `ecr`. A newly generated app must not contain a personal fork,
 Grant, Gemma, Slang, or all three database drivers.
 

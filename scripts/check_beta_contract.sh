@@ -7,7 +7,7 @@ test "$shard_version" = "2.0.2"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new.cr
-grep -F 'version: 2.0.0-beta.1' src/amber_cli/commands/new.cr
+grep -F 'version: 2.0.0-beta.2' src/amber_cli/commands/new.cr
 grep -F 'template: ecr' src/amber_cli/commands/new.cr
 grep -F 'brew tap amberframework/amber_cli' README.md
 grep -F 'brew install amber_cli' README.md
