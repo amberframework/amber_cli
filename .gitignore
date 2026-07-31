@@ -20,7 +20,7 @@ Thumbs.db
 
 # Generated documentation (keep structure, ignore generated content)
 /docs/**
-!/docs/README.md
+!/docs/*.md
 !/docs/.gitkeep
 
 # Build artifacts
@@ -29,6 +29,4 @@ Thumbs.db
 /target/
 /dist/
 
-# Libraries don't need dependency lock
-# Dependencies will be locked in applications that use them
-/shard.lock
+# The CLI is a distributed executable; commit shard.lock for reproducible builds.

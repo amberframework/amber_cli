@@ -24,9 +24,7 @@ module AmberCLI::Documentation
   # ```bash
   # amber new my_app
   # cd my_app
-  # shards install
-  # amber database create
-  # amber database migrate
+  # crystal spec
   # amber watch
   # ```
   #
@@ -57,7 +55,8 @@ module AmberCLI::Documentation
   # ### Options
   #
   # - `-d, --database=DATABASE` - Database engine (pg, mysql, sqlite)
-  # - `-t, --template=TEMPLATE` - Template engine (ecr, slang)
+  # - `-t, --template=TEMPLATE` - Template engine (`ecr` only in V2)
+  # - `--type=TYPE` - Application type (`web` supported, `native` preview)
   # - `-y, --assume-yes` - Skip interactive prompts
   # - `--no-deps` - Don't install dependencies
   #
@@ -68,9 +67,9 @@ module AmberCLI::Documentation
   # amber new my_blog
   # ```
   #
-  # Create with specific database and template:
+  # Record a database choice for future persistence tooling:
   # ```bash
-  # amber new my_api -d mysql -t slang
+  # amber new my_api -d mysql -t ecr
   # ```
   #
   # Create in current directory:
@@ -89,6 +88,10 @@ module AmberCLI::Documentation
   # - **shard.yml** - Dependency configuration
   # - **.amber.yml** - Project configuration
   # - **.gitignore** - Git ignore rules
+  #
+  # The web template pins Amber `2.0.0-beta.1`, uses ECR, and intentionally
+  # does not add an ORM or database driver. Model, scaffold, API-resource,
+  # authentication, and native generators are preview surfaces during the beta.
   class NewCommand
   end
 
@@ -443,7 +446,7 @@ module AmberCLI::Documentation
   # **Problem**: Template not found errors
   # **Solution**:
   # 1. Verify template files exist in expected locations
-  # 2. Check `.amber.yml` for correct template setting (ecr or slang)
+  # 2. Check `.amber.yml` for `template: ecr` (Amber V2 does not support Slang)
   # 3. Ensure template variables are properly defined
   #
   # ### Getting More Help

@@ -34,7 +34,8 @@ require "../core/base_command"
 # ```
 module AmberCLI::Commands
   class GenerateCommand < AmberCLI::Core::BaseCommand
-    VALID_TYPES = %w[model controller scaffold migration mailer job schema channel api auth]
+    VALID_TYPES   = %w[model controller scaffold migration mailer job schema channel api auth]
+    PREVIEW_TYPES = %w[model scaffold api auth]
 
     FIELD_TYPE_MAP = {
       "string"    => "String",
@@ -187,6 +188,15 @@ module AmberCLI::Commands
     end
 
     def execute
+      if PREVIEW_TYPES.includes?(generator_type)
+        warning "#{generator_type} generation is a preview surface in the Amber V2 beta."
+        warning "The generated output requires a compatible persistence stack that is not included in new web apps."
+      end
+
+      if File.exists?(".amber.yml") && File.read(".amber.yml").includes?("template: slang")
+        warning "Amber V2 supports ECR only; generating ECR output despite the legacy Slang setting."
+      end
+
       case generator_type
       when "model"
         generate_model
@@ -362,7 +372,7 @@ SPEC
   # Renders the #{action} email HTML body.
   # Template: src/views/#{file_name}_mailer/#{action}.ecr
   def #{action}_html_body : String?
-    render("src/views/#{file_name}_mailer/#{action}.ecr")
+    ECR.render("src/views/#{file_name}_mailer/#{action}.ecr")
   end
 METHOD
       end.join("\n\n")
@@ -492,6 +502,7 @@ SCHEMA
 
     private def schema_spec_template
       # Build valid test data from fields
+      schema_field_width = schema_fields.map { |field| field[0].size }.max? || 0
       valid_data_entries = schema_fields.map do |field_name, field_type, _|
         value = case field_type
                 when "string", "text", "uuid"  then "\"test_value\""
@@ -504,11 +515,13 @@ SCHEMA
                 when "time", "timestamp"       then "\"2024-01-01T00:00:00Z\""
                 else                                "\"test_value\""
                 end
-        "    \"#{field_name}\" => JSON::Any.new(#{value}),"
+        padding = " " * (schema_field_width - field_name.size)
+        "      \"#{field_name}\"#{padding} => JSON::Any.new(#{value}),"
       end.join("\n")
 
       # Fall back to regular fields if schema_fields is empty
       if valid_data_entries.empty? && !fields.empty?
+        field_width = fields.map { |field| field[0].size }.max? || 0
         valid_data_entries = fields.map do |field_name, field_type|
           value = case field_type
                   when "string", "text", "uuid"  then "\"test_value\""
@@ -521,7 +534,8 @@ SCHEMA
                   when "time", "timestamp"       then "\"2024-01-01T00:00:00Z\""
                   else                                "\"test_value\""
                   end
-          "    \"#{field_name}\" => JSON::Any.new(#{value}),"
+          padding = " " * (field_width - field_name.size)
+          "      \"#{field_name}\"#{padding} => JSON::Any.new(#{value}),"
         end.join("\n")
       end
 
@@ -783,23 +797,18 @@ VIEW
                end
 
         path = case action
-               when "index"   then "/#{plural_name}"
-               when "show"    then "/#{plural_name}/1"
-               when "new"     then "/#{plural_name}/new"
-               when "edit"    then "/#{plural_name}/1/edit"
-               when "create"  then "/#{plural_name}"
-               when "update"  then "/#{plural_name}/1"
-               when "destroy" then "/#{plural_name}/1"
-               else                "/#{plural_name}"
+               when "index"   then "/#{controller_resource_name}"
+               when "show"    then "/#{controller_resource_name}/1"
+               when "new"     then "/#{controller_resource_name}/new"
+               when "edit"    then "/#{controller_resource_name}/1/edit"
+               when "create"  then "/#{controller_resource_name}"
+               when "update"  then "/#{controller_resource_name}/1"
+               when "destroy" then "/#{controller_resource_name}/1"
+               else                "/#{controller_resource_name}"
                end
 
         <<-SPEC_BLOCK
-  describe "#{verb} #{path}" do
-    it "responds successfully" do
-      response = #{verb.downcase}("#{path}")
-      assert_response_success(response)
-    end
-  end
+  pending "add #{verb} #{path} to config/routes.cr, then enable its request spec"
 SPEC_BLOCK
       end.join("\n\n")
 
@@ -807,9 +816,6 @@ SPEC_BLOCK
 require "../spec_helper"
 
 describe #{controller_name} do
-  include Amber::Testing::RequestHelpers
-  include Amber::Testing::Assertions
-
 #{action_specs}
 end
 SPEC
@@ -979,9 +985,6 @@ CONTROLLER
 require "../spec_helper"
 
 describe #{controller_name} do
-  include Amber::Testing::RequestHelpers
-  include Amber::Testing::Assertions
-
   describe "GET /#{plural_name}" do
     it "responds successfully" do
       response = get("/#{plural_name}")
@@ -1186,9 +1189,6 @@ CONTROLLER
 require "../spec_helper"
 
 describe Api::#{controller_name} do
-  include Amber::Testing::RequestHelpers
-  include Amber::Testing::Assertions
-
   describe "GET /api/#{plural_name}" do
     it "responds with JSON" do
       response = get("/api/#{plural_name}")
@@ -1632,6 +1632,12 @@ VIEW
       pluralize(name.underscore)
     end
 
+    # Controller names are conventionally plural (for example `Posts`). Avoid
+    # turning an already-plural resource into `postses` in route guidance.
+    private def controller_resource_name
+      file_name.ends_with?("s") ? file_name : plural_name
+    end
+
     private def default_actions
       %w[index show new create edit update destroy]
     end
@@ -1666,16 +1672,7 @@ VIEW
     end
 
     private def detect_template_extension
-      if File.exists?(".amber.yml")
-        content = File.read(".amber.yml")
-        if content.includes?("template: slang")
-          "slang"
-        else
-          "ecr"
-        end
-      else
-        "ecr"
-      end
+      "ecr"
     end
 
     private def create_file(path : String, content : String)
@@ -1685,7 +1682,7 @@ VIEW
       if File.exists?(path)
         warning "Skipped (exists): #{path}"
       else
-        File.write(path, content)
+        File.write(path, content.ends_with?("\n") ? content : "#{content}\n")
         info "Created: #{path}"
       end
     end

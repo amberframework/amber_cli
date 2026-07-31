@@ -27,8 +27,8 @@ module Amber::CLI
     alias WatchOptions = Hash(String, Hash(String, Array(String)))
 
     property database : String = "pg"
-    property language : String = "slang"
-    property model : String = "grant"
+    property language : String = "ecr"
+    property model : String = "none"
     property watch : WatchOptions?
 
     def initialize
@@ -53,7 +53,7 @@ module Amber::CLI
           "include" => [
             "./config/**/*.cr",
             "./src/**/*.cr",
-            "./src/views/**/*.slang",
+            "./src/views/**/*.ecr",
           ],
         },
       }

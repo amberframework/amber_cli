@@ -4,7 +4,7 @@ version: 0.1.0
 authors:
   - {{author_name | "Your Name <email@example.com>"}}
 
-crystal: ">= 1.10.0"
+crystal: ">= 1.20.0, < 2.0"
 
 license: UNLICENSED
 
@@ -13,33 +13,6 @@ targets:
     main: src/{{snake_case}}.cr
 
 dependencies:
-  # Amber Framework V2
   amber:
-    github: crimson-knight/amber
-    branch: master
-
-  # Grant ORM (ActiveRecord-style, replaces Granite in V2)
-  grant:
-    github: crimson-knight/grant
-    branch: main
-
-  # Asset Pipeline (native ESM, no Webpack/npm required)
-  asset_pipeline:
-    github: amberframework/asset_pipeline
-
-  # File uploads (optional)
-  gemma:
-    github: crimson-knight/gemma
-
-  # Database adapters (all required by Grant at compile time)
-  pg:
-    github: will/crystal-pg
-  mysql:
-    github: crystal-lang/crystal-mysql
-  sqlite3:
-    github: crystal-lang/crystal-sqlite3
-
-development_dependencies:
-  ameba:
-    github: crystal-ameba/ameba
-    version: ~> 1.4.3
+    github: amberframework/amber
+    version: 2.0.0-beta.1

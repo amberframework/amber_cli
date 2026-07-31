@@ -1,314 +1,127 @@
 # Amber CLI
 
-[![Crystal CI](https://github.com/amberframework/amber_cli/actions/workflows/crystal.yml/badge.svg)](https://github.com/amberframework/amber_cli/actions/workflows/crystal.yml)
 [![GitHub release](https://img.shields.io/github/release/amberframework/amber_cli.svg)](https://github.com/amberframework/amber_cli/releases)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://amberframework.github.io/amber_cli/)
 
-A powerful command-line tool for managing Crystal web applications built with the [Amber Framework](https://amberframework.org). This CLI provides generators, database management, development utilities, and more to streamline your Amber development workflow.
+Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.2`
+creates the supported Amber `2.0.0-beta.1` ECR web application and includes
+development, generator, database, and LSP tooling.
 
-## 📖 Documentation
+Amber V2 is a beta. The release-gated path is a web application on Apple
+Silicon macOS or x86_64 Linux. See [Generator support](docs/GENERATOR_SUPPORT.md)
+before relying on persistence, authentication, API-resource, or native output.
 
-**[→ Complete Documentation](https://amberframework.github.io/amber_cli/)**
+## Install
 
-The comprehensive documentation includes detailed guides, examples, and API references generated from the codebase.
+Prerequisites: Crystal 1.20 or newer (but earlier than 2.0), `shards`, and Git.
 
-## 🚀 Quick Start
+### Homebrew on macOS or Linux
 
-### Installation
+The tap name contains an underscore; the formula is named `amber`:
 
-**macOS & Linux via Homebrew:**
 ```bash
-brew tap amberframework/amber-cli
-brew install amber-cli
+brew tap amberframework/amber_cli
+brew install amber_cli
+amber --version
 ```
 
-**Direct Binary Download (macOS ARM64 / Linux x86_64):**
+### Direct release archive
 
-Download the pre-built tarball from the [releases page](https://github.com/amberframework/amber_cli/releases) and verify the sha256 before extracting:
+Use `darwin-arm64` on Apple Silicon macOS or `linux-x86_64` on x86_64 Linux:
 
 ```bash
-# macOS ARM64 example — replace VERSION and PLATFORM as needed
-VERSION=2.0.1
-PLATFORM=darwin-arm64   # or linux-x86_64
+version=v2.0.2
+platform=darwin-arm64
+asset="amber_cli-${platform}.tar.gz"
 
-curl -LO "https://github.com/amberframework/amber_cli/releases/download/v${VERSION}/amber_cli-${PLATFORM}.tar.gz"
-curl -LO "https://github.com/amberframework/amber_cli/releases/download/v${VERSION}/amber_cli-${PLATFORM}.tar.gz.sha256"
-
-# Verify checksum (macOS: shasum -a 256; Linux: sha256sum)
-shasum -a 256 -c "amber_cli-${PLATFORM}.tar.gz.sha256"
-
-# Extract and install
-tar -xzf "amber_cli-${PLATFORM}.tar.gz"
-sudo mv amber amber-lsp /usr/local/bin/
+curl -fLO "https://github.com/amberframework/amber_cli/releases/download/${version}/${asset}"
+curl -fLO "https://github.com/amberframework/amber_cli/releases/download/${version}/${asset}.sha256"
+shasum -a 256 -c "${asset}.sha256"
+tar -xzf "${asset}"
+install -m 0755 amber amber-lsp /usr/local/bin/
+amber --version
 ```
 
-**From Source:**
-```bash
-git clone https://github.com/amberframework/amber_cli.git
-cd amber_cli
-shards install
-crystal build src/amber_cli.cr -o amber --release
-crystal build src/amber_lsp.cr -o amber-lsp --release
-sudo mv amber amber-lsp /usr/local/bin/
-```
+On Linux, use `sha256sum -c` for the checksum. Prefix only the `install`
+command with `sudo` if `/usr/local/bin` is not writable.
 
-**Windows:**
-Use WSL2 or a virtual machine. Native Windows support is not currently available.
-
-### Create Your First App
+## Create and verify a web app
 
 ```bash
-# Create a new Amber application
-amber new my_blog
-
-# Navigate to your app
-cd my_blog
-
-# Set up the database
-amber database create
-amber database migrate
-
-# Start the development server
+amber new my_app --type web
+cd my_app
+crystal spec
+crystal build src/my_app.cr -o bin/my_app
 amber watch
 ```
 
-Your application will be available at `http://localhost:3000`
+`amber new` installs shards by default; pass `--no-deps` when an offline or CI
+workflow needs to run `shards install` later. Open <http://127.0.0.1:3000> and
+<http://127.0.0.1:3000/css/app.css>.
 
-## ⚡ Core Commands
+The web template is deliberately small:
 
-| Command | Description | Example |
-|---------|-------------|---------|
-| `new` | Create a new Amber application | `amber new my_app -d pg -t slang` |
-| `generate` | Generate application components | `amber generate model User name:String` |
-| `database` | Database operations and migrations | `amber database migrate` |
-| `watch` | Development server with auto-reload | `amber watch` |
-| `routes` | Display application routes | `amber routes --json` |
-| `exec` | Execute Crystal code in app context | `amber exec 'puts User.count'` |
-| `encrypt` | Manage encrypted environment files | `amber encrypt production` |
-| `pipelines` | Show pipeline configuration | `amber pipelines` |
-| `setup:lsp` | Configure the Amber LSP for Claude Code | `amber setup:lsp` |
+- Amber from `amberframework/amber`, pinned to `2.0.0-beta.1`
+- ECR views (Slang and Kilt are not supported in Amber V2)
+- typed development, test, and production YAML
+- homepage, controller spec, and static CSS/JavaScript
+- no ORM or database driver by default
 
-Run `amber --help` or `amber [command] --help` for detailed usage information.
+The `-d pg|mysql|sqlite` option records metadata and suggested URLs for future
+persistence tooling. It does not add an ORM or driver to the core web app.
 
-## 🔧 Key Features
+## Commands
 
-### **Flexible Code Generation**
-- Built-in generators for models, controllers, views, and more
-- Configurable custom generators with YAML/JSON configuration
-- Intelligent word transformations (snake_case, PascalCase, pluralization)
-- Template-based file generation with variable substitution
+| Command | Status | Purpose |
+|---|---|---|
+| `amber new APP --type web` | Supported | Create the beta web application |
+| `amber watch` | Supported | Rebuild and restart during development |
+| `amber routes` | Supported | Inspect application routes |
+| `amber pipelines` | Supported | Inspect configured pipelines |
+| `amber generate` | Mixed | Core generators supported; dependency-backed generators preview |
+| `amber database` | Preview for new apps | Requires an explicitly configured persistence stack |
+| `amber new APP --type native` | Preview | Not part of the beta platform guarantee |
+| `amber setup:lsp` | Available | Configure the bundled diagnostics LSP |
 
-### **Database Management**
-- Full migration support with rollback capabilities
-- Multi-database support (PostgreSQL, MySQL, SQLite)
-- Database seeding and status reporting
-- Environment-specific configuration
+Run `amber --help` or `amber COMMAND --help` for command syntax. The detailed
+[web-app walkthrough](docs/BETA_WEB_APP.md) and
+[generator table](docs/GENERATOR_SUPPORT.md) define what is release-gated.
 
-### **Development Tools**
-- File watching with automatic rebuild and restart
-- Interactive code execution within application context
-- Route analysis and pipeline inspection
-- Environment file encryption for security
-
-### **Amber LSP — AI-Assisted Development**
-- Built-in Language Server Protocol (LSP) server for Claude Code integration
-- 15 convention rules that catch framework mistakes as you type
-- Custom YAML-based rules for project-specific conventions
-- One command to set up: `amber setup:lsp`
-
-### **Extensible Architecture**
-- Plugin system for extending functionality
-- Command registration system for custom commands
-- Template engine for flexible file generation
-- Configuration-driven behavior
-
-## 🏗️ Architecture Highlights
-
-### **Zero External Dependencies**
-- Built entirely with Crystal's standard library
-- No external CLI frameworks or template engines
-- Fast compilation and lightweight binary
-
-### **Clean Command Structure**
-- Base command class for consistent behavior
-- Command registry for easy extension
-- Built-in option parsing and validation
-- Comprehensive error handling
-
-### **Smart Template System**
-- ECR-based template processing
-- Variable substitution with transformations
-- Conditional file generation
-- Post-generation command execution
-
-## 🤖 Amber LSP — The Default Development Workflow
-
-Amber ships with a diagnostics-only Language Server that integrates with [Claude Code](https://claude.ai/claude-code). When you develop with Claude Code, the LSP runs in the background and automatically catches framework convention violations — wrong controller names, missing methods, bad inheritance, file naming issues, and more. Claude sees these diagnostics and self-corrects without you having to notice or intervene.
-
-**This is the recommended way to develop with Amber.** The LSP turns Claude Code from a general-purpose coding assistant into one that understands Amber's conventions natively.
-
-### Quick Setup
+## Update and troubleshoot
 
 ```bash
-# From your Amber project directory:
+brew update
+brew upgrade amber_cli
+type -a amber
+amber --version
+```
+
+If an older Amber V1 executable appears first, remove or rename it or put the
+new installation directory earlier in `PATH`. On macOS, include
+`otool -L "$(command -v amber)"` in install bug reports; release binaries must
+not require the retired `openssl@1.1` library.
+
+Report CLI, template, or binary problems at
+<https://github.com/amberframework/amber_cli/issues>. Include OS/architecture,
+`crystal --version`, `amber --version`, install method, command, and complete
+output.
+
+## LSP
+
+The release archive includes `amber-lsp`. From an Amber project:
+
+```bash
 amber setup:lsp
 ```
 
-This creates three files:
+See the [LSP setup guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.1/docs/guides/lsp-setup.md).
 
-| File | Purpose |
-|------|---------|
-| `.lsp.json` | Tells Claude Code where the LSP binary is and what files it handles |
-| `.claude-plugin/plugin.json` | Plugin manifest so Claude Code discovers the LSP |
-| `.amber-lsp.yml` | Rule configuration — customize severity, disable rules, add custom rules |
-
-Then open Claude Code in your project. The LSP activates automatically.
-
-### What It Checks
-
-The LSP ships with 15 built-in rules covering controllers, jobs, channels, pipes, mailers, schemas, routing, file naming, directory structure, and more. Every rule maps to an Amber convention — if Claude generates a controller that doesn't end with `Controller`, or a job without a `perform` method, the LSP flags it immediately.
-
-### Custom Rules
-
-You can define project-specific rules in `.amber-lsp.yml` using regex patterns. No recompilation needed:
-
-```yaml
-custom_rules:
-  - id: "project/no-puts"
-    description: "Do not use puts in production code"
-    severity: warning
-    applies_to: ["src/**"]
-    pattern: "^\\s*puts\\b"
-    message: "Avoid 'puts' in production code. Use Log.info instead."
-```
-
-### Building the LSP Binary
-
-If `amber-lsp` is not on your PATH, the `setup:lsp` command will offer to build it:
+## Contributing
 
 ```bash
-cd ~/open_source_coding_projects/amber_cli
-crystal build src/amber_lsp.cr -o bin/amber-lsp --release
+shards install
+crystal tool format --check src spec
+crystal spec
 ```
 
-For full documentation on all 15 rules, configuration options, and custom rule syntax, see the [LSP Setup Guide](https://github.com/amberframework/amber/blob/v2-dev/docs/guides/lsp-setup.md).
-
-## 📚 Examples
-
-### Generate a Blog Post Resource
-```bash
-# Create model, controller, views, and migration
-amber generate scaffold Post title:String content:Text published:Bool
-
-# Or generate individually
-amber generate model Post title:String content:Text
-amber generate controller Posts
-amber generate migration add_published_to_posts published:Bool
-```
-
-### Custom Development Workflow
-```bash
-# Watch with custom build commands
-amber watch --build "crystal build src/app.cr --release" --run "./app"
-
-# Execute code in application context
-amber exec 'Post.where(published: true).count'
-
-# Encrypt production environment
-amber encrypt production --editor vim
-```
-
-### Database Operations
-```bash
-# Create and set up database
-amber database create
-amber database migrate
-amber database seed
-
-# Check migration status
-amber database status
-
-# Rollback last migration
-amber database rollback
-```
-
-## 🔍 Configuration
-
-Amber CLI uses several configuration files:
-
-- **`.amber.yml`** - Project-specific settings
-- **`config/environments/`** - Environment configurations  
-- **`generator_configs/`** - Custom generator definitions
-
-Example `.amber.yml`:
-```yaml
-database: pg
-language: slang
-model: granite
-watch:
-  run:
-    build_commands:
-      - "crystal build ./src/my_app.cr -o bin/my_app"
-    run_commands:
-      - "bin/my_app"
-    include:
-      - "./config/**/*.cr"
-      - "./src/**/*.cr"
-```
-
-## 🤝 Contributing
-
-We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) for details.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Write tests for your changes
-4. Ensure all tests pass (`crystal spec`)
-5. Follow Crystal's code formatting (`crystal tool format`)
-6. Commit your changes (`git commit -am 'Add some feature'`)
-7. Push to the branch (`git push origin my-new-feature`)
-8. Create a Pull Request
-
-## 📋 Requirements
-
-- **Crystal** 1.20+ (latest stable recommended)
-- **Git** (for project templates)
-- **Database** (PostgreSQL, MySQL, or SQLite)
-
-## 🐛 Troubleshooting
-
-Common issues and solutions:
-
-**Database connection errors:**
-```bash
-# Verify database is running and check config
-amber database status
-```
-
-**Generation failures:**
-```bash
-# Check template availability
-amber generate --list
-```
-
-**Watch mode not working:**
-```bash
-# Show current configuration
-amber watch --info
-```
-
-For more detailed troubleshooting, see the [full documentation](https://amberframework.github.io/amber_cli/).
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🌟 Acknowledgments
-
-- [Amber Framework](https://amberframework.org) - The Crystal web framework
-- [Crystal Language](https://crystal-lang.org) - The programming language
-- All the amazing [contributors](https://github.com/amberframework/amber_cli/contributors)
-
----
-
-**[→ View Complete Documentation](https://amberframework.github.io/amber_cli/)**
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the project workflow.
