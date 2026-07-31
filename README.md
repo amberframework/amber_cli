@@ -17,13 +17,16 @@ Prerequisites: Crystal 1.20 or newer (but earlier than 2.0), `shards`, and Git.
 
 ### Homebrew on macOS or Linux
 
-The tap name contains an underscore; the formula is named `amber`:
+The tap and formula names contain underscores; the installed executable is
+`amber`:
 
 ```bash
-brew tap amberframework/amber_cli
-brew install amber_cli
+brew install amberframework/amber_cli/amber_cli
 amber --version
 ```
+
+The fully qualified command follows Homebrew's tap-trust model and trusts only
+the `amber_cli` formula.
 
 ### Direct release archive
 

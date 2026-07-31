@@ -9,8 +9,12 @@ test "$cli_version" = "$shard_version"
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new.cr
 grep -F 'version: 2.0.0-beta.2' src/amber_cli/commands/new.cr
 grep -F 'template: ecr' src/amber_cli/commands/new.cr
-grep -F 'brew tap amberframework/amber_cli' README.md
-grep -F 'brew install amber_cli' README.md
+grep -F 'brew install amberframework/amber_cli/amber_cli' README.md
+
+if grep -Ein 'brew tap amberframework/amber_cli|brew install amber_cli' README.md RELEASE_NOTES_V2.0.2.md docs/*.md; then
+  echo "Amber CLI docs contain an untrusted or incomplete Homebrew install path" >&2
+  exit 1
+fi
 
 if grep -Eir 'crimson-knight/(amber|grant|gemma)' src/amber_cli/templates/app src/amber_cli/commands/new.cr; then
   echo "supported web template contains a personal dependency" >&2
