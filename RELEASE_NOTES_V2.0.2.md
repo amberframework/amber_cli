@@ -6,8 +6,7 @@ Amber CLI 2.0.2 is the supported standalone CLI for Amber
 ## Install
 
 ```bash
-brew tap amberframework/amber_cli
-brew install amber_cli
+brew install amberframework/amber_cli/amber_cli
 amber --version
 ```
 
