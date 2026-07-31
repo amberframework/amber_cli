@@ -451,7 +451,7 @@ module AmberCLI::Documentation
   #
   # ### Getting More Help
   #
-  # - Check the [Amber Framework documentation](https://docs.amberframework.org)
+  # - Check the [Amber V2 beta documentation](https://amberframework.org/docs/v2)
   # - Join the [Crystal community](https://crystal-lang.org/community/)
   # - Report issues on [GitHub](https://github.com/amberframework/amber_cli/issues)
   class Troubleshooting

@@ -9,7 +9,7 @@ assignees: []
 ## Release Goal
 
 - Version:
-- Type: `rc` / `stable` / `patch`
+- Type: `beta` / `rc` / `stable` / `patch`
 - Announcement target:
 
 ## Preflight
@@ -41,10 +41,13 @@ assignees: []
 
 ## Fresh Install Verification
 
-- [ ] `brew tap amberframework/amber_cli`
-- [ ] `brew install amber_cli`
+- [ ] `brew install amberframework/amber_cli/amber_cli`
 - [ ] `brew test amber_cli`
-- [ ] `amber new smoke_app -y --no-deps`
+- [ ] macOS binaries do not link to `openssl@1.1`
+- [ ] `amber new smoke_app --type web -y --no-deps`
+- [ ] Generated app pins the reviewed Amber version and ECR template
+- [ ] `shards install`, app specs, and app build pass
+- [ ] Built app starts and serves `/` plus `/css/app.css`
 
 ## Post Release
 

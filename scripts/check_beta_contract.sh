@@ -11,7 +11,15 @@ grep -F 'version: 2.0.0-beta.2' src/amber_cli/commands/new.cr
 grep -F 'template: ecr' src/amber_cli/commands/new.cr
 grep -F 'brew install amberframework/amber_cli/amber_cli' README.md
 
-if grep -Ein 'brew tap amberframework/amber_cli|brew install amber_cli' README.md RELEASE_NOTES_V2.0.2.md docs/*.md; then
+files=(
+  README.md
+  RELEASE_NOTES_V2.0.2.md
+  RELEASE_SETUP.md
+  .github/ISSUE_TEMPLATE/release-checklist.md
+  docs/*.md
+)
+
+if grep -Ein 'amberframework/amber-cli|brew tap amberframework/amber_cli|brew install amber-cli|brew install amber_cli|docs\.amberframework\.org' "${files[@]}" src/amber_cli/*.cr src/amber_cli/commands/*.cr; then
   echo "Amber CLI docs contain an untrusted or incomplete Homebrew install path" >&2
   exit 1
 fi
