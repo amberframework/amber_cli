@@ -32,8 +32,9 @@ Homebrew formula pins CLI archives and checksums.
 
 1. Publish framework, CLI, and website guides with the same command names,
    versions, platform matrix, and preview labels.
-2. Check that no onboarding page uses `amber-cli`, `brew install amber-cli`, a
-   personal fork, a moving `v2-dev` dependency, or Slang for a new V2 app.
+2. Check that no onboarding page uses a hyphenated tap or formula name, a
+   separate tap step, a personal fork, a moving `v2-dev` dependency, or Slang
+   for a new V2 app.
 3. Verify all release/download links and commands from a clean shell.
 
 Do not mark the beta complete if either supported platform cannot install the
