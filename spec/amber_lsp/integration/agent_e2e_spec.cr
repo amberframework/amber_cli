@@ -121,9 +121,18 @@ describe "Agent E2E: LSP diagnostic feedback loop" do
       # The corrected code:
       #   - Renamed "UsersHandler" → "UsersController" (fixes controller-naming)
       #   - Added render call in index (fixes action-return-type)
+      #   - Doc comment on the class and the action (fixes fsdd/doc-block-required)
+      #   - Explicit return type on the action (fixes fsdd/method-type-signature)
+      #
+      # The FSDD rules are on by default and they apply to us too. "Clean" in
+      # this spec means clean by OUR OWN conventions, not merely free of the two
+      # violations the fixture was originally written to demonstrate — otherwise
+      # this spec would quietly assert that our conventions are optional.
       fixed_code = <<-CRYSTAL
+      # Serves the user-facing account pages.
       class UsersController < Amber::Controller::Base
-        def index
+        # Renders the list of users.
+        def index : String
           users = ["Alice", "Bob"]
           render("index.ecr")
         end
