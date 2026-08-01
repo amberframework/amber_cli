@@ -24,6 +24,10 @@ shards:
     git: https://github.com/crystal-loot/exception_page.git
     version: 0.2.2
 
+  mcprotocol:
+    git: https://github.com/crimson-knight/mcprotocol.git
+    version: 1.0.0+git.commit.f4a52b03c768471f823e813a82281d6bc6f959b7
+
   micrate:
     git: https://github.com/amberframework/micrate.git
     version: 0.15.1+git.commit.647fac0490a522956fef305c720e8ebf1422a87d
