@@ -48,6 +48,20 @@ dependencies:
     version: ~> 1.2.2
 
 development_dependencies:
+  # Pinned to the 1.7 dev line rather than `~> 1.6.4`, because Crystal 1.21
+  # REMOVED Crystal::Lexer#next_string_array_token and every released ameba up
+  # to 1.6.4 calls it unguarded from src/ameba/tokenizer.cr:88. That makes
+  # `shards install` (and therefore `shards build <anything>`) impossible to
+  # finish on 1.21: it dies inside ameba's own postinstall, before a single
+  # line of this project is compiled.
+  #
+  # ameba fixed it in 4057e0c5e "Support Crystal v1.21.0+" (2026-05-04), which
+  # guards the call with `lexer.responds_to?(:next_string_array_token)`. That
+  # commit is reachable only from the untagged 1.7 line. The SHA below is what
+  # the `v1.7.0-dev` tag points at today; pinned by SHA and not by that tag
+  # because a `-dev` tag is a moving pointer and this needs to be reproducible.
+  #
+  # TODO: switch to `version: ~> 1.7` once ameba 1.7.0 is actually tagged.
   ameba:
     github: crystal-ameba/ameba
-    version: ~> 1.6.4
+    commit: 34a3de4598aa009c878a1812bb018f0deaf15126
