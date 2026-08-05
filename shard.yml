@@ -19,12 +19,12 @@ dependencies:
   # Temporary branch until the Apple shell export APIs land in a tagged release.
   asset_pipeline:
     github: amberframework/asset_pipeline
-    branch: feature/utility-first-css-asset-pipeline
+    commit: 25c960eeb3820993c1a73b8ee01f464fbbadc82c  # was branch: feature/utility-first-css-asset-pipeline
 
   micrate:
     github: amberframework/micrate
     # version: ~> 0.15.0
-    branch: master
+    commit: 647fac0490a522956fef305c720e8ebf1422a87d  # was branch: master
 
   pg:
     github: will/crystal-pg
