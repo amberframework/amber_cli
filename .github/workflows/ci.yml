@@ -19,16 +19,16 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
 
     - name: Install Crystal
-      uses: crystal-lang/install-crystal@v1
+      uses: crystal-lang/install-crystal@d8ef131ecec0352ce0e39b81b0a6d95def58fe2f  # v1
       with:
         crystal: ${{ matrix.crystal }}
 
 
     - name: Cache shards
-      uses: actions/cache@v4
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
       with:
         path: |
           ~/.cache/shards
@@ -68,7 +68,7 @@ jobs:
         crystal build src/amber_lsp.cr --release --no-debug -o amber_lsp
 
     - name: Upload binary artifacts (Linux)
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
       if: matrix.os == 'ubuntu-latest'
       with:
         name: amber-cli-linux
@@ -88,10 +88,10 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
 
     - name: Install Crystal
-      uses: crystal-lang/install-crystal@v1
+      uses: crystal-lang/install-crystal@d8ef131ecec0352ce0e39b81b0a6d95def58fe2f  # v1
       with:
         crystal: latest
 
@@ -117,10 +117,10 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
 
     - name: Install Crystal
-      uses: crystal-lang/install-crystal@v1
+      uses: crystal-lang/install-crystal@d8ef131ecec0352ce0e39b81b0a6d95def58fe2f  # v1
       with:
         crystal: latest
 
