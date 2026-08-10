@@ -100,6 +100,18 @@ describe AmberCLI::Commands::NewCommand do
         routes.should contain("Amber::Pipe::Static.new")
         routes.should contain(%(get "/*", Amber::Controller::Static, :index))
 
+        index = File.read(File.join(destination, "src/views/home/index.ecr"))
+        index.should contain("Your new idea")
+        index.should contain("Amber V2 · Web application")
+        index.should contain("Ready to customize")
+        index.should contain("amber generate controller Posts")
+        index.should_not contain("class=\"welcome\"")
+
+        stylesheet = File.read(File.join(destination, "public/css/app.css"))
+        stylesheet.should contain("--amber-accent: #e96918")
+        stylesheet.should contain(".starter-main")
+        stylesheet.should contain(".starter-crystal")
+
         File.exists?(File.join(destination, "src/views/home/index.ecr")).should be_true
         File.exists?(File.join(destination, "src/views/home/index.slang")).should be_false
       end

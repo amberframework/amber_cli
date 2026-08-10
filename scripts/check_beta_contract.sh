@@ -9,6 +9,11 @@ test "$cli_version" = "$shard_version"
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new.cr
 grep -F 'version: 2.0.0-beta.2' src/amber_cli/commands/new.cr
 grep -F 'template: ecr' src/amber_cli/commands/new.cr
+grep -F 'Your new idea' src/amber_cli/commands/new.cr
+grep -F -- '--amber-accent: #e96918' src/amber_cli/commands/new.cr
+grep -F 'Your new idea' src/amber_cli/templates/app/src/views/home/index.ecr.ecr
+test -s src/amber_cli/templates/app/public/css/app.css
+test -s src/amber_cli/templates/app/public/js/app.js
 grep -F 'brew install amberframework/amber_cli/amber_cli' README.md
 
 files=(

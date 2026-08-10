@@ -64,8 +64,10 @@ for _ in {1..30}; do
   sleep 1
 done
 
-curl --fail --silent http://127.0.0.1:3210/ | grep -F "Amber V2 application is running successfully"
-curl --fail --silent http://127.0.0.1:3210/css/app.css | grep -F "Application styles"
+curl --fail --silent http://127.0.0.1:3210/ | grep -F "Your new idea"
+curl --fail --silent http://127.0.0.1:3210/ | grep -F "Ready to customize"
+curl --fail --silent http://127.0.0.1:3210/css/app.css | grep -F "Amber V2 starter styles"
+curl --fail --silent http://127.0.0.1:3210/css/app.css | grep -F -- "--amber-accent: #e96918"
 
 kill "$server_pid"
 wait "$server_pid" || true
