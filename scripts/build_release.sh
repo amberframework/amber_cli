@@ -30,7 +30,14 @@ case "${OS}" in
     fi
     ;;
   "linux")
-    TARGET="linux-x86_64"
+    case "${ARCH}" in
+      "x86_64"|"amd64") TARGET="linux-x86_64" ;;
+      "aarch64"|"arm64") TARGET="linux-arm64" ;;
+      *)
+        echo "❌ Unsupported Linux architecture: ${ARCH}"
+        exit 1
+        ;;
+    esac
     BUILD_CLI="crystal build src/amber_cli.cr -o amber --release --static"
     BUILD_LSP="crystal build src/amber_lsp.cr -o amber-lsp --release --static"
     CHECKSUM_CMD="sha256sum"

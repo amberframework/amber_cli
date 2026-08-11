@@ -8,7 +8,8 @@ creates the supported Amber `2.0.0-beta.2` ECR web application and includes
 development, generator, database, and LSP tooling.
 
 Amber V2 is a beta. The release-gated path is a web application on Apple
-Silicon macOS or x86_64 Linux. See [Generator support](docs/GENERATOR_SUPPORT.md)
+Silicon macOS or x86_64 Linux. Linux ARM64 generated-app compilation is checked
+in CI; its first direct archive will ship with the next CLI release. See [Generator support](docs/GENERATOR_SUPPORT.md)
 before relying on persistence, authentication, API-resource, or native output.
 
 ## Install
@@ -30,7 +31,10 @@ the `amber_cli` formula.
 
 ### Direct release archive
 
-Use `darwin-arm64` on Apple Silicon macOS or `linux-x86_64` on x86_64 Linux:
+CLI `2.0.3` publishes `darwin-arm64` for Apple Silicon macOS and
+`linux-x86_64` for x86_64 Linux. The release workflow now also builds
+`linux-arm64`; that archive becomes available with the next published CLI
+version.
 
 ```bash
 version=v2.0.3
