@@ -1,0 +1,19 @@
+require "amber"
+require "grant"
+<% case @database
+when "pg" -%>
+require "grant/adapter/pg"
+
+Grant::Connections << Grant::Adapter::Pg.new(
+<% when "mysql" -%>
+require "grant/adapter/mysql"
+
+Grant::Connections << Grant::Adapter::Mysql.new(
+<% else -%>
+require "grant/adapter/sqlite"
+
+Grant::Connections << Grant::Adapter::Sqlite.new(
+<% end -%>
+  name: "primary",
+  url: ENV["DATABASE_URL"]? || Amber.settings.database_url
+)

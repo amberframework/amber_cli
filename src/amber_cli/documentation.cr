@@ -67,7 +67,7 @@ module AmberCLI::Documentation
   # amber new my_blog
   # ```
   #
-  # Record a database choice for future persistence tooling:
+  # Create an application backed by MySQL:
   # ```bash
   # amber new my_api -d mysql -t ecr
   # ```
@@ -89,8 +89,9 @@ module AmberCLI::Documentation
   # - **.amber.yml** - Project configuration
   # - **.gitignore** - Git ignore rules
   #
-  # The web template pins Amber `2.0.0-beta.2`, uses ECR, and intentionally
-  # does not add an ORM or database driver. Model, scaffold, API-resource,
+  # The web template pins Amber `2.0.0-beta.3`, uses ECR, and includes Grant,
+  # Micrate-powered database commands, and the selected database driver. Model,
+  # scaffold, and migration generators are supported. API-resource,
   # authentication, and native generators are preview surfaces during the beta.
   class NewCommand
   end

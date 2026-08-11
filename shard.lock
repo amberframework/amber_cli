@@ -26,7 +26,7 @@ shards:
 
   micrate:
     git: https://github.com/amberframework/micrate.git
-    version: 0.15.1+git.commit.647fac0490a522956fef305c720e8ebf1422a87d
+    version: 0.16.0-beta.1+git.commit.56afd5607cc591776980f3d3762495c037b98d98
 
   mysql:
     git: https://github.com/crystal-lang/crystal-mysql.git

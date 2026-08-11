@@ -1,4 +1,5 @@
 require "../core/base_command"
+require "../config"
 
 # The `generate` command creates models, controllers, migrations, scaffolds,
 # jobs, mailers, schemas, and channels for an Amber V2 application.
@@ -35,7 +36,7 @@ require "../core/base_command"
 module AmberCLI::Commands
   class GenerateCommand < AmberCLI::Core::BaseCommand
     VALID_TYPES   = %w[model controller scaffold migration mailer job schema channel api auth]
-    PREVIEW_TYPES = %w[model scaffold api auth]
+    PREVIEW_TYPES = %w[api auth]
 
     FIELD_TYPE_MAP = {
       "string"    => "String",
@@ -190,7 +191,7 @@ module AmberCLI::Commands
     def execute
       if PREVIEW_TYPES.includes?(generator_type)
         warning "#{generator_type} generation is a preview surface in the Amber V2 beta."
-        warning "The generated output requires a compatible persistence stack that is not included in new web apps."
+        warning "Review the generated authentication or API behavior before production use."
       end
 
       if File.exists?(".amber.yml") && File.read(".amber.yml").includes?("template: slang")
@@ -291,7 +292,7 @@ RETRIES
 #   #{class_name}.new.enqueue(delay: 5.minutes)
 #   #{class_name}.new.enqueue(queue: "critical")
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.2/docs/guides/background-jobs.md
+# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.3/docs/guides/background-jobs.md
 class #{class_name} < Amber::Jobs::Job
   include JSON::Serializable
 
@@ -389,7 +390,7 @@ METHOD
 #     .subject("Welcome!")
 #     .deliver
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.2/docs/guides/mailer.md
+# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.3/docs/guides/mailer.md
 class #{class_name}Mailer < Amber::Mailer::Base
   def initialize(@user_name : String, @user_email : String)
   end
@@ -493,7 +494,7 @@ SPEC
 #     # Handle errors: result.errors
 #   end
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.2/docs/guides/schema-api.md
+# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.3/docs/guides/schema-api.md
 class #{class_name}Schema < Amber::Schema::Definition
 #{field_definitions}
 end
@@ -598,7 +599,7 @@ SPEC
 # Clients subscribe to this channel through a ClientSocket.
 # Messages sent to this channel are handled by `handle_message`.
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.2/docs/guides/websockets.md
+# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.3/docs/guides/websockets.md
 class #{class_name}Channel < Amber::WebSockets::Channel
   # Called when a client subscribes to this channel.
   # Use this for authorization or sending initial state.
@@ -629,7 +630,7 @@ CHANNEL
 # Configure in config/routes.cr:
 #   websocket "/#{file_name}", #{class_name}Socket
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.2/docs/guides/websockets.md
+# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.3/docs/guides/websockets.md
 struct #{class_name}Socket < Amber::WebSockets::ClientSocket
   channel "#{file_name}:*", #{class_name}Channel
 
@@ -678,14 +679,16 @@ SPEC
     private def model_template
       field_definitions = fields.map do |field_name, field_type|
         crystal_type = FIELD_TYPE_MAP[field_type]? || "String"
+        crystal_type += "?" unless field_required?(field_name)
         "  column #{field_name} : #{crystal_type}"
       end.join("\n")
 
       <<-MODEL
-class #{class_name} < Grant::Model
-  table :#{table_name}
+class #{class_name} < Grant::Base
+  connection primary
+  table #{table_name}
 
-  primary_key id : Int64
+  column id : Int64, primary: true
 
 #{field_definitions}
 
@@ -704,9 +707,9 @@ MODEL
 require "../spec_helper"
 
 describe #{class_name} do
-  it "can be created" do
+  it "uses the #{table_name} table" do
     #{variable_name} = #{class_name}.new
-    #{variable_name}.should_not be_nil
+    #{variable_name}.class.table_name.should eq("#{table_name}")
   end
 end
 SPEC
@@ -832,21 +835,23 @@ SPEC
       generate_scaffold_schema
       generate_controller_for_scaffold
       generate_views
+      add_resource_route
 
       success "Scaffold #{class_name} generated successfully!"
       puts ""
-      info "Don't forget to add routes to config/routes.cr:"
-      info "  resources \"/#{plural_name}\", #{controller_name}"
+      info "Added resources \"/#{plural_name}\", #{controller_name} to config/routes.cr"
+      info "Run 'amber database migrate' before opening /#{plural_name}."
     end
 
     private def generate_scaffold_schema
       schema_path = "src/schemas/#{file_name}_schema.cr"
 
-      field_definitions = fields.map do |field_name, field_type|
+      field_definitions = schema_fields.map do |field_name, field_type, is_required|
         schema_info = SCHEMA_TYPE_MAP[field_type]? || {type: "String", options: ""}
         crystal_type = schema_info[:type]
         extra_options = schema_info[:options]
-        "  field :#{field_name}, #{crystal_type}, required: true#{extra_options}"
+        required_option = is_required ? ", required: true" : ""
+        "  field :#{field_name}, #{crystal_type}#{required_option}#{extra_options}"
       end.join("\n")
 
       content = <<-SCHEMA
@@ -854,7 +859,7 @@ SPEC
 #
 # Used by #{controller_name} for request validation.
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.2/docs/guides/schema-api.md
+# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.3/docs/guides/schema-api.md
 class #{class_name}Schema < Amber::Schema::Definition
 #{field_definitions}
 end
@@ -875,17 +880,23 @@ SCHEMA
       template_ext = detect_template_extension
 
       schema_field_assignments = fields.map do |field_name, _|
-        "      #{variable_name}.#{field_name} = schema.#{field_name}.not_nil!"
+        suffix = field_required?(field_name) ? ".not_nil!" : ""
+        "      #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
       end.join("\n")
 
       update_field_assignments = fields.map do |field_name, _|
-        "        #{variable_name}.#{field_name} = schema.#{field_name}.not_nil!"
+        suffix = field_required?(field_name) ? ".not_nil!" : ""
+        "        #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
       end.join("\n")
 
       <<-CONTROLLER
 class #{controller_name} < ApplicationController
+  @#{plural_variable_name} = [] of #{class_name}
+  @#{variable_name} = #{class_name}.new
+  @errors = [] of Amber::Schema::Error
+
   def index
-    @#{plural_variable_name} = #{class_name}.all
+    @#{plural_variable_name} = #{class_name}.all.to_a
     render("index.#{template_ext}")
   end
 
@@ -1058,7 +1069,11 @@ SPEC
 -- Migration: #{migration_name}
 -- Created: #{Time.utc}
 
--- Add your migration SQL here
+-- +micrate Up
+-- Add SQL to apply the migration here.
+
+-- +micrate Down
+-- Add SQL to roll the migration back here.
 
 SQL
       else
@@ -1109,18 +1124,20 @@ SQL
 
     private def api_controller_template
       schema_field_assignments = fields.map do |field_name, _|
-        "      #{variable_name}.#{field_name} = schema.#{field_name}.not_nil!"
+        suffix = field_required?(field_name) ? ".not_nil!" : ""
+        "      #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
       end.join("\n")
 
       update_field_assignments = fields.map do |field_name, _|
-        "        #{variable_name}.#{field_name} = schema.#{field_name}.not_nil!"
+        suffix = field_required?(field_name) ? ".not_nil!" : ""
+        "        #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
       end.join("\n")
 
       <<-CONTROLLER
 module Api
   class #{controller_name} < ApplicationController
     def index
-      #{plural_variable_name} = #{class_name}.all
+      #{plural_variable_name} = #{class_name}.all.to_a
       render json: #{plural_variable_name}.to_json
     end
 
@@ -1363,7 +1380,8 @@ VIEW
     private def create_table_migration
       column_definitions = fields.map do |field_name, field_type|
         sql_type = case field_type
-                   when "string", "uuid", "email" then "VARCHAR(255)"
+                   when "string", "email"         then "VARCHAR(255)"
+                   when "uuid"                    then database_type == "pg" ? "UUID" : "VARCHAR(36)"
                    when "text"                    then "TEXT"
                    when "integer", "int", "int32" then "INTEGER"
                    when "int64", "reference"      then "BIGINT"
@@ -1373,17 +1391,23 @@ VIEW
                    when "time", "timestamp"       then "TIMESTAMP"
                    else                                "VARCHAR(255)"
                    end
-        "  #{field_name} #{sql_type}"
+        nullability = field_required?(field_name) ? " NOT NULL" : ""
+        "  #{field_name} #{sql_type}#{nullability}"
       end.join(",\n")
 
+      field_sql = column_definitions.empty? ? "" : "#{column_definitions},\n"
+
       <<-SQL
+-- +micrate Up
 -- Create #{table_name} table
 CREATE TABLE IF NOT EXISTS #{table_name} (
-  id BIGSERIAL PRIMARY KEY,
-#{column_definitions},
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  #{primary_key_sql},
+#{field_sql}  created_at TIMESTAMP,
+  updated_at TIMESTAMP
 );
+
+-- +micrate Down
+DROP TABLE IF EXISTS #{table_name};
 SQL
     end
 
@@ -1474,7 +1498,7 @@ VIEW
         <<-VIEW
 h1 New #{class_name}
 
-== render("_form.slang")
+== render(partial: "_form.slang")
 
 a href="/#{plural_name}" Back
 VIEW
@@ -1482,7 +1506,7 @@ VIEW
         <<-VIEW
 <h1>New #{class_name}</h1>
 
-<%= render("_form.ecr") %>
+<%= render(partial: "_form.ecr") %>
 
 <a href="/#{plural_name}">Back</a>
 VIEW
@@ -1494,7 +1518,7 @@ VIEW
         <<-VIEW
 h1 Edit #{class_name}
 
-== render("_form.slang")
+== render(partial: "_form.slang")
 
 a href="/#{plural_name}" Back
 VIEW
@@ -1502,7 +1526,7 @@ VIEW
         <<-VIEW
 <h1>Edit #{class_name}</h1>
 
-<%= render("_form.ecr") %>
+<%= render(partial: "_form.ecr") %>
 
 <a href="/#{plural_name}">Back</a>
 VIEW
@@ -1542,7 +1566,10 @@ FIELD
         end.join("\n")
 
         <<-VIEW
-== form(action: "/#{plural_name}", method: "post") do
+- form_action = @#{variable_name}.persisted? ? "/#{plural_name}/\#{@#{variable_name}.id}" : "/#{plural_name}"
+== form(action: form_action, method: "post") do
+  - if @#{variable_name}.persisted?
+    input type="hidden" name="_method" value="PATCH"
 #{form_fields}
   button type="submit" Save
 VIEW
@@ -1553,13 +1580,13 @@ VIEW
             <<-FIELD
   <div class="form-group">
     <%= label("#{field_name}") %>
-    <%= text_area("#{field_name}", value: @#{variable_name}.try(&.#{field_name})) %>
+    <%= text_area("#{field_name}", value: @#{variable_name}.#{field_name}?) %>
   </div>
 FIELD
           when "bool", "boolean"
             <<-FIELD
   <div class="form-group">
-    <%= checkbox("#{field_name}", checked: @#{variable_name}.try(&.#{field_name}) || false) %>
+    <%= checkbox("#{field_name}", checked: @#{variable_name}.#{field_name}? || false, value: "true") %>
     <%= label("#{field_name}") %>
   </div>
 FIELD
@@ -1567,31 +1594,46 @@ FIELD
             <<-FIELD
   <div class="form-group">
     <%= label("#{field_name}") %>
-    <%= email_field("#{field_name}", value: @#{variable_name}.try(&.#{field_name})) %>
+    <%= email_field("#{field_name}", value: @#{variable_name}.#{field_name}?) %>
   </div>
 FIELD
           when "integer", "int", "int32", "int64", "float", "float64", "decimal"
             <<-FIELD
   <div class="form-group">
     <%= label("#{field_name}") %>
-    <%= number_field("#{field_name}", value: @#{variable_name}.try(&.#{field_name})) %>
+    <%= number_field("#{field_name}", value: @#{variable_name}.#{field_name}?) %>
   </div>
 FIELD
           else
             <<-FIELD
   <div class="form-group">
     <%= label("#{field_name}") %>
-    <%= text_field("#{field_name}", value: @#{variable_name}.try(&.#{field_name})) %>
+    <%= text_field("#{field_name}", value: @#{variable_name}.#{field_name}?) %>
   </div>
 FIELD
           end
         end.join("\n")
 
         <<-VIEW
-<%= form_for("/#{plural_name}", method: "POST") { %>
+<% unless @errors.empty? %>
+  <div class="form-errors" role="alert">
+    <p>Please correct the following:</p>
+    <ul>
+      <% @errors.each do |error| %>
+        <li><%= error.field %>: <%= error.message || "is invalid" %></li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>
+
+<form action="<%= @#{variable_name}.persisted? ? "/#{plural_name}/\#{@#{variable_name}.id}" : "/#{plural_name}" %>" method="POST">
+  <%= csrf_tag %>
+  <% if @#{variable_name}.persisted? %>
+    <%= hidden_field("_method", "PATCH") %>
+  <% end %>
 #{form_fields}
   <%= submit_button("Save") %>
-<% } %>
+</form>
 VIEW
       end
     end
@@ -1640,6 +1682,45 @@ VIEW
 
     private def default_actions
       %w[index show new create edit update destroy]
+    end
+
+    private def field_required?(field_name : String) : Bool
+      schema_fields.find { |field| field[0] == field_name }.try(&.[2]) || false
+    end
+
+    private def database_type : String
+      Amber::CLI.config.database
+    end
+
+    private def primary_key_sql : String
+      case database_type
+      when "pg"
+        "id BIGSERIAL PRIMARY KEY"
+      when "mysql"
+        "id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY"
+      else
+        "id INTEGER PRIMARY KEY AUTOINCREMENT"
+      end
+    end
+
+    private def add_resource_route
+      routes_path = "config/routes.cr"
+      unless File.exists?(routes_path)
+        warning "Could not add the resource route because #{routes_path} does not exist."
+        return
+      end
+
+      route = "    resources \"/#{plural_name}\", #{controller_name}\n"
+      content = File.read(routes_path)
+      return if content.includes?(route.strip)
+
+      anchor = "  routes :web do\n"
+      unless content.includes?(anchor)
+        warning "Could not find the web routes block in #{routes_path}."
+        return
+      end
+
+      File.write(routes_path, content.sub(anchor, "#{anchor}#{route}"))
     end
 
     private def field_assignments

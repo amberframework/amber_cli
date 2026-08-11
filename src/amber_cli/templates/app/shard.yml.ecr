@@ -15,4 +15,21 @@ targets:
 dependencies:
   amber:
     github: amberframework/amber
-    version: 2.0.0-beta.2
+    version: 2.0.0-beta.3
+  grant:
+    github: crimson-knight/grant
+    commit: 2665a978b43ac608c68cde9243821f8f8f053372
+<% case @database
+when "pg" -%>
+  pg:
+    github: will/crystal-pg
+    version: 0.30.0
+<% when "mysql" -%>
+  mysql:
+    github: crimson-knight/crystal-mysql
+    commit: c061324dcef89a200a7a3f86a59b2ebf03f83602
+<% else -%>
+  sqlite3:
+    github: crystal-lang/crystal-sqlite3
+    version: 0.23.0
+<% end -%>

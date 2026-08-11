@@ -83,7 +83,7 @@ jobs:
         ! otool -L amber amber-lsp | grep -F 'openssl@1.1'
 
     - name: Smoke test generated Amber V2 web app
-      run: scripts/smoke_generated_web.sh ./amber
+      run: scripts/smoke_generated_web.sh ./amber bd8d9428f45cb836cb6f26bbc358721a9f0ca3b3
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v7
