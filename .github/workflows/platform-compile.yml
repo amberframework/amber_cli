@@ -27,7 +27,7 @@ jobs:
         run: crystal build src/amber_cli.cr --no-debug -o amber
 
       - name: Compile generated Amber V2 web app
-        run: scripts/smoke_generated_web.sh ./amber bd8d9428f45cb836cb6f26bbc358721a9f0ca3b3
+        run: scripts/smoke_generated_web.sh ./amber c342aa716dce0700bca71b0dac5d112c374361cd
 
   windows-x86-64:
     name: Windows x86_64 generated web app (merged framework fix)
@@ -57,4 +57,4 @@ jobs:
 
       - name: Compile generated Amber V2 web app
         shell: pwsh
-        run: scripts/smoke_generated_web.ps1 ./amber.exe bd8d9428f45cb836cb6f26bbc358721a9f0ca3b3
+        run: scripts/smoke_generated_web.ps1 ./amber.exe c342aa716dce0700bca71b0dac5d112c374361cd
