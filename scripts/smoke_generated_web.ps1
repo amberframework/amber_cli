@@ -30,7 +30,7 @@ if (Test-Path $smokeRoot) {
 }
 New-Item -ItemType Directory -Force $smokeRoot | Out-Null
 
-Invoke-Checked $cliPath new $appPath --type web --no-deps
+Invoke-Checked -Command $cliPath -Arguments @("new", $appPath, "--type", "web", "--no-deps")
 
 if ($FrameworkCommit) {
   $shardPath = Join-Path $appPath "shard.yml"
@@ -48,10 +48,15 @@ if ($FrameworkCommit) {
 
 Push-Location $appPath
 try {
-  Invoke-Checked shards install
-  Invoke-Checked crystal spec
+  Invoke-Checked -Command "shards" -Arguments @("install")
+  Invoke-Checked -Command "crystal" -Arguments @("spec")
   New-Item -ItemType Directory -Force bin | Out-Null
-  Invoke-Checked crystal build src/amber_beta_smoke.cr -o bin/amber_beta_smoke.exe
+  Invoke-Checked -Command "crystal" -Arguments @(
+    "build",
+    "src/amber_beta_smoke.cr",
+    "-o",
+    "bin/amber_beta_smoke.exe"
+  )
 } finally {
   Pop-Location
 }
