@@ -89,6 +89,10 @@ try {
     $env:AMBER_ENV = $previousAmberEnv
   }
 
+  # Request specs use Amber's default development environment unless the
+  # caller sets AMBER_ENV. Mirror the Unix smoke test and migrate both stores.
+  Invoke-Checked -Command $cliPath -Arguments @("database", "migrate")
+
   Invoke-Checked -Command "crystal" -Arguments @("spec")
   New-Item -ItemType Directory -Force bin | Out-Null
   Invoke-Checked -Command "crystal" -Arguments @(
