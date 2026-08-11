@@ -30,7 +30,7 @@ jobs:
         run: scripts/smoke_generated_web.sh ./amber
 
   windows-x86-64:
-    name: Windows x86_64 generated web app (merged framework fix)
+    name: Windows x86_64 generated web app
     runs-on: windows-latest
     steps:
       - name: Checkout code
@@ -57,4 +57,4 @@ jobs:
 
       - name: Compile generated Amber V2 web app
         shell: pwsh
-        run: scripts/smoke_generated_web.ps1 ./amber.exe d044ea05e884b3247fd2af00859bde272aab676a
+        run: scripts/smoke_generated_web.ps1 ./amber.exe

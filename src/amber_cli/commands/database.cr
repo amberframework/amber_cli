@@ -2,6 +2,7 @@ require "micrate"
 require "pg"
 require "mysql"
 require "sqlite3"
+require "yaml"
 require "../core/base_command"
 require "../helpers/helpers"
 require "../helpers/migration"
@@ -87,35 +88,34 @@ module AmberCLI::Commands
     end
 
     def execute
-      connect_to_database if remaining_arguments.empty?
       process_commands(remaining_arguments)
     rescue e : DB::ConnectionRefused
-      exit! "Connection unsuccessful: #{Micrate::DB.connection_url || "unknown"}", error: true
+      exit! "Connection unsuccessful: #{database_url}", error: true
     rescue e : Exception
       exit! e.message || "Unknown error", error: true
     end
 
     private def process_commands(commands)
       commands.each do |command|
-        Micrate::DB.connection_url = database_url
+        url = database_url
         case command
         when "drop"
-          drop_database
+          Micrate::Cli.drop_database(url)
         when "create"
-          create_database
+          Micrate::Cli.create_database(url)
         when "seed"
           Amber::CLI::Helpers.run("crystal db/seeds.cr", wait: true, shell: true)
           info "Seeded database"
         when "migrate"
-          migrate
+          Micrate::Cli.run_up(url, MIGRATIONS_DIR)
         when "rollback"
-          Micrate::Cli.run_down
+          Micrate::Cli.run_down(url, MIGRATIONS_DIR)
         when "redo"
-          Micrate::Cli.run_redo
+          Micrate::Cli.run_redo(url, MIGRATIONS_DIR)
         when "status"
-          Micrate::Cli.run_status
+          Micrate::Cli.run_status(url, MIGRATIONS_DIR)
         when "version"
-          Micrate::Cli.run_dbversion
+          Micrate::Cli.run_dbversion(url, MIGRATIONS_DIR)
         when "connect"
           connect_to_database
         else
@@ -126,54 +126,8 @@ module AmberCLI::Commands
       end
     end
 
-    private def migrate
-      Micrate::Cli.run_up
-    rescue e : IndexError
-      exit! "No migrations to run in #{MIGRATIONS_DIR}."
-    end
-
-    private def drop_database
-      url = Micrate::DB.connection_url.to_s
-      if url.starts_with? "sqlite3:"
-        path = url.gsub("sqlite3:", "")
-        File.delete(path)
-        info "Deleted file #{path}"
-      else
-        name = set_database_to_schema url
-        Micrate::DB.connect do |db|
-          db.exec "DROP DATABASE IF EXISTS #{name};"
-        end
-        info "Dropped database #{name}"
-      end
-    end
-
-    private def create_database
-      url = Micrate::DB.connection_url.to_s
-      if url.starts_with? "sqlite3:"
-        info CREATE_SQLITE_MESSAGE
-      else
-        name = set_database_to_schema url
-        Micrate::DB.connect do |db|
-          db.exec "CREATE DATABASE #{name};"
-        end
-        info "Created database #{name}"
-      end
-    end
-
-    private def set_database_to_schema(url) : String
-      uri = URI.parse(url)
-      if path = uri.path
-        Micrate::DB.connection_url = url.gsub(path, "/#{uri.scheme}")
-        return path.gsub("/", "")
-      else
-        error "Could not determine database name"
-        exit!(error: true)
-        return "" # This won't be reached but satisfies the compiler
-      end
-    end
-
     private def connect_to_database
-      Process.exec(command_line_tool, {database_url}) if database_url
+      Process.exec(command_line_tool, {database_cli_argument})
       exit!
     end
 
@@ -215,20 +169,39 @@ module AmberCLI::Commands
       end
     end
 
-    private def database_url
-      ENV["DATABASE_URL"]? || default_database_url
+    private def database_url : String
+      ENV["DATABASE_URL"]? || ENV["AMBER_DATABASE_URL"]? || environment_database_url || default_database_url
     end
 
-    private def default_database_url
-      # Try to read from config
-      config_file = "config/database.cr"
-      if File.exists?(config_file)
-        # This is a simplified approach - in reality we'd need to parse the config
-        # For now, return a default
-        "postgres://localhost/amber_development"
+    private def environment_database_url : String?
+      environment = ENV["AMBER_ENV"]? || "development"
+      config_file = "config/environments/#{environment}.yml"
+      return unless File.exists?(config_file)
+
+      document = YAML.parse(File.read(config_file))
+      document["database"]?.try(&.["url"]?).try(&.as_s?)
+    rescue ex : YAML::ParseException
+      warning "Could not parse #{config_file}: #{ex.message}"
+      nil
+    end
+
+    private def default_database_url : String
+      name = Amber::CLI::Config.get_name
+      environment = ENV["AMBER_ENV"]? || "development"
+
+      case database_type
+      when "mysql"
+        "mysql://localhost:3306/#{name}_#{environment}"
+      when "sqlite"
+        "sqlite3:./db/#{name}_#{environment}.db"
       else
-        "postgres://localhost/amber_development"
+        "postgres://localhost:5432/#{name}_#{environment}"
       end
+    end
+
+    private def database_cli_argument : String
+      url = database_url
+      database_type == "sqlite" ? url.sub(/^sqlite3:(?:\/\/)?/, "") : url
     end
   end
 end

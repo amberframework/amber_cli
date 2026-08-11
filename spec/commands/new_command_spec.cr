@@ -86,10 +86,20 @@ describe AmberCLI::Commands::NewCommand do
 
         shard = File.read(File.join(destination, "shard.yml"))
         shard.should contain("github: amberframework/amber")
-        shard.should contain("version: 2.0.0-beta.2")
-        shard.should_not contain("crimson-knight")
-        shard.should_not contain("grant:")
+        shard.should contain("version: 2.0.0-beta.3")
+        shard.should contain("grant:")
+        shard.should contain("github: crimson-knight/grant")
+        shard.should contain("github: crystal-lang/crystal-sqlite3")
         shard.should_not contain("slang")
+
+        amber_config = YAML.parse(File.read(File.join(destination, ".amber.yml")))
+        amber_config["database"].as_s.should eq("sqlite")
+        amber_config["model"].as_s.should eq("grant")
+
+        database_config = File.read(File.join(destination, "config/database.cr"))
+        database_config.should contain(%(require "grant/adapter/sqlite"))
+        database_config.should contain(%(name: "primary"))
+        database_config.should contain(%(ENV["DATABASE_URL"]? || Amber.settings.database_url))
 
         config = YAML.parse(File.read(File.join(destination, "config/environments/development.yml")))
         config["server"]["port"].as_i.should eq(3000)
@@ -123,6 +133,10 @@ describe AmberCLI::Commands::NewCommand do
 
         File.exists?(File.join(destination, "src/views/home/index.ecr")).should be_true
         File.exists?(File.join(destination, "src/views/home/index.slang")).should be_false
+
+        readme = File.read(File.join(destination, "README.md"))
+        readme.should contain("amber generate scaffold Pet")
+        readme.should contain("amber database migrate")
       end
     end
   end

@@ -3,14 +3,14 @@
 [![GitHub release](https://img.shields.io/github/release/amberframework/amber_cli.svg)](https://github.com/amberframework/amber_cli/releases)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://amberframework.github.io/amber_cli/)
 
-Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.3`
-creates the supported Amber `2.0.0-beta.2` ECR web application and includes
+Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.4`
+creates the supported Amber `2.0.0-beta.3` ECR web application and includes
 development, generator, database, and LSP tooling.
 
 Amber V2 is a beta. The release-gated path is a web application on Apple
 Silicon macOS or x86_64 Linux. Linux ARM64 generated-app compilation is checked
 in CI; its first direct archive will ship with the next CLI release. See [Generator support](docs/GENERATOR_SUPPORT.md)
-before relying on persistence, authentication, API-resource, or native output.
+before relying on authentication, API-resource, or native output.
 
 ## Install
 
@@ -31,13 +31,12 @@ the `amber_cli` formula.
 
 ### Direct release archive
 
-CLI `2.0.3` publishes `darwin-arm64` for Apple Silicon macOS and
-`linux-x86_64` for x86_64 Linux. The release workflow now also builds
-`linux-arm64`; that archive becomes available with the next published CLI
-version.
+CLI `2.0.4` publishes `darwin-arm64`, `linux-x86_64`, and `linux-arm64`
+archives. Windows x86-64 is compiled in CI but does not yet have a release
+archive.
 
 ```bash
-version=v2.0.3
+version=v2.0.4
 platform=darwin-arm64
 asset="amber_cli-${platform}.tar.gz"
 
@@ -51,27 +50,6 @@ amber --version
 
 On Linux, use `sha256sum -c` for the checksum. Prefix only the `install`
 command with `sudo` if `/usr/local/bin` is not writable.
-
-### Linux ARM64 source install for 2.0.3
-
-CLI `2.0.3` does not contain a `linux-arm64` archive. On an ARM64 Linux host,
-build that tagged source instead of downloading the x86_64 binary:
-
-```bash
-sudo apt-get update
-sudo apt-get install -y libsqlite3-dev
-git clone --branch v2.0.3 --depth 1 https://github.com/amberframework/amber_cli.git
-cd amber_cli
-shards install --production
-crystal build src/amber_cli.cr -o amber --release
-crystal build src/amber_lsp.cr -o amber-lsp --release
-sudo install -m 0755 amber amber-lsp /usr/local/bin/
-amber --version
-```
-
-Run the clone command from a directory where the temporary `amber_cli/`
-checkout can be created. The next CLI release workflow now builds and smoke
-tests a native `linux-arm64` archive on a GitHub-hosted ARM64 Linux runner.
 
 ## Create and verify a web app
 
@@ -89,15 +67,30 @@ workflow needs to run `shards install` later. Open <http://127.0.0.1:3000> and
 
 The web template is deliberately small:
 
-- Amber from `amberframework/amber`, pinned to `2.0.0-beta.2`
+- Amber from `amberframework/amber`, pinned to `2.0.0-beta.3`
 - ECR views (Slang and Kilt are not supported in Amber V2)
 - typed development, test, and production YAML
 - branded homepage, controller spec, and static CSS/JavaScript
 - a browser-native import map with a local JavaScript module entry point
-- no ORM or database driver by default
+- Grant ORM, Micrate-powered migration commands, and the selected database driver
+- SQLite by default, so the first persisted feature needs no database server
 
-The `-d pg|mysql|sqlite` option records metadata and suggested URLs for future
-persistence tooling. It does not add an ORM or driver to the core web app.
+The `-d pg|mysql|sqlite` option selects the generated driver, connection, and
+development/test URLs. SQLite is the default; PostgreSQL and MySQL expect their
+respective local servers or a `DATABASE_URL`.
+
+Create the first complete resource and its database table:
+
+```bash
+amber generate scaffold Pet name:string:required species:string:required adopted:bool
+amber database migrate
+amber watch
+```
+
+The generator writes the Grant model to `src/models/pet.cr`, the request schema
+to `src/schemas/pet_schema.cr`, the controller to
+`src/controllers/pet_controller.cr`, ECR views to `src/views/pet/`, a Micrate
+SQL migration to `db/migrations/`, and the resource route to `config/routes.cr`.
 
 ## Commands
 
@@ -107,8 +100,8 @@ persistence tooling. It does not add an ORM or driver to the core web app.
 | `amber watch` | Supported | Rebuild and restart during development |
 | `amber routes` | Supported | Inspect application routes |
 | `amber pipelines` | Supported | Inspect configured pipelines |
-| `amber generate` | Mixed | Core generators supported; dependency-backed generators preview |
-| `amber database` | Preview for new apps | Requires an explicitly configured persistence stack |
+| `amber generate` | Mixed | Model, scaffold, migration, and core generators supported; auth and API preview |
+| `amber database` | Supported | Apply, roll back, inspect, redo, and seed the generated database |
 | `amber new APP --type native` | Preview | Not part of the beta platform guarantee |
 | `amber setup:lsp` | Available | Configure the bundled diagnostics LSP |
 
@@ -143,7 +136,7 @@ The release archive includes `amber-lsp`. From an Amber project:
 amber setup:lsp
 ```
 
-See the [LSP setup guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.2/docs/guides/lsp-setup.md).
+See the [LSP setup guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.3/docs/guides/lsp-setup.md).
 
 ## Contributing
 

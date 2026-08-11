@@ -26,9 +26,9 @@ module Amber::CLI
     # see defaults below
     alias WatchOptions = Hash(String, Hash(String, Array(String)))
 
-    property database : String = "pg"
+    property database : String = "sqlite"
     property language : String = "ecr"
-    property model : String = "none"
+    property model : String = "grant"
     property watch : WatchOptions?
 
     def initialize

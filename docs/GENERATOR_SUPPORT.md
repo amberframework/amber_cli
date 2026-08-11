@@ -10,17 +10,16 @@ without adding an unreleased ecosystem dependency.
 | `generate job` | Supported | Uses Amber's built-in job system |
 | `generate mailer` | Supported | Uses Amber's built-in mailer API |
 | `generate channel` | Supported | Uses Amber WebSockets |
-| `generate migration` | Supported output | Produces SQL migration files; applying them requires database tooling |
-| `generate model` | Preview | Currently emits Grant-based output; Grant is not in the core app |
-| `generate scaffold` | Preview | Includes Grant persistence and resource output |
+| `generate migration` | Supported | Produces Micrate Up/Down SQL in `db/migrations/`; apply it with `amber database migrate` |
+| `generate model` | Supported | Produces a Grant model, model spec, and migration |
+| `generate scaffold` | Supported | Produces a Grant model, request schema, HTML CRUD controller, ECR views, specs, migration, and route |
 | `generate api` | Preview | Includes a persistence-backed model |
 | `generate auth` | Preview | Requires a compatible persistence/auth stack |
 | `new --type native` | Preview | Has a separate multi-platform dependency and validation matrix |
 
 Preview does not mean removed. It means the CLI may generate the files, but the
-Amber beta release does not promise that a clean web application will compile
-them without additional work. The CLI prints a warning before generating a
-dependency-backed preview surface.
+Amber beta release does not promise production-ready behavior without review.
+The CLI prints a warning before generating a preview surface.
 
 Amber V2 supports ECR only. The CLI ignores legacy Slang settings for new
 output; migrate old `.slang` files before using V2 generators.

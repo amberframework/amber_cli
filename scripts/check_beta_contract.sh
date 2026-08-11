@@ -3,12 +3,17 @@ set -euo pipefail
 
 shard_version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
 cli_version="$(sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' src/amber_cli.cr | head -1)"
-test "$shard_version" = "2.0.3"
+test "$shard_version" = "2.0.4"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new.cr
-grep -F 'version: 2.0.0-beta.2' src/amber_cli/commands/new.cr
+grep -F 'version: 2.0.0-beta.3' src/amber_cli/commands/new.cr
 grep -F 'template: ecr' src/amber_cli/commands/new.cr
+grep -F 'model: grant' src/amber_cli/commands/new.cr
+grep -F 'database: #{database}' src/amber_cli/commands/new.cr
+grep -F 'github: crimson-knight/grant' src/amber_cli/commands/new.cr
+grep -F 'github: amberframework/micrate' shard.yml
+test -s src/amber_cli/templates/app/config/database.cr.ecr
 grep -F 'Your new idea' src/amber_cli/commands/new.cr
 grep -F -- '--amber-accent: #e96918' src/amber_cli/commands/new.cr
 grep -F 'Your new idea' src/amber_cli/templates/app/src/views/home/index.ecr.ecr
@@ -19,6 +24,7 @@ grep -F 'brew install amberframework/amber_cli/amber_cli' README.md
 files=(
   README.md
   RELEASE_NOTES_V2.0.3.md
+  RELEASE_NOTES_V2.0.4.md
   RELEASE_SETUP.md
   .github/ISSUE_TEMPLATE/release-checklist.md
   docs/*.md
@@ -29,8 +35,8 @@ if grep -Ein 'amberframework/amber-cli|brew tap amberframework/amber_cli|brew in
   exit 1
 fi
 
-if grep -Eir 'crimson-knight/(amber|grant|gemma)' src/amber_cli/templates/app src/amber_cli/commands/new.cr; then
-  echo "supported web template contains a personal dependency" >&2
+if grep -Eir 'crimson-knight/(amber|gemma)' src/amber_cli/templates/app src/amber_cli/commands/new.cr; then
+  echo "supported web template contains a personal Amber or Gemma dependency" >&2
   exit 1
 fi
 

@@ -6,7 +6,7 @@ shards:
 
   asset_pipeline:
     git: https://github.com/amberframework/asset_pipeline.git
-    version: 0.36.0+git.commit.ded6af312d667b93db29e678ac4b8ff8dc26774e
+    version: 0.36.0+git.commit.5f63d9adb02be566cdade67e4616ca0bb3cbf30b
 
   backtracer:
     git: https://github.com/sija/backtracer.cr.git
@@ -26,7 +26,7 @@ shards:
 
   micrate:
     git: https://github.com/amberframework/micrate.git
-    version: 0.15.1+git.commit.647fac0490a522956fef305c720e8ebf1422a87d
+    version: 0.16.0-beta.1+git.commit.56afd5607cc591776980f3d3762495c037b98d98
 
   mysql:
     git: https://github.com/crystal-lang/crystal-mysql.git

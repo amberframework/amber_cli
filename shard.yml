@@ -1,5 +1,5 @@
 name: amber_cli
-version: 2.0.3
+version: 2.0.4
 
 authors:
   - crimson-knight <crimsonknightstudios@gmail.com>
@@ -19,12 +19,11 @@ dependencies:
   # Temporary branch until the Apple shell export APIs land in a tagged release.
   asset_pipeline:
     github: amberframework/asset_pipeline
-    branch: feature/utility-first-css-asset-pipeline
+    commit: 5f63d9adb02be566cdade67e4616ca0bb3cbf30b
 
   micrate:
     github: amberframework/micrate
-    # version: ~> 0.15.0
-    branch: master
+    commit: 56afd5607cc591776980f3d3762495c037b98d98
 
   pg:
     github: will/crystal-pg
