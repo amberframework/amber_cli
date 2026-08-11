@@ -52,6 +52,27 @@ amber --version
 On Linux, use `sha256sum -c` for the checksum. Prefix only the `install`
 command with `sudo` if `/usr/local/bin` is not writable.
 
+### Linux ARM64 source install for 2.0.3
+
+CLI `2.0.3` does not contain a `linux-arm64` archive. On an ARM64 Linux host,
+build that tagged source instead of downloading the x86_64 binary:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y libsqlite3-dev
+git clone --branch v2.0.3 --depth 1 https://github.com/amberframework/amber_cli.git
+cd amber_cli
+shards install --production
+crystal build src/amber_cli.cr -o amber --release
+crystal build src/amber_lsp.cr -o amber-lsp --release
+sudo install -m 0755 amber amber-lsp /usr/local/bin/
+amber --version
+```
+
+Run the clone command from a directory where the temporary `amber_cli/`
+checkout can be created. The next CLI release workflow now builds and smoke
+tests a native `linux-arm64` archive on a GitHub-hosted ARM64 Linux runner.
+
 ## Create and verify a web app
 
 ```bash
