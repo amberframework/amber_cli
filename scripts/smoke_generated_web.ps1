@@ -1,6 +1,8 @@
 param(
   [Parameter(Mandatory = $true, Position = 0)]
-  [string]$Cli
+  [string]$Cli,
+  [Parameter(Position = 1)]
+  [string]$FrameworkCommit = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,6 +31,20 @@ if (Test-Path $smokeRoot) {
 New-Item -ItemType Directory -Force $smokeRoot | Out-Null
 
 Invoke-Checked $cliPath new $appPath --type web --no-deps
+
+if ($FrameworkCommit) {
+  $shardPath = Join-Path $appPath "shard.yml"
+  $manifest = [System.IO.File]::ReadAllText($shardPath)
+  $releasedFramework = "    version: 2.0.0-beta.2"
+  if (-not $manifest.Contains($releasedFramework)) {
+    throw "Generated shard.yml does not contain the expected Amber beta pin"
+  }
+  $manifest = $manifest.Replace(
+    $releasedFramework,
+    "    commit: $FrameworkCommit"
+  )
+  [System.IO.File]::WriteAllText($shardPath, $manifest)
+}
 
 Push-Location $appPath
 try {
