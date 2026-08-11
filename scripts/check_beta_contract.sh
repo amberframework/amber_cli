@@ -3,7 +3,7 @@ set -euo pipefail
 
 shard_version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
 cli_version="$(sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' src/amber_cli.cr | head -1)"
-test "$shard_version" = "2.0.2"
+test "$shard_version" = "2.0.3"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new.cr
@@ -18,7 +18,7 @@ grep -F 'brew install amberframework/amber_cli/amber_cli' README.md
 
 files=(
   README.md
-  RELEASE_NOTES_V2.0.2.md
+  RELEASE_NOTES_V2.0.3.md
   RELEASE_SETUP.md
   .github/ISSUE_TEMPLATE/release-checklist.md
   docs/*.md

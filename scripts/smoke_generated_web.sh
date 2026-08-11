@@ -24,7 +24,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-"$cli_path" --version | grep -F "Amber CLI v2.0.2"
+"$cli_path" --version | grep -F "Amber CLI v2.0.3"
 "$cli_path" new "$app_path" --type web --no-deps
 
 grep -F "github: amberframework/amber" "$app_path/shard.yml"
@@ -66,6 +66,8 @@ done
 
 curl --fail --silent http://127.0.0.1:3210/ | grep -F "Your new idea"
 curl --fail --silent http://127.0.0.1:3210/ | grep -F "Ready to customize"
+curl --fail --silent http://127.0.0.1:3210/ | grep -F 'type="importmap"'
+curl --fail --silent http://127.0.0.1:3210/ | grep -F '"app":"/js/app.js"'
 curl --fail --silent http://127.0.0.1:3210/css/app.css | grep -F "Amber V2 starter styles"
 curl --fail --silent http://127.0.0.1:3210/css/app.css | grep -F -- "--amber-accent: #e96918"
 
