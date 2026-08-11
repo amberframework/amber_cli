@@ -13,12 +13,12 @@ Homebrew formula pins CLI archives and checksums.
 
 ## 2. CLI release
 
-1. Confirm `shard.yml` and `AmberCLI::VERSION` both say `2.0.2`.
+1. Confirm `shard.yml` and `AmberCLI::VERSION` both say `2.0.3`.
 2. Generate a web app and verify it pins the framework prerelease.
 3. On both supported platforms, install shards, run app specs, build the app,
    start it, and request `/` plus `/css/app.css`.
 4. On macOS, reject any binary linked to `openssl@1.1`.
-5. Tag `v2.0.2`, publish the release, and wait for both archives and checksum
+5. Tag `v2.0.3`, publish the release, and wait for both archives and checksum
    files to upload.
 
 ## 3. Homebrew

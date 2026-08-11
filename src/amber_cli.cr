@@ -38,7 +38,7 @@ end
 Log.builder.bind "*", :info, backend
 
 module AmberCLI
-  VERSION = "2.0.2"
+  VERSION = "2.0.3"
 
   def self.run(args = ARGV)
     if args.empty?

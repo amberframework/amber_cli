@@ -3,7 +3,7 @@
 [![GitHub release](https://img.shields.io/github/release/amberframework/amber_cli.svg)](https://github.com/amberframework/amber_cli/releases)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://amberframework.github.io/amber_cli/)
 
-Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.2`
+Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.3`
 creates the supported Amber `2.0.0-beta.2` ECR web application and includes
 development, generator, database, and LSP tooling.
 
@@ -33,7 +33,7 @@ the `amber_cli` formula.
 Use `darwin-arm64` on Apple Silicon macOS or `linux-x86_64` on x86_64 Linux:
 
 ```bash
-version=v2.0.2
+version=v2.0.3
 platform=darwin-arm64
 asset="amber_cli-${platform}.tar.gz"
 
@@ -67,7 +67,8 @@ The web template is deliberately small:
 - Amber from `amberframework/amber`, pinned to `2.0.0-beta.2`
 - ECR views (Slang and Kilt are not supported in Amber V2)
 - typed development, test, and production YAML
-- homepage, controller spec, and static CSS/JavaScript
+- branded homepage, controller spec, and static CSS/JavaScript
+- a browser-native import map with a local JavaScript module entry point
 - no ORM or database driver by default
 
 The `-d pg|mysql|sqlite` option records metadata and suggested URLs for future

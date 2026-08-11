@@ -1,6 +1,6 @@
 # Amber V2 Beta Web App
 
-This guide is the consumer smoke test for Amber CLI `2.0.2` and Amber
+This guide is the consumer smoke test for Amber CLI `2.0.3` and Amber
 `2.0.0-beta.2`. It is expected to pass on Apple Silicon macOS and x86_64 Linux.
 
 ## 1. Verify the toolchain
@@ -11,7 +11,7 @@ shards --version
 amber --version
 ```
 
-Crystal must be at least 1.20 and earlier than 2.0. Amber CLI must be 2.0.2 or
+Crystal must be at least 1.20 and earlier than 2.0. Amber CLI must be 2.0.3 or
 newer.
 
 ## 2. Generate the web app
@@ -32,6 +32,13 @@ grep 'template:' .amber.yml
 The dependency must be `amberframework/amber` version `2.0.0-beta.2`; the
 template must be `ecr`. A newly generated app must not contain a personal fork,
 Grant, Gemma, Slang, or all three database drivers.
+
+The first page carries a compact version of Amber's V2 visual language: warm
+paper colors, a CSS faceted-crystal mark, editorial heading scale, status chips,
+and a responsive first-edits panel. It should begin with “Your new idea starts
+here” and list the page, route, and controller entry points. Its local
+JavaScript entry point is resolved through a browser-native import map. The
+starter uses no remote font, image, JavaScript package, or front-end build step.
 
 ## 3. Test and build
 
@@ -56,7 +63,13 @@ curl --fail http://127.0.0.1:3000/css/app.css
 ```
 
 The first request validates routing, the controller, and ECR rendering. The
-second validates the static pipeline.
+second validates the static pipeline. Confirm the deployed scaffold, rather
+than an older cached template, with:
+
+```bash
+curl --fail http://127.0.0.1:3000/ | grep 'Your new idea'
+curl --fail http://127.0.0.1:3000/css/app.css | grep -- '--amber-accent: #e96918'
+```
 
 ## 5. Try core generators
 
