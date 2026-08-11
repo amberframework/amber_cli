@@ -475,7 +475,10 @@ CONTROLLER
 </head>
 <body>
   <%= content %>
-  <script src="/js/app.js"></script>
+  <script type="importmap">
+    {"imports":{"app":"/js/app.js"}}
+  </script>
+  <script type="module">import "app";</script>
 </body>
 </html>
 LAYOUT
@@ -994,8 +997,9 @@ CSS
 
       # JavaScript
       js_content = <<-JS
-// Application JavaScript
-console.log("Amber V2 application loaded");
+// Application JavaScript entry point.
+// Add local modules under public/js and map stable names in the ECR layout.
+document.documentElement.dataset.javascript = "ready";
 JS
 
       write_text(File.join(path, "public/js/app.js"), js_content)

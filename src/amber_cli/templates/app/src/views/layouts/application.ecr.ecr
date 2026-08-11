@@ -8,6 +8,9 @@
   </head>
   <body>
     <%= "<" %>%= content %>
-    <script src="/js/app.js"></script>
+    <script type="importmap">
+      {"imports":{"app":"/js/app.js"}}
+    </script>
+    <script type="module">import "app";</script>
   </body>
 </html>

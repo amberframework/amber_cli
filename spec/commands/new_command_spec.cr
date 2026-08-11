@@ -112,6 +112,15 @@ describe AmberCLI::Commands::NewCommand do
         stylesheet.should contain(".starter-main")
         stylesheet.should contain(".starter-crystal")
 
+        layout = File.read(File.join(destination, "src/views/layouts/application.ecr"))
+        layout.should contain(%(type="importmap"))
+        layout.should contain(%("app":"/js/app.js"))
+        layout.should contain(%(type="module">import "app";))
+        layout.should_not contain(%(<script src="/js/app.js">))
+
+        javascript = File.read(File.join(destination, "public/js/app.js"))
+        javascript.should contain(%(document.documentElement.dataset.javascript = "ready"))
+
         File.exists?(File.join(destination, "src/views/home/index.ecr")).should be_true
         File.exists?(File.join(destination, "src/views/home/index.slang")).should be_false
       end

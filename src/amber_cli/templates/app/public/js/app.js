@@ -1,2 +1,3 @@
-// Application JavaScript
-console.log("Amber V2 application loaded");
+// Application JavaScript entry point.
+// Add local modules under public/js and map stable names in the ECR layout.
+document.documentElement.dataset.javascript = "ready";
