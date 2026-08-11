@@ -28,6 +28,9 @@ jobs:
           - target: linux-x86_64
             os: ubuntu-latest
             crystal_arch: x86_64
+          - target: linux-arm64
+            os: ubuntu-24.04-arm
+            crystal_arch: aarch64
     
     steps:
     - name: Checkout code
@@ -36,7 +39,7 @@ jobs:
         ref: ${{ github.event.release.tag_name || github.event.inputs.ref }}
 
     - name: Install Crystal (Linux)
-      if: matrix.target == 'linux-x86_64'
+      if: startsWith(matrix.target, 'linux-')
       uses: crystal-lang/install-crystal@v1
       with:
         crystal: latest
@@ -63,8 +66,8 @@ jobs:
           shards install
         fi
     
-    - name: Build binaries (Linux x86_64)
-      if: matrix.target == 'linux-x86_64'
+    - name: Build binaries (Linux)
+      if: startsWith(matrix.target, 'linux-')
       run: |
         crystal build src/amber_cli.cr -o amber --release --static
         crystal build src/amber_lsp.cr -o amber-lsp --release --static
@@ -135,7 +138,9 @@ jobs:
           artifacts/amber_cli-darwin-arm64/amber_cli-darwin-arm64.tar.gz \
           artifacts/amber_cli-darwin-arm64/amber_cli-darwin-arm64.tar.gz.sha256 \
           artifacts/amber_cli-linux-x86_64/amber_cli-linux-x86_64.tar.gz \
-          artifacts/amber_cli-linux-x86_64/amber_cli-linux-x86_64.tar.gz.sha256; do
+          artifacts/amber_cli-linux-x86_64/amber_cli-linux-x86_64.tar.gz.sha256 \
+          artifacts/amber_cli-linux-arm64/amber_cli-linux-arm64.tar.gz \
+          artifacts/amber_cli-linux-arm64/amber_cli-linux-arm64.tar.gz.sha256; do
           if [ ! -f "$f" ]; then
             echo "ERROR: expected file not found: $f"
             echo "Artifact tree:"
@@ -153,6 +158,8 @@ jobs:
           artifacts/amber_cli-darwin-arm64/amber_cli-darwin-arm64.tar.gz.sha256
           artifacts/amber_cli-linux-x86_64/amber_cli-linux-x86_64.tar.gz
           artifacts/amber_cli-linux-x86_64/amber_cli-linux-x86_64.tar.gz.sha256
+          artifacts/amber_cli-linux-arm64/amber_cli-linux-arm64.tar.gz
+          artifacts/amber_cli-linux-arm64/amber_cli-linux-arm64.tar.gz.sha256
         tag_name: ${{ github.event.release.tag_name }}
         fail_on_unmatched_files: true
       env:
