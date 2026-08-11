@@ -1710,17 +1710,18 @@ VIEW
         return
       end
 
-      route = "    resources \"/#{plural_name}\", #{controller_name}\n"
       content = File.read(routes_path)
-      return if content.includes?(route.strip)
+      route = "    resources \"/#{plural_name}\", #{controller_name}"
+      return if content.includes?(route)
 
-      anchor = "  routes :web do\n"
+      anchor = "  routes :web do"
       unless content.includes?(anchor)
         warning "Could not find the web routes block in #{routes_path}."
         return
       end
 
-      File.write(routes_path, content.sub(anchor, "#{anchor}#{route}"))
+      newline = content.includes?("\r\n") ? "\r\n" : "\n"
+      File.write(routes_path, content.sub(anchor, "#{anchor}#{newline}#{route}"))
     end
 
     private def field_assignments

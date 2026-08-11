@@ -75,6 +75,12 @@ try {
     "adopted:bool"
   )
 
+  $routesPath = Join-Path $appPath "config/routes.cr"
+  $routes = [System.IO.File]::ReadAllText($routesPath)
+  if (-not $routes.Contains('resources "/pets", PetController')) {
+    throw "Generated scaffold did not add the Pet resource route"
+  }
+
   $previousAmberEnv = $env:AMBER_ENV
   try {
     $env:AMBER_ENV = "test"

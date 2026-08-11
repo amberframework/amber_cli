@@ -65,4 +65,22 @@ describe AmberCLI::Commands::GenerateCommand do
       File.read("src/views/pet/_form.ecr").should contain(%(checkbox("adopted", checked: @pet.adopted? || false, value: "true")))
     end
   end
+
+  it "adds scaffold routes to Windows-style route files" do
+    SpecHelper.within_temp_directory do
+      File.write(".amber.yml", "template: ecr\ndatabase: sqlite\nmodel: grant\n")
+      Dir.mkdir_p("config")
+      File.write("config/routes.cr", "Amber::Server.configure do |app|\r\n  routes :web do\r\n  end\r\nend\r\n")
+
+      command = AmberCLI::Commands::GenerateCommand.new("generate")
+      command.parse_and_execute([
+        "scaffold",
+        "Pet",
+        "name:string:required",
+      ])
+
+      routes = File.read("config/routes.cr")
+      routes.should contain("  routes :web do\r\n    resources \"/pets\", PetController\r\n")
+    end
+  end
 end
