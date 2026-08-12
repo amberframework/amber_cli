@@ -49,7 +49,6 @@ if grep -Eiq 'gemma:|slang' "$app_path/shard.yml" "$app_path/.amber.yml"; then
 fi
 
 if [[ -n "$framework_commit" ]]; then
-  sed -i.bak "s/github: amberframework\/amber/github: crimson-knight\/amber/" "$app_path/shard.yml"
   sed -i.bak -E "s/    version: 2\.0\.0-beta\.[0-9]+/    commit: ${framework_commit}/" "$app_path/shard.yml"
   rm -f "$app_path/shard.yml.bak"
 fi

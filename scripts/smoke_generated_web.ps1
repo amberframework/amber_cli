@@ -56,9 +56,6 @@ if ($FrameworkCommit) {
     throw "Generated shard.yml does not contain the expected Amber beta pin"
   }
   $manifest = $manifest.Replace(
-      "    github: amberframework/amber",
-      "    github: crimson-knight/amber"
-    ).Replace(
       $releasedFramework,
       "    commit: $FrameworkCommit"
     )

@@ -19,7 +19,7 @@ dependencies:
   # Release candidate includes the native UI surface and static asset compiler.
   asset_pipeline:
     github: amberframework/asset_pipeline
-    commit: 67659880b11ef6cb91aa890d6f13fbc98000996a
+    commit: 4700a4bb
 
   micrate:
     github: amberframework/micrate
