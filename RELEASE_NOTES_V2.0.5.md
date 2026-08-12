@@ -39,6 +39,10 @@ fingerprinted files from `public/assets/manifest.json`.
   successful compile as sufficient evidence.
 - Publishes CLI archives for Apple Silicon macOS, x86_64 Linux, and ARM64 Linux;
   Windows x86_64 remains a source-build path with a release-gated app smoke.
+- Replaces the native preview generator's old personal and feature branches
+  with the canonical Amber beta, released Asset Pipeline, and exact reviewed
+  dependency revisions. Its documented `make setup` now fails visibly when
+  dependencies cannot install instead of hiding the error.
 
 Grant, SQLite, Micrate migrations, and generated HTML resource CRUD remain the
 default persistence contract from CLI 2.0.4. Native applications,
