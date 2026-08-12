@@ -9,7 +9,7 @@
   --amber-accent-deep: #a93d08;
   --amber-gold: #f3a348;
   --amber-green: #377a55;
-  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--amber-ink);
   background: var(--amber-paper);
 }
@@ -28,15 +28,17 @@ a { color: inherit; }
     linear-gradient(145deg, #fffdf9, var(--amber-paper) 48%, var(--amber-paper-deep));
 }
 
-.amber-starter::before {
+.amber-starter::after {
   position: absolute;
-  top: 8rem;
-  right: -13rem;
-  width: 38rem;
-  height: 38rem;
-  border: 1px solid rgba(169, 61, 8, .12);
-  border-radius: 50%;
+  top: 15rem;
+  right: 9%;
+  width: 4.5rem;
+  height: 6rem;
+  opacity: .17;
+  background: center / contain no-repeat url("../images/amber-crystal.svg");
   content: "";
+  pointer-events: none;
+  transform: rotate(14deg);
 }
 
 .starter-nav, .starter-main, .starter-footer {
@@ -54,7 +56,7 @@ a { color: inherit; }
 }
 
 .starter-brand { display: inline-flex; align-items: center; gap: 11px; font: 800 1.06rem ui-serif, Georgia, serif; text-decoration: none; }
-.starter-crystal { width: 23px; height: 31px; background: linear-gradient(145deg, #ffc36b 0 28%, var(--amber-accent) 29% 68%, var(--amber-accent-deep) 69%); clip-path: polygon(50% 0, 93% 24%, 78% 79%, 50% 100%, 18% 79%, 5% 24%); }
+.starter-crystal { width: 23px; height: 31px; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(169, 61, 8, .24)); }
 .starter-status, .starter-proof span { border: 1px solid var(--amber-line); border-radius: 999px; background: rgba(255, 253, 249, .76); color: var(--amber-muted); font-size: .72rem; font-weight: 800; }
 .starter-status { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; letter-spacing: .08em; text-transform: uppercase; }
 .starter-status > span { width: 7px; height: 7px; border-radius: 50%; background: var(--amber-green); }

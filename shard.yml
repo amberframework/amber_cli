@@ -1,5 +1,5 @@
 name: amber_cli
-version: 2.0.4
+version: 2.0.5
 
 authors:
   - crimson-knight <crimsonknightstudios@gmail.com>
@@ -16,10 +16,10 @@ targets:
 
 dependencies:
 
-  # Temporary branch until the Apple shell export APIs land in a tagged release.
+  # Stable static-asset compiler used by the CLI and generated applications.
   asset_pipeline:
     github: amberframework/asset_pipeline
-    commit: 5f63d9adb02be566cdade67e4616ca0bb3cbf30b
+    version: ~> 0.37.0
 
   micrate:
     github: amberframework/micrate

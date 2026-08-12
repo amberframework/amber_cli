@@ -89,7 +89,7 @@ module AmberCLI::Documentation
   # - **.amber.yml** - Project configuration
   # - **.gitignore** - Git ignore rules
   #
-  # The web template pins Amber `2.0.0-beta.3`, uses ECR, and includes Grant,
+  # The web template pins Amber `2.0.0-beta.4`, uses ECR, and includes Grant,
   # Micrate-powered database commands, and the selected database driver. Model,
   # scaffold, and migration generators are supported. API-resource,
   # authentication, and native generators are preview surfaces during the beta.

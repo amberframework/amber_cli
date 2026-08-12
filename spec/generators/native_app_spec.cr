@@ -30,11 +30,15 @@ describe AmberCLI::Generators::NativeApp do
 
         # Must have amber (patterns only)
         shard_content.should contain("amber:")
-        shard_content.should contain("crimson-knight/amber")
+        shard_content.should contain("github: amberframework/amber")
+        shard_content.should contain("version: 2.0.0-beta.4")
 
-        # Must have asset_pipeline with cross-platform branch
+        # Must have the released asset_pipeline with cross-platform UI support
         shard_content.should contain("asset_pipeline:")
-        shard_content.should contain("feature/utility-first-css-asset-pipeline")
+        shard_content.should contain("version: ~> 0.37.0")
+
+        # Release manifests must be reproducible; no mutable dependency branches.
+        shard_content.should_not contain("branch:")
 
         # Must have crystal-audio
         shard_content.should contain("crystal-audio:")
@@ -128,6 +132,9 @@ describe AmberCLI::Generators::NativeApp do
         makefile_content.should contain("macos-release:")
         makefile_content.should contain("setup:")
         makefile_content.should contain("spec:")
+        makefile_content.should contain("command -v shards-alpha")
+        makefile_content.should contain("$(CRYSTAL) spec spec/ -Dmacos")
+        makefile_content.should_not contain("shards install || true")
       end
     end
 

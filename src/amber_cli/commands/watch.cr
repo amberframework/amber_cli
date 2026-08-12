@@ -1,6 +1,7 @@
 require "../core/base_command"
 require "../helpers/process_runner"
 require "../helpers/sentry"
+require "../static_assets"
 
 # The `watch` command starts a development server that automatically reloads
 # your application when source files change.
@@ -135,9 +136,11 @@ module AmberCLI::Commands
     private def get_default_watch_files
       [
         "src/**/*.cr",
+        "src/**/*.ecr",
         "config/**/*.cr",
         "config/**/*.yml",
         "config/**/*.yaml",
+        "app/assets/**/*",
       ]
     end
 
@@ -147,6 +150,7 @@ module AmberCLI::Commands
         name:       #{@name}
         build:      #{@build_command}
         run:        #{@run_command}
+        assets:     amber assets build (runs in-process before application compile)
         files:      #{@watch_files.join(", ")}
       INFO
     end
@@ -159,6 +163,7 @@ module AmberCLI::Commands
 
       process_runner = Sentry::ProcessRunner.new(
         process_name: @name,
+        before_build: -> { build_static_assets },
         build_commands: build_commands,
         run_commands: run_commands,
         includes: includes,
@@ -166,6 +171,7 @@ module AmberCLI::Commands
       )
 
       info "Watching files: #{@watch_files.join(", ")}"
+      info "Asset step: amber assets build (before application compile)"
       info "Build command: #{@build_command}"
       info "Run command: #{@run_command}"
       info "Press Ctrl+C to stop"
@@ -177,6 +183,15 @@ module AmberCLI::Commands
       end
 
       process_runner.run
+    end
+
+    private def build_static_assets : Bool
+      manifest = AmberCLI::StaticAssets.build
+      info "Compiled #{manifest.assets.size} fingerprinted static assets"
+      true
+    rescue ex : AssetPipeline::StaticAssets::Error
+      error ex.message || "Static asset build failed"
+      false
     end
   end
 end

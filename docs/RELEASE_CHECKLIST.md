@@ -6,19 +6,28 @@ Homebrew formula pins CLI archives and checksums.
 ## 1. Framework prerelease
 
 1. Confirm `shard.yml`, `src/amber/version.cr`, and the changelog all say
-   `2.0.0-beta.3`.
+   `2.0.0-beta.4`.
 2. Run framework specs and formatting on macOS and Linux.
-3. Tag the reviewed `v2-dev` commit as `v2.0.0-beta.3`.
+3. Tag the reviewed `v2-dev` commit as `v2.0.0-beta.4`.
 4. Publish it as a GitHub prerelease with migration and support-matrix links.
 
 ## 2. CLI release
 
-1. Confirm `shard.yml` and `AmberCLI::VERSION` both say `2.0.4`.
+1. Confirm `shard.yml` and `AmberCLI::VERSION` both say `2.0.5`.
 2. Generate a web app and verify it pins the framework prerelease.
-3. On both supported platforms, install shards, run app specs, build the app,
-   start it, and request `/` plus `/css/app.css`.
-4. On macOS, reject any binary linked to `openssl@1.1`.
-5. Tag `v2.0.4`, publish the release, and wait for all archives and checksum
+3. Verify the generated app pins the reviewed Asset Pipeline revision and has
+   no placeholder dependency revisions.
+4. On macOS, x86-64 Linux, and ARM64 Linux, install shards; run
+   `amber assets build` and `amber assets check`; run app specs; build and start
+   the app; then follow the manifest-rendered CSS, JavaScript, SVG, and favicon
+   URLs from `/`.
+5. For fingerprinted responses, verify MIME, SRI in rendered tags, immutable
+   caching, `nosniff`, and gzip negotiation. Confirm CSS rewrites its authored
+   image URL and that `public/assets/` contains no source-owned raw entry point.
+6. On macOS, reject any binary linked to `openssl@1.1`.
+7. Confirm the Windows x86-64 generated app builds in CI. This is a compatibility
+   check, not a beta release gate.
+8. Tag `v2.0.5`, publish the release, and wait for all archives and checksum
    files to upload.
 
 ## 3. Homebrew
@@ -38,5 +47,6 @@ Homebrew formula pins CLI archives and checksums.
 3. Verify all release/download links and commands from a clean shell.
 
 Do not mark the beta complete if macOS, x86-64 Linux, or ARM64 Linux cannot
-install the CLI and build the generated web application, or if the Windows
-generated-app compile gate fails.
+install the CLI and complete the generated web-app and asset smoke. Record a
+Windows CI failure as a known compatibility issue; Windows does not gate this
+beta.

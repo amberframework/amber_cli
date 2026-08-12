@@ -3,28 +3,55 @@ set -euo pipefail
 
 shard_version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
 cli_version="$(sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' src/amber_cli.cr | head -1)"
-test "$shard_version" = "2.0.4"
+test "$shard_version" = "2.0.5"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new.cr
-grep -F 'version: 2.0.0-beta.3' src/amber_cli/commands/new.cr
+grep -F 'version: 2.0.0-beta.4' src/amber_cli/commands/new.cr
 grep -F 'template: ecr' src/amber_cli/commands/new.cr
 grep -F 'model: grant' src/amber_cli/commands/new.cr
 grep -F 'database: #{database}' src/amber_cli/commands/new.cr
 grep -F 'github: crimson-knight/grant' src/amber_cli/commands/new.cr
+grep -F 'github: amberframework/asset_pipeline' src/amber_cli/commands/new.cr
+grep -F 'version: ~> 0.37.0' src/amber_cli/commands/new.cr
+grep -F 'github: amberframework/asset_pipeline' src/amber_cli/templates/app/shard.yml.ecr
+grep -F 'version: ~> 0.37.0' src/amber_cli/templates/app/shard.yml.ecr
+grep -F 'github: amberframework/amber' src/amber_cli/generators/native_app.cr
+grep -F 'version: 2.0.0-beta.4' src/amber_cli/generators/native_app.cr
+grep -F 'version: ~> 0.37.0' src/amber_cli/generators/native_app.cr
+if grep -F 'branch:' src/amber_cli/generators/native_app.cr; then
+  echo "native app template contains a mutable dependency branch" >&2
+  exit 1
+fi
+if grep -F 'shards install || true' src/amber_cli/generators/native_app.cr; then
+  echo "native app setup masks dependency installation failures" >&2
+  exit 1
+fi
 grep -F 'github: amberframework/micrate' shard.yml
 test -s src/amber_cli/templates/app/config/database.cr.ecr
+test -s src/amber_cli/templates/app/config/assets.cr.ecr
 grep -F 'Your new idea' src/amber_cli/commands/new.cr
 grep -F -- '--amber-accent: #e96918' src/amber_cli/commands/new.cr
 grep -F 'Your new idea' src/amber_cli/templates/app/src/views/home/index.ecr.ecr
-test -s src/amber_cli/templates/app/public/css/app.css
-test -s src/amber_cli/templates/app/public/js/app.js
+test -s src/amber_cli/templates/app/app/assets/stylesheets/app.css
+test -s src/amber_cli/templates/app/app/assets/javascript/app.js
+test -s src/amber_cli/templates/app/app/assets/images/amber-crystal.svg
+test -s src/amber_cli/templates/app/app/assets/images/favicon.svg
+test ! -e src/amber_cli/templates/app/public/css/app.css
+test ! -e src/amber_cli/templates/app/public/js/app.js
+grep -F 'url("../images/amber-crystal.svg")' src/amber_cli/templates/app/app/assets/stylesheets/app.css
+grep -F 'stylesheet_link_tag("stylesheets/app.css")' src/amber_cli/templates/app/src/views/layouts/application.ecr.ecr
+grep -F 'javascript_importmap_tag({"app" => "javascript/app.js"}' src/amber_cli/templates/app/src/views/layouts/application.ecr.ecr
+grep -F 'favicon_tag("images/favicon.svg")' src/amber_cli/templates/app/src/views/layouts/application.ecr.ecr
+grep -F 'image_tag("images/amber-crystal.svg"' src/amber_cli/templates/app/src/views/home/index.ecr.ecr
+grep -F '/public/assets/' src/amber_cli/templates/app/.gitignore.ecr
 grep -F 'brew install amberframework/amber_cli/amber_cli' README.md
 
 files=(
   README.md
   RELEASE_NOTES_V2.0.3.md
   RELEASE_NOTES_V2.0.4.md
+  RELEASE_NOTES_V2.0.5.md
   RELEASE_SETUP.md
   .github/ISSUE_TEMPLATE/release-checklist.md
   docs/*.md
