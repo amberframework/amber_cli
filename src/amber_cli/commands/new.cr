@@ -290,7 +290,7 @@ dependencies:
     commit: 2665a978b43ac608c68cde9243821f8f8f053372
   asset_pipeline:
     github: amberframework/asset_pipeline
-    commit: 4700a4bb
+    version: ~> 0.37.0
 #{database_shard_dependency}
 SHARD
 

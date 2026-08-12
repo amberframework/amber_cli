@@ -13,7 +13,20 @@ grep -F 'model: grant' src/amber_cli/commands/new.cr
 grep -F 'database: #{database}' src/amber_cli/commands/new.cr
 grep -F 'github: crimson-knight/grant' src/amber_cli/commands/new.cr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/commands/new.cr
+grep -F 'version: ~> 0.37.0' src/amber_cli/commands/new.cr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/templates/app/shard.yml.ecr
+grep -F 'version: ~> 0.37.0' src/amber_cli/templates/app/shard.yml.ecr
+grep -F 'github: amberframework/amber' src/amber_cli/generators/native_app.cr
+grep -F 'version: 2.0.0-beta.4' src/amber_cli/generators/native_app.cr
+grep -F 'version: ~> 0.37.0' src/amber_cli/generators/native_app.cr
+if grep -F 'branch:' src/amber_cli/generators/native_app.cr; then
+  echo "native app template contains a mutable dependency branch" >&2
+  exit 1
+fi
+if grep -F 'shards install || true' src/amber_cli/generators/native_app.cr; then
+  echo "native app setup masks dependency installation failures" >&2
+  exit 1
+fi
 grep -F 'github: amberframework/micrate' shard.yml
 test -s src/amber_cli/templates/app/config/database.cr.ecr
 test -s src/amber_cli/templates/app/config/assets.cr.ecr

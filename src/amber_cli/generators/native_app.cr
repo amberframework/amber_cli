@@ -106,7 +106,7 @@ version: 0.1.0
 authors:
   - Your Name <your.email@example.com>
 
-crystal: ">= 1.15.0"
+crystal: ">= 1.20.0, < 2.0"
 
 license: UNLICENSED
 
@@ -117,36 +117,39 @@ targets:
 dependencies:
   # Amber Framework V2 (patterns only, NO HTTP server for native apps)
   amber:
-    github: crimson-knight/amber
-    branch: master
+    github: amberframework/amber
+    version: 2.0.0-beta.4
 
   # Grant ORM (ActiveRecord-style, replaces Granite in V2)
   grant:
     github: crimson-knight/grant
-    branch: main
+    commit: 2665a978b43ac608c68cde9243821f8f8f053372
 
   # Asset Pipeline (cross-platform UI: AppKit, UIKit, Android Views)
-  # IMPORTANT: Must use the feature branch for cross-platform UI support
   asset_pipeline:
     github: amberframework/asset_pipeline
-    branch: feature/utility-first-css-asset-pipeline
+    version: ~> 0.37.0
 
   # Audio recording, playback, and transcription
   crystal-audio:
     github: crimson-knight/crystal-audio
+    commit: e99105e46a5d5793fe4fcc69c7e3cf3fc65c0966
 
   # Database adapters (all required by Grant at compile time)
   pg:
     github: will/crystal-pg
+    version: 0.30.0
   mysql:
-    github: crystal-lang/crystal-mysql
+    github: crimson-knight/crystal-mysql
+    commit: c061324dcef89a200a7a3f86a59b2ebf03f83602
   sqlite3:
     github: crystal-lang/crystal-sqlite3
+    version: 0.23.0
 
 development_dependencies:
   ameba:
     github: crystal-ameba/ameba
-    version: ~> 1.6.4
+    commit: cdd58b34b0d8a9c785d67183a7a8f07541549e55
 SHARD
 
       File.write(File.join(path, "shard.yml"), content)
@@ -243,7 +246,11 @@ all: macos
 # --- First-time setup ---
 
 setup:
-	shards-alpha install || shards install || true
+	@if command -v shards-alpha >/dev/null 2>&1; then \
+		shards-alpha install; \
+	else \
+		shards install; \
+	fi
 	@# crystal-audio shard name has a hyphen but source uses underscore
 	@# Crystal's require resolution needs the underscore directory
 	@if [ ! -e lib/crystal_audio ]; then \\
@@ -292,7 +299,7 @@ run: macos
 # --- Tests ---
 
 spec:
-	crystal-alpha spec spec/ -Dmacos
+	$(CRYSTAL) spec spec/ -Dmacos
 
 # --- Clean ---
 

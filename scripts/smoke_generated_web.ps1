@@ -46,6 +46,9 @@ if (-not $manifest.Contains("github: crystal-lang/crystal-sqlite3")) {
 if (-not $manifest.Contains("github: amberframework/asset_pipeline")) {
   throw "Generated shard.yml does not include Asset Pipeline"
 }
+if (-not $manifest.Contains("version: ~> 0.37.0")) {
+  throw "Generated shard.yml does not pin the supported Asset Pipeline release"
+}
 if (-not $amberConfig.Contains("database: sqlite") -or -not $amberConfig.Contains("model: grant")) {
   throw "Generated .amber.yml does not select SQLite and Grant"
 }
