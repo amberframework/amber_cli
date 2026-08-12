@@ -84,7 +84,7 @@ jobs:
 
     - name: Smoke test generated Amber V2 web app
       # Exercise the clean beta.4 candidate before its version tag exists.
-      run: scripts/smoke_generated_web.sh ./amber a57b74c5842298f06dff58a1732442efc131a177
+      run: scripts/smoke_generated_web.sh ./amber c4d08e67ead2f160b31b86945af57f0c13478d61
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
