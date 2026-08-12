@@ -6,14 +6,14 @@ Homebrew formula pins CLI archives and checksums.
 ## 1. Framework prerelease
 
 1. Confirm `shard.yml`, `src/amber/version.cr`, and the changelog all say
-   `2.0.0-beta.3`.
+   `2.0.0-beta.4`.
 2. Run framework specs and formatting on macOS and Linux.
-3. Tag the reviewed `v2-dev` commit as `v2.0.0-beta.3`.
+3. Tag the reviewed `v2-dev` commit as `v2.0.0-beta.4`.
 4. Publish it as a GitHub prerelease with migration and support-matrix links.
 
 ## 2. CLI release
 
-1. Confirm `shard.yml` and `AmberCLI::VERSION` both say `2.0.4`.
+1. Confirm `shard.yml` and `AmberCLI::VERSION` both say `2.0.5`.
 2. Generate a web app and verify it pins the framework prerelease.
 3. Verify the generated app pins the reviewed Asset Pipeline revision and has
    no placeholder dependency revisions.
@@ -27,7 +27,7 @@ Homebrew formula pins CLI archives and checksums.
 6. On macOS, reject any binary linked to `openssl@1.1`.
 7. Confirm the Windows x86-64 generated app builds in CI. This is a compatibility
    check, not a beta release gate.
-8. Tag `v2.0.4`, publish the release, and wait for all archives and checksum
+8. Tag `v2.0.5`, publish the release, and wait for all archives and checksum
    files to upload.
 
 ## 3. Homebrew

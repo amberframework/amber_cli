@@ -30,7 +30,7 @@ trap cleanup EXIT
 "$cli_path" new "$app_path" --type web --no-deps
 
 grep -F "github: amberframework/amber" "$app_path/shard.yml"
-grep -F "version: 2.0.0-beta.3" "$app_path/shard.yml"
+grep -F "version: 2.0.0-beta.4" "$app_path/shard.yml"
 grep -F "github: crimson-knight/grant" "$app_path/shard.yml"
 grep -F "github: amberframework/asset_pipeline" "$app_path/shard.yml"
 grep -F "github: crystal-lang/crystal-sqlite3" "$app_path/shard.yml"

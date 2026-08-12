@@ -3,8 +3,8 @@
 [![GitHub release](https://img.shields.io/github/release/amberframework/amber_cli.svg)](https://github.com/amberframework/amber_cli/releases)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://amberframework.github.io/amber_cli/)
 
-Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.4`
-creates the supported Amber `2.0.0-beta.3` ECR web application and includes
+Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.5`
+creates the supported Amber `2.0.0-beta.4` ECR web application and includes
 development, generator, database, and LSP tooling.
 
 Amber V2 is a beta. The release-gated path is a web application on Apple
@@ -32,12 +32,12 @@ the `amber_cli` formula.
 
 ### Direct release archive
 
-CLI `2.0.4` publishes `darwin-arm64`, `linux-x86_64`, and `linux-arm64`
+CLI `2.0.5` publishes `darwin-arm64`, `linux-x86_64`, and `linux-arm64`
 archives. Windows x86-64 is compiled in CI but does not yet have a release
 archive.
 
 ```bash
-version=v2.0.4
+version=v2.0.5
 platform=darwin-arm64
 asset="amber_cli-${platform}.tar.gz"
 
@@ -70,7 +70,7 @@ or a file under `app/assets/` changes. Open <http://127.0.0.1:3000>.
 
 The web template is deliberately small:
 
-- Amber from `amberframework/amber`, pinned to `2.0.0-beta.3`
+- Amber from `amberframework/amber`, pinned to `2.0.0-beta.4`
 - ECR views (Slang and Kilt are not supported in Amber V2)
 - typed development, test, and production YAML
 - branded homepage, controller spec, and fingerprinted CSS, JavaScript, SVG,
@@ -175,7 +175,7 @@ The release archive includes `amber-lsp`. From an Amber project:
 amber setup:lsp
 ```
 
-See the [LSP setup guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.3/docs/guides/lsp-setup.md).
+See the [LSP setup guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.4/docs/guides/lsp-setup.md).
 
 ## Contributing
 

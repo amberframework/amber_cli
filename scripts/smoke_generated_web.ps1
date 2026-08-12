@@ -51,7 +51,7 @@ if (-not $amberConfig.Contains("database: sqlite") -or -not $amberConfig.Contain
 }
 
 if ($FrameworkCommit) {
-  $releasedFramework = "    version: 2.0.0-beta.3"
+  $releasedFramework = "    version: 2.0.0-beta.4"
   if (-not $manifest.Contains($releasedFramework)) {
     throw "Generated shard.yml does not contain the expected Amber beta pin"
   }

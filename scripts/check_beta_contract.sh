@@ -3,11 +3,11 @@ set -euo pipefail
 
 shard_version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
 cli_version="$(sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' src/amber_cli.cr | head -1)"
-test "$shard_version" = "2.0.4"
+test "$shard_version" = "2.0.5"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new.cr
-grep -F 'version: 2.0.0-beta.3' src/amber_cli/commands/new.cr
+grep -F 'version: 2.0.0-beta.4' src/amber_cli/commands/new.cr
 grep -F 'template: ecr' src/amber_cli/commands/new.cr
 grep -F 'model: grant' src/amber_cli/commands/new.cr
 grep -F 'database: #{database}' src/amber_cli/commands/new.cr
@@ -38,6 +38,7 @@ files=(
   README.md
   RELEASE_NOTES_V2.0.3.md
   RELEASE_NOTES_V2.0.4.md
+  RELEASE_NOTES_V2.0.5.md
   RELEASE_SETUP.md
   .github/ISSUE_TEMPLATE/release-checklist.md
   docs/*.md
