@@ -89,6 +89,8 @@ describe AmberCLI::Commands::NewCommand do
         shard.should contain("version: 2.0.0-beta.3")
         shard.should contain("grant:")
         shard.should contain("github: crimson-knight/grant")
+        shard.should contain("asset_pipeline:")
+        shard.should contain("github: amberframework/asset_pipeline")
         shard.should contain("github: crystal-lang/crystal-sqlite3")
         shard.should_not contain("slang")
 
@@ -100,6 +102,12 @@ describe AmberCLI::Commands::NewCommand do
         database_config.should contain(%(require "grant/adapter/sqlite"))
         database_config.should contain(%(name: "primary"))
         database_config.should contain(%(ENV["DATABASE_URL"]? || Amber.settings.database_url))
+
+        application_config = File.read(File.join(destination, "config/application.cr"))
+        application_config.should contain(%(require "./assets"))
+        assets_config = File.read(File.join(destination, "config/assets.cr"))
+        assets_config.should eq(%(Amber::Assets.configure(manifest_path: "public/assets/manifest.json")\n))
+        assets_config.should_not contain("AssetPipeline::StaticAssets::Compiler")
 
         config = YAML.parse(File.read(File.join(destination, "config/environments/development.yml")))
         config["server"]["port"].as_i.should eq(3000)
@@ -117,19 +125,51 @@ describe AmberCLI::Commands::NewCommand do
         index.should contain("amber generate controller Posts")
         index.should_not contain("class=\"welcome\"")
 
-        stylesheet = File.read(File.join(destination, "public/css/app.css"))
+        stylesheet = File.read(File.join(destination, "app/assets/stylesheets/app.css"))
         stylesheet.should contain("--amber-accent: #e96918")
         stylesheet.should contain(".starter-main")
         stylesheet.should contain(".starter-crystal")
+        stylesheet.should contain(%(url("../images/amber-crystal.svg")))
 
         layout = File.read(File.join(destination, "src/views/layouts/application.ecr"))
-        layout.should contain(%(type="importmap"))
-        layout.should contain(%("app":"/js/app.js"))
+        layout.should contain(%(favicon_tag("images/favicon.svg")))
+        layout.should contain(%(stylesheet_link_tag("stylesheets/app.css")))
+        layout.should contain("javascript_importmap_tag({\"app\" => \"javascript/app.js\"}")
         layout.should contain(%(type="module">import "app";))
         layout.should_not contain(%(<script src="/js/app.js">))
 
-        javascript = File.read(File.join(destination, "public/js/app.js"))
+        javascript = File.read(File.join(destination, "app/assets/javascript/app.js"))
         javascript.should contain(%(document.documentElement.dataset.javascript = "ready"))
+
+        File.exists?(File.join(destination, "app/assets/images/amber-crystal.svg")).should be_true
+        File.exists?(File.join(destination, "app/assets/images/favicon.svg")).should be_true
+        Dir.exists?(File.join(destination, "app/assets/fonts")).should be_true
+        Dir.exists?(File.join(destination, "app/assets/files")).should be_true
+        File.exists?(File.join(destination, "app/assets/fonts/.gitkeep")).should be_true
+        File.exists?(File.join(destination, "app/assets/files/.gitkeep")).should be_true
+        File.exists?(File.join(destination, "public/css/app.css")).should be_false
+        File.exists?(File.join(destination, "public/js/app.js")).should be_false
+        File.exists?(File.join(destination, "public/favicon.ico")).should be_false
+
+        manifest_path = File.join(destination, "public/assets/manifest.json")
+        File.exists?(manifest_path).should be_true
+        manifest = JSON.parse(File.read(manifest_path))
+        manifest["schema_version"].as_i.should eq(1)
+        assets = manifest["assets"].as_h
+        assets.keys.sort.should eq([
+          "images/amber-crystal.svg",
+          "images/favicon.svg",
+          "javascript/app.js",
+          "stylesheets/app.css",
+        ])
+        css_url = assets["stylesheets/app.css"]["path"].as_s
+        logo_url = assets["images/amber-crystal.svg"]["path"].as_s
+        assets["stylesheets/app.css"]["integrity"].as_s.should start_with("sha256-")
+        compiled_stylesheet = File.read(File.join(destination, "public", css_url.lchop('/')))
+        compiled_stylesheet.should contain(logo_url)
+
+        gitignore = File.read(File.join(destination, ".gitignore"))
+        gitignore.should contain("/public/assets/")
 
         File.exists?(File.join(destination, "src/views/home/index.ecr")).should be_true
         File.exists?(File.join(destination, "src/views/home/index.slang")).should be_false
@@ -137,6 +177,9 @@ describe AmberCLI::Commands::NewCommand do
         readme = File.read(File.join(destination, "README.md"))
         readme.should contain("amber generate scaffold Pet")
         readme.should contain("amber database migrate")
+        readme.should contain("amber assets build")
+        readme.should contain("app/assets/stylesheets/")
+        readme.should contain("public/assets/manifest.json")
       end
     end
   end

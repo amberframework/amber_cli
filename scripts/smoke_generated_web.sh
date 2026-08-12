@@ -8,6 +8,7 @@ fi
 
 cli_path="$1"
 framework_commit="${2:-}"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
 if [[ "$cli_path" != /* ]]; then
   cli_path="$(cd "$(dirname "$cli_path")" && pwd)/$(basename "$cli_path")"
 fi
@@ -31,11 +32,16 @@ trap cleanup EXIT
 grep -F "github: amberframework/amber" "$app_path/shard.yml"
 grep -F "version: 2.0.0-beta.3" "$app_path/shard.yml"
 grep -F "github: crimson-knight/grant" "$app_path/shard.yml"
+grep -F "github: amberframework/asset_pipeline" "$app_path/shard.yml"
 grep -F "github: crystal-lang/crystal-sqlite3" "$app_path/shard.yml"
 grep -F "template: ecr" "$app_path/.amber.yml"
 grep -F "database: sqlite" "$app_path/.amber.yml"
 grep -F "model: grant" "$app_path/.amber.yml"
 test -s "$app_path/config/database.cr"
+test -s "$app_path/config/assets.cr"
+test -s "$app_path/public/assets/manifest.json"
+test ! -e "$app_path/public/css/app.css"
+test ! -e "$app_path/public/js/app.js"
 
 if grep -Eiq 'gemma:|slang' "$app_path/shard.yml" "$app_path/.amber.yml"; then
   echo "generated app contains an unsupported beta dependency or template" >&2
@@ -49,10 +55,13 @@ if [[ -n "$framework_commit" ]]; then
 fi
 
 cd "$app_path"
+"$cli_path" assets check
 env GIT_CONFIG_COUNT=1 \
   GIT_CONFIG_KEY_0=core.hooksPath \
   GIT_CONFIG_VALUE_0=/dev/null \
   shards install
+"$cli_path" assets build
+"$cli_path" assets check
 crystal spec
 
 "$cli_path" generate scaffold Pet name:string:required species:string:required adopted:bool
@@ -78,7 +87,25 @@ if find src spec -iname '*slang*' -print | grep -q .; then
 fi
 crystal tool format --check src spec
 crystal spec
+"$cli_path" assets build
+"$cli_path" assets check
 crystal build src/amber_beta_smoke.cr -o bin/amber_beta_smoke
+
+asset_paths="$(crystal run "$script_dir/read_asset_paths.cr" -- \
+  public/assets/manifest.json \
+  stylesheets/app.css \
+  javascript/app.js \
+  images/amber-crystal.svg \
+  images/favicon.svg)"
+css_url="$(printf '%s\n' "$asset_paths" | sed -n '1p')"
+js_url="$(printf '%s\n' "$asset_paths" | sed -n '2p')"
+logo_url="$(printf '%s\n' "$asset_paths" | sed -n '3p')"
+favicon_url="$(printf '%s\n' "$asset_paths" | sed -n '4p')"
+test -n "$css_url"
+test -n "$js_url"
+test -n "$logo_url"
+test -n "$favicon_url"
+grep -F "$logo_url" "public/${css_url#/}"
 
 AMBER_SERVER_PORT=3210 ./bin/amber_beta_smoke >server.log 2>&1 &
 server_pid="$!"
@@ -93,9 +120,36 @@ done
 curl --fail --silent http://127.0.0.1:3210/ | grep -F "Your new idea"
 curl --fail --silent http://127.0.0.1:3210/ | grep -F "Ready to customize"
 curl --fail --silent http://127.0.0.1:3210/ | grep -F 'type="importmap"'
-curl --fail --silent http://127.0.0.1:3210/ | grep -F '"app":"/js/app.js"'
-curl --fail --silent http://127.0.0.1:3210/css/app.css | grep -F "Amber V2 starter styles"
-curl --fail --silent http://127.0.0.1:3210/css/app.css | grep -F -- "--amber-accent: #e96918"
+curl --fail --silent http://127.0.0.1:3210/ | grep -F "$css_url"
+curl --fail --silent http://127.0.0.1:3210/ | grep -F "$js_url"
+curl --fail --silent http://127.0.0.1:3210/ | grep -F "$logo_url"
+curl --fail --silent http://127.0.0.1:3210/ | grep -F "$favicon_url"
+curl --fail --silent http://127.0.0.1:3210/ | grep -F 'integrity="sha256-'
+
+css_headers="$smoke_root/css-headers.txt"
+css_body="$smoke_root/css-body.css"
+curl --fail --silent --dump-header "$css_headers" --output "$css_body" "http://127.0.0.1:3210$css_url"
+grep -F "Amber V2 starter styles" "$css_body"
+grep -F -- "--amber-accent: #e96918" "$css_body"
+grep -i -F "Content-Type: text/css" "$css_headers"
+grep -i -F "Cache-Control: public, max-age=31536000, immutable" "$css_headers"
+grep -i -F "X-Content-Type-Options: nosniff" "$css_headers"
+
+gzip_headers="$smoke_root/css-gzip-headers.txt"
+curl --fail --silent --header "Accept-Encoding: gzip" --dump-header "$gzip_headers" --output /dev/null "http://127.0.0.1:3210$css_url"
+grep -i -F "Content-Encoding: gzip" "$gzip_headers"
+grep -i -F "Content-Type: text/css" "$gzip_headers"
+grep -i -F "Vary: Accept-Encoding" "$gzip_headers"
+
+js_headers="$smoke_root/js-headers.txt"
+curl --fail --silent --dump-header "$js_headers" "http://127.0.0.1:3210$js_url" | grep -F 'dataset.javascript = "ready"'
+grep -i -E "Content-Type: (text/javascript|application/javascript)" "$js_headers"
+grep -i -F "Cache-Control: public, max-age=31536000, immutable" "$js_headers"
+
+image_headers="$smoke_root/image-headers.txt"
+curl --fail --silent --dump-header "$image_headers" "http://127.0.0.1:3210$logo_url" | grep -F "<svg"
+grep -i -F "Content-Type: image/svg+xml" "$image_headers"
+grep -i -F "Cache-Control: public, max-age=31536000, immutable" "$image_headers"
 
 new_page="$smoke_root/new-pet.html"
 edit_page="$smoke_root/edit-pet.html"

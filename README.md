@@ -8,9 +8,10 @@ creates the supported Amber `2.0.0-beta.3` ECR web application and includes
 development, generator, database, and LSP tooling.
 
 Amber V2 is a beta. The release-gated path is a web application on Apple
-Silicon macOS or x86_64 Linux. Linux ARM64 generated-app compilation is checked
-in CI; its first direct archive will ship with the next CLI release. See [Generator support](docs/GENERATOR_SUPPORT.md)
-before relying on authentication, API-resource, or native output.
+Silicon macOS, x86_64 Linux, or ARM64 Linux. Windows x86-64 generated-app
+compilation is checked in CI for compatibility, but Windows does not block this
+beta release. See [Generator support](docs/GENERATOR_SUPPORT.md) before relying
+on authentication, API-resource, or native output.
 
 ## Install
 
@@ -56,21 +57,24 @@ command with `sudo` if `/usr/local/bin` is not writable.
 ```bash
 amber new my_app --type web
 cd my_app
+amber assets check
 crystal spec
 crystal build src/my_app.cr -o bin/my_app
 amber watch
 ```
 
-`amber new` installs shards by default; pass `--no-deps` when an offline or CI
-workflow needs to run `shards install` later. Open <http://127.0.0.1:3000> and
-<http://127.0.0.1:3000/css/app.css>.
+`amber new` installs shards by default and compiles the starter assets. Pass
+`--no-deps` when an offline or CI workflow needs to run `shards install` later.
+`amber watch` recompiles assets before the application whenever an ECR template
+or a file under `app/assets/` changes. Open <http://127.0.0.1:3000>.
 
 The web template is deliberately small:
 
 - Amber from `amberframework/amber`, pinned to `2.0.0-beta.3`
 - ECR views (Slang and Kilt are not supported in Amber V2)
 - typed development, test, and production YAML
-- branded homepage, controller spec, and static CSS/JavaScript
+- branded homepage, controller spec, and fingerprinted CSS, JavaScript, SVG,
+  font, image, and general static-file support
 - a browser-native import map with a local JavaScript module entry point
 - Grant ORM, Micrate-powered migration commands, and the selected database driver
 - SQLite by default, so the first persisted feature needs no database server
@@ -78,6 +82,39 @@ The web template is deliberately small:
 The `-d pg|mysql|sqlite` option selects the generated driver, connection, and
 development/test URLs. SQLite is the default; PostgreSQL and MySQL expect their
 respective local servers or a `DATABASE_URL`.
+
+### Static assets: source versus generated output
+
+Write application-owned files in these directories:
+
+```text
+app/assets/
+├── stylesheets/  # CSS; starter entry: app.css
+├── javascript/   # browser modules; starter entry: app.js
+├── images/       # SVG, PNG, JPEG, WebP, AVIF, and icons
+├── fonts/        # WOFF, WOFF2, TTF, and OTF
+└── files/        # PDFs, web manifests, and other downloads
+```
+
+Run the compiler after an authored asset changes outside watch mode:
+
+```bash
+amber assets build
+amber assets check
+```
+
+The build fingerprints every file into `public/assets/`, rewrites local CSS and
+JavaScript references, writes SRI and response metadata to
+`public/assets/manifest.json`, and creates deterministic gzip siblings for
+compressible files. `public/assets/` is generated and gitignored; do not edit or
+commit it. Keep stable root files such as `public/robots.txt` in `public/`.
+
+In `src/views/layouts/application.ecr`, resolve authored logical names through
+`stylesheet_link_tag`, `javascript_importmap_tag`, `image_tag`, and
+`favicon_tag`. In CSS, references are relative to that CSS source file; for
+example, `app/assets/stylesheets/app.css` uses
+`url("../images/amber-crystal.svg")`. The compiler replaces that reference with
+the image's fingerprinted URL.
 
 Create the first complete resource and its database table:
 
@@ -102,6 +139,8 @@ SQL migration to `db/migrations/`, and the resource route to `config/routes.cr`.
 | `amber pipelines` | Supported | Inspect configured pipelines |
 | `amber generate` | Mixed | Model, scaffold, migration, and core generators supported; auth and API preview |
 | `amber database` | Supported | Apply, roll back, inspect, redo, and seed the generated database |
+| `amber assets build` | Supported | Fingerprint `app/assets/` into generated `public/assets/` output |
+| `amber assets check` | Supported | Verify manifest, bytes, integrity, MIME, and compressed output without changing it |
 | `amber new APP --type native` | Preview | Not part of the beta platform guarantee |
 | `amber setup:lsp` | Available | Configure the bundled diagnostics LSP |
 

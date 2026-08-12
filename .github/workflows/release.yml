@@ -179,11 +179,3 @@ jobs:
         repository: amberframework/homebrew-amber_cli
         event-type: release-published
         client-payload: '{"version": "${{ github.event.release.tag_name }}"}'
-
-    - name: Dispatch to hyphen tap (homebrew-amber-cli)
-      uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4
-      with:
-        token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        repository: amberframework/homebrew-amber-cli
-        event-type: release-published
-        client-payload: '{"version": "${{ github.event.release.tag_name }}"}'

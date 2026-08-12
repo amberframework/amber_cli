@@ -16,10 +16,10 @@ targets:
 
 dependencies:
 
-  # Temporary branch until the Apple shell export APIs land in a tagged release.
+  # Release candidate includes the native UI surface and static asset compiler.
   asset_pipeline:
     github: amberframework/asset_pipeline
-    commit: 5f63d9adb02be566cdade67e4616ca0bb3cbf30b
+    commit: 67659880b11ef6cb91aa890d6f13fbc98000996a
 
   micrate:
     github: amberframework/micrate

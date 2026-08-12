@@ -13,13 +13,14 @@ A successful release means all of the following happen without manual file editi
 5. The tap explicitly dispatches its install validation after the bot pushes the
    formula. This is required because pushes made by `GITHUB_TOKEN` do not start
    push-triggered workflows.
-6. On Apple Silicon macOS and x86_64 Linux, that validation proves a clean
+6. On Apple Silicon macOS, x86_64 Linux, and ARM64 Linux, validation proves a clean
    machine can:
    - `brew install amberframework/amber_cli/amber_cli`
    - `brew test amber_cli`
    - create the ECR web template with `amber new smoke_app --type web`
-   - install shards, run specs, and build the generated app
-   - launch the built app and request `/` plus `/css/app.css`
+   - install shards, build and verify assets, run specs, and build the generated app
+   - launch the built app and request `/` plus its manifest-rendered
+     fingerprinted CSS, JavaScript, image, and favicon URLs
 
 The fully qualified Homebrew command trusts only the `amber_cli` formula under
 Homebrew's third-party tap trust model. Do not replace it with a separate
@@ -73,7 +74,9 @@ From the CLI repo:
 
 That should produce:
 
-- `dist/amber_cli-darwin-arm64.tar.gz` or `dist/amber_cli-linux-x86_64.tar.gz`
+- `dist/amber_cli-darwin-arm64.tar.gz`,
+  `dist/amber_cli-linux-x86_64.tar.gz`, or
+  `dist/amber_cli-linux-arm64.tar.gz`
 - matching `.sha256` output
 
 ### 3. Dry-run the GitHub build matrix
@@ -114,6 +117,7 @@ In `amberframework/amber_cli`, the release workflow must be green for:
 
 - `Build darwin-arm64`
 - `Build linux-x86_64`
+- `Build linux-arm64`
 - `Upload Release Assets`
 - `Notify Homebrew Tap`
 
@@ -138,12 +142,16 @@ brew test amber_cli
 amber new smoke_app --type web -y --no-deps
 cd smoke_app
 shards install
+amber assets build
+amber assets check
 crystal spec
 crystal build src/smoke_app.cr -o bin/smoke_app
 ```
 
-It then starts the built application and probes the homepage and generated CSS.
-The macOS job also rejects binaries linked to `openssl@1.1`.
+It then starts the built application and probes the homepage plus the
+manifest-rendered CSS, JavaScript, image, and favicon URLs. It verifies asset
+MIME types, immutable cache headers, SRI, and gzip negotiation. The macOS job
+also rejects binaries linked to `openssl@1.1`.
 
 ## Manual Recovery
 
@@ -164,8 +172,8 @@ If the release build fails before the tap update:
 ## Current Packaging Direction
 
 The Homebrew tap and matching release archives are the supported install paths
-for Apple Silicon macOS and x86_64 Linux today. Other operating systems and
-architectures remain preview or contributor build-from-source targets until
-they have published artifacts and the same end-to-end release gates.
+for Apple Silicon macOS, x86_64 Linux, and ARM64 Linux today. Windows x86-64 is
+compiled in CI as a compatibility check but does not gate this beta and does not
+yet have a release archive.
 
 For eventual `homebrew/core` inclusion, we should plan for a source-building formula and a clean `brew audit --new --formula amber_cli` story. The current tap keeps release onboarding fast, while the source-build path is the more likely route for upstream Homebrew acceptance.

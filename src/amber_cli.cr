@@ -13,9 +13,11 @@ require "./amber_cli/core/configurable_generator_manager"
 
 # Include comprehensive documentation for crystal docs generation
 require "./amber_cli/documentation"
+require "./amber_cli/static_assets"
 
 # Load all commands - they will register themselves
 require "./amber_cli/commands/new"
+require "./amber_cli/commands/assets"
 require "./amber_cli/commands/database"
 require "./amber_cli/commands/routes"
 require "./amber_cli/commands/watch"
@@ -68,6 +70,7 @@ module AmberCLI
       new (n)         Create a new Amber V2 application
       generate (g)    Generate models, controllers, scaffolds, jobs, mailers, schemas, channels
       database (db)   Database operations and migrations
+      assets          Build or verify fingerprinted static assets
       routes (r)      Display application routes
       watch (w)       Start development server with file watching
       encrypt (e)     Encrypt/decrypt environment files

@@ -7,16 +7,18 @@ module Sentry
 
     property processes = Hash(String, Array(Process)).new
     property process_name : String
-    FILE_TIMESTAMPS = Hash(String, Int64).new
 
     def initialize(
       @process_name : String,
+      @before_build : Proc(Bool)? = nil,
       @build_commands = Hash(String, String).new,  # { "task1" => [ ... ], "task2" => [ ... ] }
       @run_commands = Hash(String, String).new,    # { "task1" => [ ... ], "task2" => [ ... ] }
       @includes = Hash(String, Array(String)).new, # { "task1" => [ ... ], "task2" => [ ... ] }
       @excludes = Hash(String, Array(String)).new, # { "task1" => [ ... ], "task2" => [ ... ] }
     )
       @app_running = false
+      @file_timestamps = Hash(String, Int64).new
+      @file_tasks = Hash(String, Array(String)).new
     end
 
     def run
@@ -50,14 +52,26 @@ module Sentry
       end
 
       all_files.each do |file, tasks|
+        @file_tasks[file] = tasks
         timestamp = get_timestamp(file)
-        if FILE_TIMESTAMPS[file]? != timestamp
-          FILE_TIMESTAMPS[file] = timestamp
+        if @file_timestamps[file]? != timestamp
+          @file_timestamps[file] = timestamp
           unless no_actions
             log :scan, "File changed: #{file.colorize(:light_gray)} (will notify: #{tasks.join(", ")})"
             changed_files << file
           end
         end
+      end
+
+      deleted_files = @file_timestamps.keys.reject { |file| all_files.has_key?(file) }
+      deleted_files.each do |file|
+        tasks = @file_tasks.delete(file) || [] of String
+        @file_timestamps.delete(file)
+        next if no_actions
+
+        log :scan, "File removed: #{file.colorize(:light_gray)} (will notify: #{tasks.join(", ")})"
+        all_files[file] = tasks
+        changed_files << file
       end
 
       return if no_actions || changed_files.empty?
@@ -120,6 +134,15 @@ module Sentry
           if skip_build
             ok_to_run = true
           else
+            if before_build = @before_build
+              log :run, "Building static assets..."
+              unless before_build.call
+                log :run, "Static asset build failed; application compile skipped.", :red
+                exit 1 unless @app_running
+                return
+              end
+            end
+
             log :run, "Building..."
             time = Time.instant
             build_result = Amber::CLI::Helpers.run(build_command_run)
@@ -187,7 +210,7 @@ module Sentry
     end
 
     private def get_timestamp(file : String)
-      File.info(file).modification_time.to_unix
+      File.info(file).modification_time.to_unix_ms
     end
 
     private def project_name
