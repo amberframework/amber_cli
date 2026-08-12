@@ -27,8 +27,8 @@ jobs:
         run: crystal build src/amber_cli.cr --no-debug -o amber
 
       - name: Compile generated Amber V2 web app
-        # Exercise the clean beta.4 candidate before its version tag exists.
-        run: scripts/smoke_generated_web.sh ./amber 51da178fb8fb364498fc1f106727a487ac2c505a
+        # Exercise the exact framework and asset releases emitted by the template.
+        run: scripts/smoke_generated_web.sh ./amber
 
   windows-x86-64:
     name: Windows x86_64 generated web app
@@ -58,5 +58,5 @@ jobs:
 
       - name: Compile generated Amber V2 web app
         shell: pwsh
-        # Exercise the clean beta.4 candidate before its version tag exists.
-        run: scripts/smoke_generated_web.ps1 ./amber.exe 51da178fb8fb364498fc1f106727a487ac2c505a
+        # Exercise the exact framework and asset releases emitted by the template.
+        run: scripts/smoke_generated_web.ps1 ./amber.exe

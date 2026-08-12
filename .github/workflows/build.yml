@@ -83,8 +83,8 @@ jobs:
         ! otool -L amber amber-lsp | grep -F 'openssl@1.1'
 
     - name: Smoke test generated Amber V2 web app
-      # Exercise the clean beta.4 candidate before its version tag exists.
-      run: scripts/smoke_generated_web.sh ./amber 51da178fb8fb364498fc1f106727a487ac2c505a
+      # Exercise the exact framework and asset releases emitted by the template.
+      run: scripts/smoke_generated_web.sh ./amber
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
