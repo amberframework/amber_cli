@@ -3,11 +3,11 @@ set -euo pipefail
 
 shard_version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
 cli_version="$(sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' src/amber_cli.cr | head -1)"
-test "$shard_version" = "2.0.5"
+test "$shard_version" = "2.0.6"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new.cr
-grep -F 'version: 2.0.0-beta.4' src/amber_cli/commands/new.cr
+grep -F 'version: 2.0.0-beta.5' src/amber_cli/commands/new.cr
 grep -F 'template: ecr' src/amber_cli/commands/new.cr
 grep -F 'model: grant' src/amber_cli/commands/new.cr
 grep -F 'database: #{database}' src/amber_cli/commands/new.cr
@@ -17,7 +17,7 @@ grep -F 'version: ~> 0.37.0' src/amber_cli/commands/new.cr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'version: ~> 0.37.0' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/amber' src/amber_cli/generators/native_app.cr
-grep -F 'version: 2.0.0-beta.4' src/amber_cli/generators/native_app.cr
+grep -F 'version: 2.0.0-beta.5' src/amber_cli/generators/native_app.cr
 grep -F 'version: ~> 0.37.0' src/amber_cli/generators/native_app.cr
 if grep -F 'branch:' src/amber_cli/generators/native_app.cr; then
   echo "native app template contains a mutable dependency branch" >&2
@@ -39,17 +39,9 @@ if grep -F '#   schema = #{class_name}Schema.new(data)' src/amber_cli/commands/g
   exit 1
 fi
 
-build_candidate_commit="$(awk '/AMBER_CANDIDATE_FRAMEWORK_COMMIT:/ { print $2; exit }' .github/workflows/build.yml)"
-platform_candidate_commit="$(awk '/AMBER_CANDIDATE_FRAMEWORK_COMMIT:/ { print $2; exit }' .github/workflows/platform-compile.yml)"
-build_candidate_repository="$(awk '/AMBER_CANDIDATE_FRAMEWORK_REPOSITORY:/ { print $2; exit }' .github/workflows/build.yml)"
-platform_candidate_repository="$(awk '/AMBER_CANDIDATE_FRAMEWORK_REPOSITORY:/ { print $2; exit }' .github/workflows/platform-compile.yml)"
-test -n "$build_candidate_commit"
-test "$build_candidate_commit" = "$platform_candidate_commit"
-test "$build_candidate_repository" = "crimson-knight/amber"
-test "$build_candidate_repository" = "$platform_candidate_repository"
 grep -F 'scripts/smoke_generated_web.sh ./amber' .github/workflows/release.yml
-if grep -F 'AMBER_CANDIDATE_FRAMEWORK' .github/workflows/release.yml; then
-  echo "release workflow must test the published framework emitted by the template" >&2
+if grep -R -F 'AMBER_CANDIDATE_FRAMEWORK' .github/workflows; then
+  echo "CI workflows must test the published framework emitted by the template" >&2
   exit 1
 fi
 grep -F '[string]$FrameworkRepository = "amberframework/amber"' scripts/smoke_generated_web.ps1
@@ -77,7 +69,7 @@ files=(
   README.md
   RELEASE_NOTES_V2.0.3.md
   RELEASE_NOTES_V2.0.4.md
-  RELEASE_NOTES_V2.0.5.md
+  RELEASE_NOTES_V2.0.6.md
   RELEASE_SETUP.md
   .github/ISSUE_TEMPLATE/release-checklist.md
   docs/*.md
