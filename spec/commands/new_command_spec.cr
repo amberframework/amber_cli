@@ -86,7 +86,7 @@ describe AmberCLI::Commands::NewCommand do
 
         shard = File.read(File.join(destination, "shard.yml"))
         shard.should contain("github: amberframework/amber")
-        shard.should contain("version: 2.0.0-beta.4")
+        shard.should contain("version: 2.0.0-beta.5")
         shard.should contain("grant:")
         shard.should contain("github: crimson-knight/grant")
         shard.should contain("asset_pipeline:")

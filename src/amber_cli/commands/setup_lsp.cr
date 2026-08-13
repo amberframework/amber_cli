@@ -215,7 +215,7 @@ module AmberCLI::Commands
 
       content = <<-YAML
       # Amber LSP Configuration
-      # See: https://github.com/amberframework/amber/blob/v2.0.0-beta.4/docs/guides/lsp-setup.md
+      # See: https://github.com/amberframework/amber/blob/v2.0.0-beta.5/docs/guides/lsp-setup.md
 
       # Override built-in rule settings
       # rules:

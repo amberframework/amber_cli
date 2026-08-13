@@ -27,7 +27,7 @@ jobs:
         run: crystal build src/amber_cli.cr --no-debug -o amber
 
       - name: Compile generated Amber V2 web app
-        # Exercise the exact framework and asset releases emitted by the template.
+        # Exercise the exact published framework emitted by the template.
         run: scripts/smoke_generated_web.sh ./amber
 
   windows-x86-64:
@@ -58,5 +58,5 @@ jobs:
 
       - name: Compile generated Amber V2 web app
         shell: pwsh
-        # Exercise the exact framework and asset releases emitted by the template.
+        # Exercise the exact published framework emitted by the template.
         run: scripts/smoke_generated_web.ps1 ./amber.exe

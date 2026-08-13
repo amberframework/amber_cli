@@ -3,11 +3,11 @@ set -euo pipefail
 
 shard_version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
 cli_version="$(sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' src/amber_cli.cr | head -1)"
-test "$shard_version" = "2.0.5"
+test "$shard_version" = "2.0.6"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new.cr
-grep -F 'version: 2.0.0-beta.4' src/amber_cli/commands/new.cr
+grep -F 'version: 2.0.0-beta.5' src/amber_cli/commands/new.cr
 grep -F 'template: ecr' src/amber_cli/commands/new.cr
 grep -F 'model: grant' src/amber_cli/commands/new.cr
 grep -F 'database: #{database}' src/amber_cli/commands/new.cr
@@ -17,7 +17,7 @@ grep -F 'version: ~> 0.37.0' src/amber_cli/commands/new.cr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'version: ~> 0.37.0' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/amber' src/amber_cli/generators/native_app.cr
-grep -F 'version: 2.0.0-beta.4' src/amber_cli/generators/native_app.cr
+grep -F 'version: 2.0.0-beta.5' src/amber_cli/generators/native_app.cr
 grep -F 'version: ~> 0.37.0' src/amber_cli/generators/native_app.cr
 if grep -F 'branch:' src/amber_cli/generators/native_app.cr; then
   echo "native app template contains a mutable dependency branch" >&2
@@ -28,6 +28,24 @@ if grep -F 'shards install || true' src/amber_cli/generators/native_app.cr; then
   exit 1
 fi
 grep -F 'github: amberframework/micrate' shard.yml
+grep -F 'info "  2. Bind it in a controller: schema :create, #{class_name}Schema"' src/amber_cli/commands/generate.cr
+grep -F 'content_type "#{content_type}"' src/amber_cli/commands/generate.cr
+grep -F 'schema :create, #{class_name}Schema' src/amber_cli/commands/generate.cr
+grep -F 'schema :update, #{class_name}Schema' src/amber_cli/commands/generate.cr
+grep -F 'schema = validated_as(#{class_name}Schema)' src/amber_cli/commands/generate.cr
+grep -F 'protected def handle_schema_validation_failure(' src/amber_cli/commands/generate.cr
+if grep -F '#   schema = #{class_name}Schema.new(data)' src/amber_cli/commands/generate.cr; then
+  echo "schema generator still teaches direct construction as the controller path" >&2
+  exit 1
+fi
+
+grep -F 'scripts/smoke_generated_web.sh ./amber' .github/workflows/release.yml
+if grep -R -F 'AMBER_CANDIDATE_FRAMEWORK' .github/workflows; then
+  echo "CI workflows must test the published framework emitted by the template" >&2
+  exit 1
+fi
+grep -F '[string]$FrameworkRepository = "amberframework/amber"' scripts/smoke_generated_web.ps1
+grep -F '"    github: $FrameworkRepository"' scripts/smoke_generated_web.ps1
 test -s src/amber_cli/templates/app/config/database.cr.ecr
 test -s src/amber_cli/templates/app/config/assets.cr.ecr
 grep -F 'Your new idea' src/amber_cli/commands/new.cr
@@ -51,7 +69,7 @@ files=(
   README.md
   RELEASE_NOTES_V2.0.3.md
   RELEASE_NOTES_V2.0.4.md
-  RELEASE_NOTES_V2.0.5.md
+  RELEASE_NOTES_V2.0.6.md
   RELEASE_SETUP.md
   .github/ISSUE_TEMPLATE/release-checklist.md
   docs/*.md

@@ -58,11 +58,59 @@ describe AmberCLI::Commands::GenerateCommand do
       File.read(migration).should contain("-- +micrate Down")
 
       File.read("config/routes.cr").should contain(%(resources "/pets", PetController))
-      File.read("src/controllers/pet_controller.cr").should contain("schema.adopted")
-      File.read("src/controllers/pet_controller.cr").should_not contain("schema.adopted.not_nil!")
+      schema = File.read("src/schemas/pet_schema.cr")
+      schema.should contain(%(content_type "application/x-www-form-urlencoded"))
+
+      controller = File.read("src/controllers/pet_controller.cr")
+      controller.should contain("schema :create, PetSchema")
+      controller.should contain("schema :update, PetSchema")
+      controller.should contain("validated_as(PetSchema)")
+      controller.should contain("schema.adopted")
+      controller.should_not contain("schema.adopted.not_nil!")
+      controller.should contain("handle_schema_validation_failure")
+      controller.should contain(%(context.content = render("new.ecr")))
+      controller.should_not contain("PetSchema.new(merge_request_data)")
       File.read("src/views/pet/new.ecr").should contain(%(render(partial: "_form.ecr")))
       File.read("src/views/pet/_form.ecr").should contain(%(hidden_field("_method", "PATCH")))
       File.read("src/views/pet/_form.ecr").should contain(%(checkbox("adopted", checked: @pet.adopted? || false, value: "true")))
+    end
+  end
+
+  it "generates schemas with the executable controller contract as the primary path" do
+    SpecHelper.within_temp_directory do
+      command = AmberCLI::Commands::GenerateCommand.new("generate")
+      command.parse_and_execute(["schema", "Post", "title:string:required"])
+
+      schema = File.read("src/schemas/post_schema.cr")
+      schema.should contain("schema :create, PostSchema")
+      schema.should contain("validated_as(PostSchema)")
+      schema.should_not contain("PostSchema.new(data)")
+
+      spec = File.read("spec/schemas/post_schema_spec.cr")
+      spec.should contain("PostSchema.new(data)")
+    end
+  end
+
+  it "generates API writes with automatically enforced JSON schemas" do
+    SpecHelper.within_temp_directory do
+      File.write(".amber.yml", "template: ecr\ndatabase: sqlite\nmodel: grant\n")
+
+      command = AmberCLI::Commands::GenerateCommand.new("generate")
+      command.parse_and_execute([
+        "api",
+        "Pet",
+        "name:string:required",
+        "adopted:bool",
+      ])
+
+      schema = File.read("src/schemas/pet_schema.cr")
+      schema.should contain(%(content_type "application/json"))
+
+      controller = File.read("src/controllers/api/pet_controller.cr")
+      controller.should contain("schema :create, PetSchema")
+      controller.should contain("schema :update, PetSchema")
+      controller.should contain("validated_as(PetSchema)")
+      controller.should_not contain("PetSchema.new(merge_request_data)")
     end
   end
 

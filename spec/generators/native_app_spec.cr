@@ -31,7 +31,7 @@ describe AmberCLI::Generators::NativeApp do
         # Must have amber (patterns only)
         shard_content.should contain("amber:")
         shard_content.should contain("github: amberframework/amber")
-        shard_content.should contain("version: 2.0.0-beta.4")
+        shard_content.should contain("version: 2.0.0-beta.5")
 
         # Must have the released asset_pipeline with cross-platform UI support
         shard_content.should contain("asset_pipeline:")
