@@ -7,6 +7,10 @@ on:
     branches: [ main, develop ]
   workflow_dispatch:
 
+env:
+  AMBER_CANDIDATE_FRAMEWORK_COMMIT: eba20af31b2eb41ca6a7409ccd52792290c75a7b
+  AMBER_CANDIDATE_FRAMEWORK_REPOSITORY: crimson-knight/amber
+
 jobs:
   build:
     name: Build ${{ matrix.target }}
@@ -82,8 +86,19 @@ jobs:
         otool -L amber-lsp
         ! otool -L amber amber-lsp | grep -F 'openssl@1.1'
 
-    - name: Smoke test generated Amber V2 web app
-      # Exercise the exact framework and asset releases emitted by the template.
+    - name: Smoke test generated Amber V2 web app against candidate framework
+      if: github.event_name == 'pull_request'
+      # The schema-aware generators depend on amberframework/amber#1408. Keep
+      # this pin exact so a passing PR proves the coordinated candidate.
+      run: >-
+        scripts/smoke_generated_web.sh ./amber
+        "$AMBER_CANDIDATE_FRAMEWORK_COMMIT"
+        "$AMBER_CANDIDATE_FRAMEWORK_REPOSITORY"
+
+    - name: Smoke test generated Amber V2 web app against published framework
+      if: github.event_name != 'pull_request'
+      # Main and manual builds must remain honest about the version emitted by
+      # the template. Release jobs have the same published-version boundary.
       run: scripts/smoke_generated_web.sh ./amber
 
     - name: Upload build artifacts

@@ -2,7 +2,9 @@ param(
   [Parameter(Mandatory = $true, Position = 0)]
   [string]$Cli,
   [Parameter(Position = 1)]
-  [string]$FrameworkCommit = ""
+  [string]$FrameworkCommit = "",
+  [Parameter(Position = 2)]
+  [string]$FrameworkRepository = "amberframework/amber"
 )
 
 $ErrorActionPreference = "Stop"
@@ -37,6 +39,12 @@ $amberConfigPath = Join-Path $appPath ".amber.yml"
 $manifest = [System.IO.File]::ReadAllText($shardPath)
 $amberConfig = [System.IO.File]::ReadAllText($amberConfigPath)
 
+if (-not $manifest.Contains("github: amberframework/amber")) {
+  throw "Generated shard.yml does not include Amber"
+}
+if (-not $manifest.Contains("version: 2.0.0-beta.4")) {
+  throw "Generated shard.yml does not pin the supported Amber beta"
+}
 if (-not $manifest.Contains("github: crimson-knight/grant")) {
   throw "Generated shard.yml does not include Grant"
 }
@@ -54,10 +62,18 @@ if (-not $amberConfig.Contains("database: sqlite") -or -not $amberConfig.Contain
 }
 
 if ($FrameworkCommit) {
+  $releasedRepository = "    github: amberframework/amber"
   $releasedFramework = "    version: 2.0.0-beta.4"
+  if (-not $manifest.Contains($releasedRepository)) {
+    throw "Generated shard.yml does not contain the expected Amber repository"
+  }
   if (-not $manifest.Contains($releasedFramework)) {
     throw "Generated shard.yml does not contain the expected Amber beta pin"
   }
+  $manifest = $manifest.Replace(
+      $releasedRepository,
+      "    github: $FrameworkRepository"
+    )
   $manifest = $manifest.Replace(
       $releasedFramework,
       "    commit: $FrameworkCommit"

@@ -38,6 +38,22 @@ if grep -F '#   schema = #{class_name}Schema.new(data)' src/amber_cli/commands/g
   echo "schema generator still teaches direct construction as the controller path" >&2
   exit 1
 fi
+
+build_candidate_commit="$(awk '/AMBER_CANDIDATE_FRAMEWORK_COMMIT:/ { print $2; exit }' .github/workflows/build.yml)"
+platform_candidate_commit="$(awk '/AMBER_CANDIDATE_FRAMEWORK_COMMIT:/ { print $2; exit }' .github/workflows/platform-compile.yml)"
+build_candidate_repository="$(awk '/AMBER_CANDIDATE_FRAMEWORK_REPOSITORY:/ { print $2; exit }' .github/workflows/build.yml)"
+platform_candidate_repository="$(awk '/AMBER_CANDIDATE_FRAMEWORK_REPOSITORY:/ { print $2; exit }' .github/workflows/platform-compile.yml)"
+test -n "$build_candidate_commit"
+test "$build_candidate_commit" = "$platform_candidate_commit"
+test "$build_candidate_repository" = "crimson-knight/amber"
+test "$build_candidate_repository" = "$platform_candidate_repository"
+grep -F 'scripts/smoke_generated_web.sh ./amber' .github/workflows/release.yml
+if grep -F 'AMBER_CANDIDATE_FRAMEWORK' .github/workflows/release.yml; then
+  echo "release workflow must test the published framework emitted by the template" >&2
+  exit 1
+fi
+grep -F '[string]$FrameworkRepository = "amberframework/amber"' scripts/smoke_generated_web.ps1
+grep -F '"    github: $FrameworkRepository"' scripts/smoke_generated_web.ps1
 test -s src/amber_cli/templates/app/config/database.cr.ecr
 test -s src/amber_cli/templates/app/config/assets.cr.ecr
 grep -F 'Your new idea' src/amber_cli/commands/new.cr

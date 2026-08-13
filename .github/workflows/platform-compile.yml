@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  AMBER_CANDIDATE_FRAMEWORK_COMMIT: eba20af31b2eb41ca6a7409ccd52792290c75a7b
+  AMBER_CANDIDATE_FRAMEWORK_REPOSITORY: crimson-knight/amber
+
 jobs:
   linux-arm64:
     name: Linux ARM64 generated web app
@@ -26,8 +30,16 @@ jobs:
       - name: Build Amber CLI
         run: crystal build src/amber_cli.cr --no-debug -o amber
 
-      - name: Compile generated Amber V2 web app
-        # Exercise the exact framework and asset releases emitted by the template.
+      - name: Compile generated Amber V2 web app against candidate framework
+        if: github.event_name == 'pull_request'
+        # The schema-aware generators depend on amberframework/amber#1408.
+        run: >-
+          scripts/smoke_generated_web.sh ./amber
+          "$AMBER_CANDIDATE_FRAMEWORK_COMMIT"
+          "$AMBER_CANDIDATE_FRAMEWORK_REPOSITORY"
+
+      - name: Compile generated Amber V2 web app against published framework
+        if: github.event_name != 'pull_request'
         run: scripts/smoke_generated_web.sh ./amber
 
   windows-x86-64:
@@ -56,7 +68,17 @@ jobs:
       - name: Build Amber CLI
         run: crystal build src/amber_cli.cr --no-debug -o amber.exe
 
-      - name: Compile generated Amber V2 web app
+      - name: Compile generated Amber V2 web app against candidate framework
+        if: github.event_name == 'pull_request'
         shell: pwsh
-        # Exercise the exact framework and asset releases emitted by the template.
+        # Keep the fork and commit explicit so Windows proves the same
+        # coordinated candidate as Linux and macOS.
+        run: >-
+          scripts/smoke_generated_web.ps1 ./amber.exe
+          $env:AMBER_CANDIDATE_FRAMEWORK_COMMIT
+          $env:AMBER_CANDIDATE_FRAMEWORK_REPOSITORY
+
+      - name: Compile generated Amber V2 web app against published framework
+        if: github.event_name != 'pull_request'
+        shell: pwsh
         run: scripts/smoke_generated_web.ps1 ./amber.exe
