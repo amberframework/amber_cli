@@ -455,8 +455,8 @@ SPEC
       puts ""
       info "Next steps:"
       info "  1. Customize field validations (min_length, max_length, format, etc.)"
-      info "  2. Use in controllers: schema = #{class_name}Schema.new(merge_request_data)"
-      info "  3. Check result: result = schema.validate"
+      info "  2. Bind it in a controller: schema :create, #{class_name}Schema"
+      info "  3. Read typed input: input = validated_as(#{class_name}Schema)"
     end
 
     private def schema_template
@@ -484,17 +484,14 @@ SPEC
       <<-SCHEMA
 # Schema definition for validating #{class_name.underscore.gsub("_", " ")} data.
 #
-# Usage:
-#   data = {"name" => JSON::Any.new("value")}
-#   schema = #{class_name}Schema.new(data)
-#   result = schema.validate
-#   if result.success?
-#     # Access validated fields: schema.name
-#   else
-#     # Handle errors: result.errors
-#   end
+# Bind this contract above an action in its controller:
+#   schema :create, #{class_name}Schema
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.4/docs/guides/schema-api.md
+# Amber enforces it before the action. Read its request-local typed values with:
+#   input = validated_as(#{class_name}Schema)
+#
+# Direct construction remains useful in this schema's isolated unit spec.
+# See: https://amberframework.org/docs/v2/guides/schema-api/
 class #{class_name}Schema < Amber::Schema::Definition
 #{field_definitions}
 end
@@ -843,7 +840,7 @@ SPEC
       info "Run 'amber database migrate' before opening /#{plural_name}."
     end
 
-    private def generate_scaffold_schema
+    private def generate_scaffold_schema(content_type = "application/x-www-form-urlencoded")
       schema_path = "src/schemas/#{file_name}_schema.cr"
 
       field_definitions = schema_fields.map do |field_name, field_type, is_required|
@@ -859,8 +856,10 @@ SPEC
 #
 # Used by #{controller_name} for request validation.
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.4/docs/guides/schema-api.md
+# See: https://amberframework.org/docs/v2/guides/schema-api/
 class #{class_name}Schema < Amber::Schema::Definition
+  content_type "#{content_type}"
+
 #{field_definitions}
 end
 SCHEMA
@@ -881,16 +880,19 @@ SCHEMA
 
       schema_field_assignments = fields.map do |field_name, _|
         suffix = field_required?(field_name) ? ".not_nil!" : ""
-        "      #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
+        "    #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
       end.join("\n")
 
       update_field_assignments = fields.map do |field_name, _|
         suffix = field_required?(field_name) ? ".not_nil!" : ""
-        "        #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
+        "      #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
       end.join("\n")
 
       <<-CONTROLLER
 class #{controller_name} < ApplicationController
+  schema :create, #{class_name}Schema
+  schema :update, #{class_name}Schema
+
   @#{plural_variable_name} = [] of #{class_name}
   @#{variable_name} = #{class_name}.new
   @errors = [] of Amber::Schema::Error
@@ -916,26 +918,16 @@ class #{controller_name} < ApplicationController
   end
 
   def create
-    # Schema-based parameter validation
-    schema = #{class_name}Schema.new(merge_request_data)
-    result = schema.validate
-
-    if result.success?
-      #{variable_name} = #{class_name}.new
+    schema = validated_as(#{class_name}Schema)
+    #{variable_name} = #{class_name}.new
 #{schema_field_assignments}
 
-      if #{variable_name}.save
-        flash[:success] = "#{class_name} created successfully"
-        redirect_to "/#{plural_name}/\#{#{variable_name}.id}"
-      else
-        @#{variable_name} = #{variable_name}
-        flash[:danger] = "Could not create #{class_name}"
-        render("new.#{template_ext}")
-      end
+    if #{variable_name}.save
+      flash[:success] = "#{class_name} created successfully"
+      redirect_to "/#{plural_name}/\#{#{variable_name}.id}"
     else
-      @#{variable_name} = #{class_name}.new
-      @errors = result.errors
-      flash[:danger] = "Validation failed"
+      @#{variable_name} = #{variable_name}
+      flash[:danger] = "Could not create #{class_name}"
       render("new.#{template_ext}")
     end
   end
@@ -952,24 +944,15 @@ class #{controller_name} < ApplicationController
 
   def update
     if #{variable_name} = #{class_name}.find(params[:id])
-      schema = #{class_name}Schema.new(merge_request_data)
-      result = schema.validate
-
-      if result.success?
+      schema = validated_as(#{class_name}Schema)
 #{update_field_assignments}
 
-        if #{variable_name}.save
-          flash[:success] = "#{class_name} updated successfully"
-          redirect_to "/#{plural_name}/\#{#{variable_name}.id}"
-        else
-          @#{variable_name} = #{variable_name}
-          flash[:danger] = "Could not update #{class_name}"
-          render("edit.#{template_ext}")
-        end
+      if #{variable_name}.save
+        flash[:success] = "#{class_name} updated successfully"
+        redirect_to "/#{plural_name}/\#{#{variable_name}.id}"
       else
         @#{variable_name} = #{variable_name}
-        @errors = result.errors
-        flash[:danger] = "Validation failed"
+        flash[:danger] = "Could not update #{class_name}"
         render("edit.#{template_ext}")
       end
     else
@@ -986,6 +969,33 @@ class #{controller_name} < ApplicationController
       flash[:danger] = "#{class_name} not found"
     end
     redirect_to "/#{plural_name}"
+  end
+
+  protected def handle_schema_validation_failure(
+    action : Symbol,
+    result : Amber::Schema::LegacyResult,
+  ) : Nil
+    @errors = result.errors
+    error = result.errors.first?
+    response.status_code = error.is_a?(Amber::Schema::RequestParseError) ? error.http_status : 422
+    response.content_type = "text/html"
+    flash[:danger] = "Validation failed"
+
+    case action
+    when :create
+      @#{variable_name} = #{class_name}.new
+      context.content = render("new.#{template_ext}")
+    when :update
+      if #{variable_name} = #{class_name}.find(params[:id])
+        @#{variable_name} = #{variable_name}
+        context.content = render("edit.#{template_ext}")
+      else
+        flash[:danger] = "#{class_name} not found"
+        redirect_to "/#{plural_name}"
+      end
+    else
+      super
+    end
   end
 end
 CONTROLLER
@@ -1102,7 +1112,7 @@ SQL
       generate_model
 
       # Generate schema for API validation
-      generate_scaffold_schema
+      generate_scaffold_schema("application/json")
 
       # API controller (JSON only)
       api_dir = "src/controllers/api"
@@ -1136,6 +1146,9 @@ SQL
       <<-CONTROLLER
 module Api
   class #{controller_name} < ApplicationController
+    schema :create, #{class_name}Schema
+    schema :update, #{class_name}Schema
+
     def index
       #{plural_variable_name} = #{class_name}.all.to_a
       render json: #{plural_variable_name}.to_json
@@ -1150,38 +1163,26 @@ module Api
     end
 
     def create
-      schema = #{class_name}Schema.new(merge_request_data)
-      result = schema.validate
-
-      if result.success?
-        #{variable_name} = #{class_name}.new
+      schema = validated_as(#{class_name}Schema)
+      #{variable_name} = #{class_name}.new
 #{schema_field_assignments}
 
-        if #{variable_name}.save
-          render json: #{variable_name}.to_json, status: 201
-        else
-          render json: {error: "Could not create #{class_name}"}.to_json, status: 422
-        end
+      if #{variable_name}.save
+        render json: #{variable_name}.to_json, status: 201
       else
-        render json: {errors: result.errors.map(&.to_h)}.to_json, status: 422
+        render json: {error: "Could not create #{class_name}"}.to_json, status: 422
       end
     end
 
     def update
       if #{variable_name} = #{class_name}.find(params[:id])
-        schema = #{class_name}Schema.new(merge_request_data)
-        result = schema.validate
-
-        if result.success?
+        schema = validated_as(#{class_name}Schema)
 #{update_field_assignments}
 
-          if #{variable_name}.save
-            render json: #{variable_name}.to_json
-          else
-            render json: {error: "Could not update #{class_name}"}.to_json, status: 422
-          end
+        if #{variable_name}.save
+          render json: #{variable_name}.to_json
         else
-          render json: {errors: result.errors.map(&.to_h)}.to_json, status: 422
+          render json: {error: "Could not update #{class_name}"}.to_json, status: 422
         end
       else
         render json: {error: "#{class_name} not found"}.to_json, status: 404

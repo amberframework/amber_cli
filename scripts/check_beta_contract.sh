@@ -28,6 +28,16 @@ if grep -F 'shards install || true' src/amber_cli/generators/native_app.cr; then
   exit 1
 fi
 grep -F 'github: amberframework/micrate' shard.yml
+grep -F 'info "  2. Bind it in a controller: schema :create, #{class_name}Schema"' src/amber_cli/commands/generate.cr
+grep -F 'content_type "#{content_type}"' src/amber_cli/commands/generate.cr
+grep -F 'schema :create, #{class_name}Schema' src/amber_cli/commands/generate.cr
+grep -F 'schema :update, #{class_name}Schema' src/amber_cli/commands/generate.cr
+grep -F 'schema = validated_as(#{class_name}Schema)' src/amber_cli/commands/generate.cr
+grep -F 'protected def handle_schema_validation_failure(' src/amber_cli/commands/generate.cr
+if grep -F '#   schema = #{class_name}Schema.new(data)' src/amber_cli/commands/generate.cr; then
+  echo "schema generator still teaches direct construction as the controller path" >&2
+  exit 1
+fi
 test -s src/amber_cli/templates/app/config/database.cr.ecr
 test -s src/amber_cli/templates/app/config/assets.cr.ecr
 grep -F 'Your new idea' src/amber_cli/commands/new.cr

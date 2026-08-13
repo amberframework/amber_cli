@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -lt 1 || $# -gt 2 ]]; then
-  echo "usage: $0 /path/to/amber [framework-commit]" >&2
+if [[ $# -lt 1 || $# -gt 3 ]]; then
+  echo "usage: $0 /path/to/amber [framework-commit] [framework-repository]" >&2
   exit 64
 fi
 
 cli_path="$1"
 framework_commit="${2:-}"
+framework_repository="${3:-amberframework/amber}"
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 if [[ "$cli_path" != /* ]]; then
   cli_path="$(cd "$(dirname "$cli_path")" && pwd)/$(basename "$cli_path")"
@@ -50,6 +51,7 @@ if grep -Eiq 'gemma:|slang' "$app_path/shard.yml" "$app_path/.amber.yml"; then
 fi
 
 if [[ -n "$framework_commit" ]]; then
+  sed -i.bak -E "s#    github: amberframework/amber#    github: ${framework_repository}#" "$app_path/shard.yml"
   sed -i.bak -E "s/    version: 2\.0\.0-beta\.[0-9]+/    commit: ${framework_commit}/" "$app_path/shard.yml"
   rm -f "$app_path/shard.yml.bak"
 fi
@@ -74,6 +76,15 @@ grep -F "class Pet < Grant::Base" src/models/pet.cr
 grep -F -- "-- +micrate Up" db/migrations/*_create_pets.sql
 grep -F -- "-- +micrate Down" db/migrations/*_create_pets.sql
 grep -F 'resources "/pets", PetController' config/routes.cr
+grep -F 'content_type "application/x-www-form-urlencoded"' src/schemas/pet_schema.cr
+grep -F 'schema :create, PetSchema' src/controllers/pet_controller.cr
+grep -F 'schema :update, PetSchema' src/controllers/pet_controller.cr
+grep -F 'validated_as(PetSchema)' src/controllers/pet_controller.cr
+grep -F 'handle_schema_validation_failure' src/controllers/pet_controller.cr
+if grep -F 'PetSchema.new(merge_request_data)' src/controllers/pet_controller.cr; then
+  echo "generated scaffold bypasses Amber's automatic controller contract" >&2
+  exit 1
+fi
 grep -F 'render(partial: "_form.ecr")' src/views/pet/new.ecr
 grep -F 'hidden_field("_method", "PATCH")' src/views/pet/_form.ecr
 
@@ -160,6 +171,24 @@ curl --fail --silent --cookie-jar "$cookie_jar" http://127.0.0.1:3210/pets/new >
 test "$(grep -c '<!DOCTYPE html>' "$new_page")" -eq 1
 grep -F 'form action="/pets" method="POST"' "$new_page"
 grep -F 'name="adopted"' "$new_page" | grep -F 'value="true"'
+csrf_token="$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' "$new_page" | head -1)"
+test -n "$csrf_token"
+
+invalid_page="$smoke_root/invalid-pet.html"
+invalid_headers="$smoke_root/invalid-pet-headers.txt"
+invalid_status="$(curl --silent --output "$invalid_page" --dump-header "$invalid_headers" --write-out '%{http_code}' \
+  --cookie "$cookie_jar" --request POST \
+  --data-urlencode "_csrf=$csrf_token" \
+  --data-urlencode "name=Missing Species" \
+  http://127.0.0.1:3210/pets)"
+test "$invalid_status" = "422"
+grep -i -F "Content-Type: text/html" "$invalid_headers"
+test "$(grep -c '<!DOCTYPE html>' "$invalid_page")" -eq 1
+grep -F "Please correct the following" "$invalid_page"
+grep -F "species:" "$invalid_page"
+
+curl --fail --silent --cookie "$cookie_jar" --cookie-jar "$cookie_jar" \
+  http://127.0.0.1:3210/pets/new >"$new_page"
 csrf_token="$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' "$new_page" | head -1)"
 test -n "$csrf_token"
 
