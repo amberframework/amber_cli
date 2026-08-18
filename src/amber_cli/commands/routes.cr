@@ -76,8 +76,14 @@ module AmberCLI::Commands
       exit!(error: true)
     end
 
-    private def parse_routes
-      File.read_lines("config/routes.cr").each do |line|
+    # Parses the routes file into `routes`.
+    #
+    # *routes_file* is explicit so path-scoped callers — the MCP `list_routes`
+    # tool, which serves concurrent requests for different applications from one
+    # process — can read an application's routes without changing the working
+    # directory. `amber routes` keeps its original relative default.
+    def parse_routes(routes_file : String = File.join("config", "routes.cr"))
+      File.read_lines(routes_file).each do |line|
         case line.strip
         when .starts_with?("routes")
           set_pipe(line)
