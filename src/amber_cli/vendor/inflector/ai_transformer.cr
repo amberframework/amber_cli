@@ -23,6 +23,9 @@ module AmberCLI::Vendor::Inflector::AITransformer
     end
   end
 
+  # Cache limit to prevent memory leaks in persistent instances
+  MAX_CACHE_SIZE = 1000
+
   # Cache for AI transformation results
   @@cache = {} of String => String
   @@config = Config.new
@@ -41,11 +44,17 @@ module AmberCLI::Vendor::Inflector::AITransformer
     # Check cache first
     cache_key = "#{word}:#{transformation}"
     if cached_result = @@cache[cache_key]?
+      # Move to end (most recently used)
+      @@cache.delete(cache_key)
+      @@cache[cache_key] = cached_result
       return cached_result
     end
 
     # Try AI transformation
     if result = call_ai_service(word, transformation)
+      if @@cache.size >= MAX_CACHE_SIZE
+        @@cache.delete(@@cache.first_key)
+      end
       @@cache[cache_key] = result
       return result
     end
