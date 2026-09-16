@@ -1337,11 +1337,11 @@ VIEW
 h1 Login
 == form(action: "/session", method: "post") do
   .form-group
-    label Email
-    input type="email" name="email" required=true
+    label for="email" Email
+    input id="email" type="email" name="email" required="true"
   .form-group
-    label Password
-    input type="password" name="password" required=true
+    label for="password" Password
+    input id="password" type="password" name="password" required="true"
   button type="submit" Login
 VIEW
 
@@ -1349,14 +1349,14 @@ VIEW
 h1 Create Account
 == form(action: "/register", method: "post") do
   .form-group
-    label Email
-    input type="email" name="email" required=true
+    label for="email" Email
+    input id="email" type="email" name="email" required="true"
   .form-group
-    label Password
-    input type="password" name="password" required=true
+    label for="password" Password
+    input id="password" type="password" name="password" required="true"
   .form-group
-    label Confirm Password
-    input type="password" name="password_confirmation" required=true
+    label for="password_confirmation" Confirm Password
+    input id="password_confirmation" type="password" name="password_confirmation" required="true"
   button type="submit" Create Account
 VIEW
       end
