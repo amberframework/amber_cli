@@ -114,6 +114,7 @@ describe AmberCLI::Commands::NewCommand do
         config["database"]["url"].as_s.should contain("sqlite3:")
 
         routes = File.read(File.join(destination, "config/routes.cr"))
+        routes.should contain("Amber::Pipe::SecureHeaders.new")
         routes.should contain("pipeline :static")
         routes.should contain("Amber::Pipe::Static.new")
         routes.should contain(%(get "/*", Amber::Controller::Static, :index))
