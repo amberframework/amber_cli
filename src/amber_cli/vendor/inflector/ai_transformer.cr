@@ -27,6 +27,7 @@ module AmberCLI::Vendor::Inflector::AITransformer
   MAX_CACHE_SIZE = 1000
 
   # Cache for AI transformation results
+  @@cache_mutex = Mutex.new
   @@cache = {} of String => String
   @@config = Config.new
 
@@ -43,19 +44,23 @@ module AmberCLI::Vendor::Inflector::AITransformer
 
     # Check cache first
     cache_key = "#{word}:#{transformation}"
-    if cached_result = @@cache[cache_key]?
-      # Move to end (most recently used)
-      @@cache.delete(cache_key)
-      @@cache[cache_key] = cached_result
-      return cached_result
+    @@cache_mutex.synchronize do
+      if cached_result = @@cache[cache_key]?
+        # Move to end (most recently used)
+        @@cache.delete(cache_key)
+        @@cache[cache_key] = cached_result
+        return cached_result
+      end
     end
 
     # Try AI transformation
     if result = call_ai_service(word, transformation)
-      if @@cache.size >= MAX_CACHE_SIZE
-        @@cache.delete(@@cache.first_key)
+      @@cache_mutex.synchronize do
+        if @@cache.size >= MAX_CACHE_SIZE
+          @@cache.delete(@@cache.first_key)
+        end
+        @@cache[cache_key] = result
       end
-      @@cache[cache_key] = result
       return result
     end
 
@@ -64,15 +69,19 @@ module AmberCLI::Vendor::Inflector::AITransformer
 
   # Clear the transformation cache
   def clear_cache
-    @@cache.clear
+    @@cache_mutex.synchronize do
+      @@cache.clear
+    end
   end
 
   # Get cache statistics
   def cache_stats
-    {
-      size: @@cache.size,
-      keys: @@cache.keys.sort,
-    }
+    @@cache_mutex.synchronize do
+      {
+        size: @@cache.size,
+        keys: @@cache.keys.sort,
+      }
+    end
   end
 
   # Call AI service to transform the word
