@@ -171,7 +171,7 @@ module Sentry
     end
 
     private def start_process(run_command_run)
-      process = Amber::CLI::Helpers.run(run_command_run, wait: false, shell: false)
+      process = Amber::CLI::Helpers.run(run_command_run, wait: false)
       if process.is_a? Process
         @processes["run"] ||= Array(Process).new
         @processes["run"] << process
@@ -189,11 +189,11 @@ module Sentry
 
         if (build_command = @build_commands[task]?) && !skip_build
           log task, "Building..."
-          build_result = Amber::CLI::Helpers.run(build_command)
+          build_result = Amber::CLI::Helpers.run(build_command, wait: true, shell: true)
           next unless build_result.is_a? Process::Status
 
           if build_result.success?
-            Amber::CLI::Helpers.run(build_command)
+            Amber::CLI::Helpers.run(build_command, wait: true, shell: true)
           else
             log task, "Build step failed."
             next # don't continue to run command step
