@@ -1547,21 +1547,21 @@ VIEW
           if input_type == "textarea"
             <<-FIELD
   .form-group
-    label #{field_name.camelcase}
-    textarea name="#{field_name}" = @#{variable_name}.try(&.#{field_name})
+    label for="#{field_name}" #{field_name.camelcase}
+    textarea id="#{field_name}" name="#{field_name}" = @#{variable_name}.try(&.#{field_name})
 FIELD
           elsif input_type == "checkbox"
             <<-FIELD
   .form-group
-    label
-      input type="checkbox" name="#{field_name}" checked=@#{variable_name}.try(&.#{field_name})
+    label for="#{field_name}"
+      input id="#{field_name}" type="checkbox" name="#{field_name}" checked=@#{variable_name}.try(&.#{field_name})
       | #{field_name.camelcase}
 FIELD
           else
             <<-FIELD
   .form-group
-    label #{field_name.camelcase}
-    input type="#{input_type}" name="#{field_name}" value=@#{variable_name}.try(&.#{field_name})
+    label for="#{field_name}" #{field_name.camelcase}
+    input id="#{field_name}" type="#{input_type}" name="#{field_name}" value=@#{variable_name}.try(&.#{field_name})
 FIELD
           end
         end.join("\n")
