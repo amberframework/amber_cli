@@ -457,6 +457,7 @@ CONTROLLER
       routes_content = <<-ROUTES
 Amber::Server.configure do
   pipeline :web do
+    plug Amber::Pipe::SecureHeaders.new
     plug Amber::Pipe::Error.new
     plug Amber::Pipe::Logger.new
     plug Amber::Pipe::Session.new
@@ -465,11 +466,13 @@ Amber::Server.configure do
   end
 
   pipeline :static do
+    plug Amber::Pipe::SecureHeaders.new
     plug Amber::Pipe::Error.new
     plug Amber::Pipe::Static.new("./public")
   end
 
   pipeline :api do
+    plug Amber::Pipe::SecureHeaders.new
     plug Amber::Pipe::Error.new
     plug Amber::Pipe::Logger.new
   end
