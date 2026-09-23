@@ -80,6 +80,63 @@ describe AmberLSP::Rules::Controllers::ActionReturnRule do
       diagnostics.should be_empty
     end
 
+    it "produces no diagnostics when actions use application response helpers" do
+      content = <<-CRYSTAL
+      class HomeController < ApplicationController
+        def index
+          respond_json(200, {ok: true})
+        end
+      end
+      CRYSTAL
+
+      rule = AmberLSP::Rules::Controllers::ActionReturnRule.new
+      diagnostics = rule.check("src/controllers/home_controller.cr", content)
+      diagnostics.should be_empty
+    end
+
+    it "produces no diagnostics when actions write the response directly" do
+      content = <<-CRYSTAL
+      class HomeController < ApplicationController
+        def index
+          context.response.print("ok")
+        end
+      end
+      CRYSTAL
+
+      rule = AmberLSP::Rules::Controllers::ActionReturnRule.new
+      diagnostics = rule.check("src/controllers/home_controller.cr", content)
+      diagnostics.should be_empty
+    end
+
+    it "produces no diagnostics when actions hand the response to a writer helper" do
+      content = <<-CRYSTAL
+      class HomeController < ApplicationController
+        def connect
+          send_event(context.response, "endpoint")
+        end
+      end
+      CRYSTAL
+
+      rule = AmberLSP::Rules::Controllers::ActionReturnRule.new
+      diagnostics = rule.check("src/controllers/home_controller.cr", content)
+      diagnostics.should be_empty
+    end
+
+    it "skips class methods and controller support files" do
+      content = <<-CRYSTAL
+      class HomeController < ApplicationController
+        def self.build
+          "helper"
+        end
+      end
+      CRYSTAL
+
+      rule = AmberLSP::Rules::Controllers::ActionReturnRule.new
+      rule.check("src/controllers/home_controller.cr", content).should be_empty
+      rule.check("src/controllers/application_controller.cr", content).should be_empty
+      rule.check("src/controllers/concerns/session_state.cr", content).should be_empty
+    end
+
     it "reports warning when action does not call any response method" do
       content = <<-CRYSTAL
       class HomeController < ApplicationController

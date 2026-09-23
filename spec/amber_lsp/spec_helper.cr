@@ -9,6 +9,12 @@ require "../../src/amber_lsp/rules/custom_rule"
 require "../../src/amber_lsp/document_store"
 require "../../src/amber_lsp/project_context"
 require "../../src/amber_lsp/configuration"
+require "../../src/amber_lsp/library_rule_packs/describe_library_rule_pack"
+require "../../src/amber_lsp/library_rule_packs/load_rule_packs_for_project"
+require "../../src/amber_lsp/library_rule_packs/visit_crystal_calls_outside_required_blocks"
+require "../../src/amber_lsp/library_rule_packs/determine_project_rule_pack_state"
+require "../../src/amber_lsp/library_rule_packs/analyze_project_files_with_rule_packs"
+require "../../src/amber_lsp/library_rule_packs/print_declared_rule_pack_contexts"
 require "../../src/amber_lsp/analyzer"
 require "../../src/amber_lsp/controller"
 require "../../src/amber_lsp/server"
@@ -29,7 +35,7 @@ def format_lsp_message(message) : String
 end
 
 def run_lsp_session(messages : Array) : Array(JSON::Any)
-  input_data = messages.map { |m| format_lsp_message(m) }.join
+  input_data = messages.map { |message| format_lsp_message(message) }.join
   input = IO::Memory.new(input_data)
   output = IO::Memory.new
 

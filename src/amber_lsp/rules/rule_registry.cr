@@ -23,6 +23,11 @@ module AmberLSP::Rules
     def self.file_matches_pattern?(file_path : String, pattern : String) : Bool
       if pattern == "*"
         true
+      elsif File.match?(pattern, file_path)
+        true
+      elsif pattern.starts_with?("*") && !pattern.includes?("/")
+        # Preserve the existing suffix behavior for rules such as *_controller.cr.
+        file_path.ends_with?(pattern.lchop("*"))
       elsif pattern.ends_with?("**")
         # Recursive glob: "src/**" matches anything under "src/"
         prefix = pattern.rchop("**")

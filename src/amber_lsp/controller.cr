@@ -168,9 +168,9 @@ module AmberLSP
       # Only analyze Crystal files
       return unless file_path.ends_with?(".cr")
 
-      # Only run if we detected an Amber project
       ctx = @project_context
-      return unless ctx && ctx.amber_project?
+      return unless ctx
+      return unless ctx.amber_project? || @analyzer.has_applicable_library_rule_pack?(file_path, content)
 
       diagnostics = @analyzer.analyze(file_path, content)
       publish_diagnostics(uri, diagnostics, server)
@@ -184,7 +184,7 @@ module AmberLSP
         "method"  => JSON::Any.new("textDocument/publishDiagnostics"),
         "params"  => JSON::Any.new({
           "uri"         => JSON::Any.new(uri),
-          "diagnostics" => JSON::Any.new(lsp_diagnostics.map { |d| JSON::Any.new(d) }),
+          "diagnostics" => JSON::Any.new(lsp_diagnostics.map { |diagnostic| JSON::Any.new(diagnostic) }),
         }),
       }
 

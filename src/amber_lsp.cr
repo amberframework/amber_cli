@@ -21,8 +21,18 @@ require "./amber_lsp/rules/custom_rule"
 require "./amber_lsp/document_store"
 require "./amber_lsp/project_context"
 require "./amber_lsp/configuration"
+require "./amber_lsp/library_rule_packs/describe_library_rule_pack"
+require "./amber_lsp/library_rule_packs/load_rule_packs_for_project"
+require "./amber_lsp/library_rule_packs/visit_crystal_calls_outside_required_blocks"
+require "./amber_lsp/library_rule_packs/determine_project_rule_pack_state"
+require "./amber_lsp/library_rule_packs/analyze_project_files_with_rule_packs"
+require "./amber_lsp/library_rule_packs/print_declared_rule_pack_contexts"
 require "./amber_lsp/analyzer"
 require "./amber_lsp/controller"
 require "./amber_lsp/server"
 
-AmberLSP::Server.new(STDIN, STDOUT).run
+if ARGV.first? == "context"
+  exit AmberLSP::LibraryRulePacks::PrintDeclaredRulePackContexts.new(ARGV[1..].to_a).perform
+else
+  AmberLSP::Server.new(STDIN, STDOUT).run
+end

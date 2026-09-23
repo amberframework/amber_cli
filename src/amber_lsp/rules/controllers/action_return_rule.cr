@@ -3,6 +3,7 @@ module AmberLSP::Rules::Controllers
     RESPONSE_METHODS  = ["render", "redirect_to", "redirect_back", "respond_with", "halt!"]
     SKIPPED_METHODS   = ["initialize", "before_action", "after_action", "before_filter", "after_filter"]
     VISIBILITY_CHANGE = /^\s*(private|protected)\s*$/
+    CLASS_METHOD      = /^\s{2,4}def\s+self\./
 
     def id : String
       "amber/action-return-type"
@@ -22,6 +23,7 @@ module AmberLSP::Rules::Controllers
 
     def check(file_path : String, content : String) : Array(Diagnostic)
       return [] of Diagnostic unless file_path.includes?("controllers/")
+      return [] of Diagnostic if action_support_file?(file_path)
 
       diagnostics = [] of Diagnostic
       lines = content.lines
@@ -45,6 +47,8 @@ module AmberLSP::Rules::Controllers
         # Detect method start at standard 2-space indent (methods inside a class)
         method_match = /^(\s{2,4})def\s+(\w+)/.match(line)
         if method_match && !in_public_method
+          next if CLASS_METHOD.matches?(line)
+
           indent = method_match[1].size
           name = method_match[2]
 
@@ -65,7 +69,7 @@ module AmberLSP::Rules::Controllers
 
         if in_public_method
           # Check for response method calls
-          if RESPONSE_METHODS.any? { |m| line.includes?(m) }
+          if response_written_or_returned?(line)
             has_response_call = true
           end
 
@@ -92,6 +96,19 @@ module AmberLSP::Rules::Controllers
       end
 
       diagnostics
+    end
+
+    private def action_support_file?(file_path : String) : Bool
+      File.basename(file_path) == "application_controller.cr" ||
+        file_path.includes?("controllers/concerns/")
+    end
+
+    private def response_written_or_returned?(line : String) : Bool
+      RESPONSE_METHODS.any? { |method_name| line.includes?(method_name) } ||
+        line.includes?("respond_") ||
+        line.matches?(/\bcontext\.response\.(print|write)\b/) ||
+        line.matches?(/\b\w+\(context\.response\b/) ||
+        line.includes?("String.build")
     end
   end
 end
