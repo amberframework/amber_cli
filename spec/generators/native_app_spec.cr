@@ -135,10 +135,11 @@ describe AmberCLI::Generators::NativeApp do
         makefile_content.should contain("macos-release:")
         makefile_content.should contain("setup:")
         makefile_content.should contain("spec:")
-        makefile_content.should contain("shards-alpha install")
-        makefile_content.should contain("checksum-verified shard.lock")
+        makefile_content.should contain("if command -v shards-alpha >/dev/null 2>&1; then")
+        makefile_content.should contain("shards-alpha install;")
+        makefile_content.should contain("else")
+        makefile_content.should contain("shards install;")
         makefile_content.should contain("$(CRYSTAL) spec spec/ -Dmacos")
-        makefile_content.should_not contain("shards install")
       end
     end
 

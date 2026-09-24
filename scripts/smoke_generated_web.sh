@@ -19,6 +19,7 @@ if command -v crystal-alpha >/dev/null 2>&1; then
 else
   crystal_command="crystal"
 fi
+echo "Using dependency installer: $shards_command"
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 if [[ "$cli_path" != /* ]]; then
   cli_path="$(cd "$(dirname "$cli_path")" && pwd)/$(basename "$cli_path")"
@@ -38,7 +39,16 @@ cleanup() {
 trap cleanup EXIT
 
 "$cli_path" --version | grep -E "Amber CLI v2\.0\.[0-9]+"
-"$cli_path" new "$app_path" --type web --no-deps
+"$cli_path" new "$app_path" --type web
+test -s "$app_path/shard.lock"
+
+grep -F 'shards install' "$app_path/README.md"
+grep -F 'crystal spec' "$app_path/README.md"
+grep -F '`shards-alpha install` writes a checksum-verified `shard.lock` when `shards-alpha` is installed; commit the lock with the application.' "$app_path/README.md"
+test "$(grep -cF '`shards-alpha install` writes a checksum-verified `shard.lock` when `shards-alpha` is installed; commit the lock with the application.' "$app_path/README.md")" -eq 1
+! grep -F 'crystal-alpha' "$app_path/.amber.yml"
+grep -F 'AMBER_ENV=test crystal spec' "$script_dir/../src/amber_cli/templates/app/.amber.yml.ecr"
+! grep -F 'crystal-alpha' "$script_dir/../src/amber_cli/templates/app/.amber.yml.ecr"
 
 grep -F "github: amberframework/amber" "$app_path/shard.yml"
 grep -F "version: 2.0.0-beta.5" "$app_path/shard.yml"
@@ -68,7 +78,7 @@ if [[ -n "$framework_commit" ]]; then
 fi
 
 cd "$app_path"
-test ! -e shard.lock
+test -s shard.lock
 ! grep -F "shard.lock" .gitignore
 "$cli_path" assets check
 env GIT_CONFIG_COUNT=1 \

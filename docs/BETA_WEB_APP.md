@@ -7,8 +7,8 @@ and ARM64 Linux. Windows x86-64 compilation is checked in CI.
 ## 1. Verify the toolchain
 
 ```bash
-crystal-alpha --version
-shards-alpha --version
+crystal --version
+shards --version
 amber --version
 ```
 
@@ -69,8 +69,8 @@ downloads in `app/assets/files/`.
 ```bash
 amber assets build
 amber assets check
-crystal-alpha spec
-crystal-alpha build src/amber_beta_smoke.cr -o bin/amber_beta_smoke
+crystal spec
+crystal build src/amber_beta_smoke.cr -o bin/amber_beta_smoke
 ```
 
 `amber new` already performs the first asset build. Running both commands here
@@ -134,7 +134,7 @@ amber generate scaffold Pet name:string:required species:string:required adopted
 amber database migrate
 AMBER_ENV=test amber database migrate
 amber database status
-crystal-alpha spec
+crystal spec
 ```
 
 That one scaffold command creates:
@@ -164,7 +164,7 @@ amber generate migration CreatePosts
 ```
 
 Review generated files before adding them to an application. Run
-`amber database migrate`, `crystal-alpha tool format --check src spec`, and
-`crystal-alpha spec` after generation. The release smoke test generates, migrates,
+`amber database migrate`, `crystal tool format --check src spec`, and
+`crystal spec` after generation. The release smoke test generates, migrates,
 compiles, and exercises a Pet create/update flow. See
 [Generator support](GENERATOR_SUPPORT.md) for the remaining preview surfaces.

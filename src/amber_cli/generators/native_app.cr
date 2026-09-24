@@ -245,9 +245,12 @@ all: macos
 
 # --- First-time setup ---
 
-# Writes a checksum-verified shard.lock; commit it with the project.
 setup:
-	shards-alpha install
+	@if command -v shards-alpha >/dev/null 2>&1; then \\
+		shards-alpha install; \\
+	else \\
+		shards install; \\
+	fi
 	@# crystal-audio shard name has a hyphen but source uses underscore
 	@# Crystal's require resolution needs the underscore directory
 	@if [ ! -e lib/crystal_audio ]; then \\

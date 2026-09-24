@@ -2,6 +2,29 @@ require "../amber_cli_spec"
 require "../../src/amber_cli/commands/new"
 
 describe AmberCLI::Commands::NewCommand do
+  describe ".find_shards_executable" do
+    it "prefers shards-alpha when it is available" do
+      executable = AmberCLI::Commands::NewCommand.find_shards_executable(
+        ->(command : String) { command == "shards-alpha" ? "/tools/shards-alpha" : "/tools/shards" }
+      )
+
+      executable.should eq("/tools/shards-alpha")
+    end
+
+    it "falls back to shards when shards-alpha is unavailable" do
+      lookup_calls = [] of String
+      executable = AmberCLI::Commands::NewCommand.find_shards_executable(
+        ->(command : String) do
+          lookup_calls << command
+          command == "shards" ? "/tools/shards" : nil
+        end
+      )
+
+      executable.should eq("/tools/shards")
+      lookup_calls.should eq(["shards-alpha", "shards"])
+    end
+  end
+
   describe "#setup_command_options" do
     it "accepts --type web (default)" do
       command = AmberCLI::Commands::NewCommand.new("new")
@@ -97,8 +120,14 @@ describe AmberCLI::Commands::NewCommand do
 
         File.exists?(File.join(destination, "shard.lock")).should be_false
         readme = File.read(File.join(destination, "README.md"))
-        readme.should contain("shards-alpha install")
-        readme.should contain("checksum-verified lock file")
+        readme.should contain("shards install")
+        readme.should contain("crystal spec")
+        readme.should contain("writes a checksum-verified `shard.lock`")
+        readme.scan(/shards-alpha install/).size.should eq(1)
+
+        amber_config_template = File.read(File.expand_path("../../src/amber_cli/templates/app/.amber.yml.ecr", __DIR__))
+        amber_config_template.should contain("AMBER_ENV=test crystal spec")
+        amber_config_template.should_not contain("crystal-alpha")
 
         amber_config = YAML.parse(File.read(File.join(destination, ".amber.yml")))
         amber_config["database"].as_s.should eq("sqlite")
