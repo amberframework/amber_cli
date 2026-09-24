@@ -243,6 +243,7 @@ module AmberCLI::Commands
 
       # Create all project files
       create_shard_yml(path, name)
+      write_text(File.join(path, "shard.lock"), AmberCLI::Generators::GrantDependencyLock::SHARD_LOCK_CONTENT)
       create_amber_yml(path, name)
       create_readme(path, name)
       create_gitignore(path)
@@ -287,7 +288,7 @@ dependencies:
     version: 2.0.0-beta.5
   grant:
     github: crimson-knight/grant
-    commit: 2665a978b43ac608c68cde9243821f8f8f053372
+    commit: c6b5e72c1e2663fe6b5cb6794a5beddd0c34f7a3
   asset_pipeline:
     github: amberframework/asset_pipeline
     version: ~> 0.37.0

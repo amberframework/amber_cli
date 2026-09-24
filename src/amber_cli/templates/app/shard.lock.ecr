@@ -1,0 +1,23 @@
+# Seed the Grant and db pair so adapters with a db version range can resolve
+# against Grant's exact db commit; shards-alpha install completes this lock.
+version: 2.0
+shards:
+  amber:
+    git: https://github.com/amberframework/amber.git
+    version: 2.0.0-beta.5
+    checksum: sha256:464a88df0fd3f089f916b951084ed459c681abea6c8064ab4a9149c75eb29ca8
+
+  asset_pipeline:
+    git: https://github.com/amberframework/asset_pipeline.git
+    version: 0.37.0
+    checksum: sha256:e43403a6d68efe3494e85e54d1caed8db589c313221b01290c162d981ecc89f5
+
+  db:
+    git: https://github.com/crystal-lang/crystal-db.git
+    version: 0.14.0+git.commit.9fff44dd1f61446f9aaffafbb50c4118fe92a3dc
+    checksum: sha256:4a4dea15c27b985cd9d8c5c545024daafab347b56986252fd24fcc3f18e5c024
+
+  grant:
+    git: https://github.com/crimson-knight/grant.git
+    version: 0.23.4+git.commit.c6b5e72c1e2663fe6b5cb6794a5beddd0c34f7a3
+    checksum: sha256:7f6a90355f173d4a0f4110cf14f2924e935fbb43dab695deee7e346fe2008ed6

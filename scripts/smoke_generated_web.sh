@@ -35,6 +35,7 @@ grep -F "version: 2.0.0-beta.5" "$app_path/shard.yml"
 grep -F "github: crimson-knight/grant" "$app_path/shard.yml"
 grep -F "github: amberframework/asset_pipeline" "$app_path/shard.yml"
 grep -F "version: ~> 0.37.0" "$app_path/shard.yml"
+grep -F "commit: c6b5e72c1e2663fe6b5cb6794a5beddd0c34f7a3" "$app_path/shard.yml"
 grep -F "github: crystal-lang/crystal-sqlite3" "$app_path/shard.yml"
 grep -F "template: ecr" "$app_path/.amber.yml"
 grep -F "database: sqlite" "$app_path/.amber.yml"
@@ -62,6 +63,10 @@ env GIT_CONFIG_COUNT=1 \
   GIT_CONFIG_KEY_0=core.hooksPath \
   GIT_CONFIG_VALUE_0=/dev/null \
   shards install
+grep -F "version: 0.23.4+git.commit.c6b5e72c1e2663fe6b5cb6794a5beddd0c34f7a3" shard.lock
+grep -F "checksum: sha256:7f6a90355f173d4a0f4110cf14f2924e935fbb43dab695deee7e346fe2008ed6" shard.lock
+grep -F "version: 0.14.0+git.commit.9fff44dd1f61446f9aaffafbb50c4118fe92a3dc" shard.lock
+grep -F "checksum: sha256:4a4dea15c27b985cd9d8c5c545024daafab347b56986252fd24fcc3f18e5c024" shard.lock
 "$cli_path" assets build
 "$cli_path" assets check
 crystal spec
