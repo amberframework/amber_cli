@@ -32,24 +32,8 @@ module AmberLSP::LibraryRulePacks
       end
     end
 
-    class Declaration
-      include YAML::Serializable
-
-      property key_path : String
-      property expected_value : String
-    end
-
     class Mode
       include YAML::Serializable
-
-      @[YAML::Field(key: "declared_by")]
-      property declaration : Declaration
-
-      @[YAML::Field(key: "evidence")]
-      property list_of_evidence_patterns : Array(String) = [] of String
-
-      @[YAML::Field(key: "tenant_column")]
-      property tenant_column_name : String? = nil
 
       @[YAML::Field(key: "context")]
       property guidance_text : String = ""
@@ -114,6 +98,9 @@ module AmberLSP::LibraryRulePacks
 
       @[YAML::Field(key: "condition")]
       property project_condition : String = "mixed_modes"
+
+      @[YAML::Field(key: "operation")]
+      property operation_name : String = ""
     end
   end
 end

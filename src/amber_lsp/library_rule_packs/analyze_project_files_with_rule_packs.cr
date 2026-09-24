@@ -36,15 +36,15 @@ module AmberLSP::LibraryRulePacks
 
           if rule.check.check_kind == "project_conflict"
             list_of_diagnostics.concat(
-              project_conflict_diagnostics_for(rule_pack, rule, project_state)
+              project_conflict_diagnostics_for(rule, project_state)
             )
             next
           end
 
-          next unless project_state.is_rule_mode_declared?(rule.list_of_mode_names)
+          next unless project_state.rule_mode_detected?(rule.list_of_mode_names)
 
           list_of_diagnostics.concat(
-            file_diagnostics_for(rule_pack, rule, project_state, file_path, relative_file_path, content)
+            file_diagnostics_for(rule, project_state, file_path, relative_file_path, content)
           )
         end
       end
@@ -68,15 +68,12 @@ module AmberLSP::LibraryRulePacks
     end
 
     private def project_conflict_diagnostics_for(
-      rule_pack : DescribeLibraryRulePack,
       rule : DescribeLibraryRulePack::Rule,
       project_state : DetermineProjectRulePackState,
     ) : Array(Rules::Diagnostic)
       conflict_found = case rule.check.project_condition
                        when "mixed_modes"
                          project_state.all_modes_are_present?(rule.list_of_mode_names)
-                       when "evidence_without_declaration"
-                         project_state.has_undeclared_mode_evidence?(rule.list_of_mode_names)
                        else
                          false
                        end
@@ -86,7 +83,6 @@ module AmberLSP::LibraryRulePacks
     end
 
     private def file_diagnostics_for(
-      rule_pack : DescribeLibraryRulePack,
       rule : DescribeLibraryRulePack::Rule,
       project_state : DetermineProjectRulePackState,
       file_path : String,
@@ -97,9 +93,11 @@ module AmberLSP::LibraryRulePacks
       when "line_regex"
         line_regex_diagnostics_for(rule, relative_file_path, content)
       when "file_requires"
-        file_requires_diagnostics_for(rule_pack, rule, content)
+        file_requires_diagnostics_for(rule, content)
       when "call_outside_block"
         call_outside_block_diagnostics_for(rule, project_state, file_path, content)
+      when "crystal_ast"
+        crystal_ast_diagnostics_for(rule, project_state, file_path, content)
       else
         [] of Rules::Diagnostic
       end
@@ -123,14 +121,13 @@ module AmberLSP::LibraryRulePacks
     end
 
     private def file_requires_diagnostics_for(
-      rule_pack : DescribeLibraryRulePack,
       rule : DescribeLibraryRulePack::Rule,
       content : String,
     ) : Array(Rules::Diagnostic)
       required_pattern = Regex.new(rule.check.required_regex_pattern)
       return [] of Rules::Diagnostic if content.each_line.any? { |line| required_pattern.matches?(line) }
 
-      trigger_pattern = trigger_pattern_for(rule_pack, rule)
+      trigger_pattern = trigger_pattern_for(rule)
       return [] of Rules::Diagnostic unless trigger_pattern
 
       list_of_diagnostics = [] of Rules::Diagnostic
@@ -155,20 +152,12 @@ module AmberLSP::LibraryRulePacks
       list_of_diagnostics
     end
 
-    private def trigger_pattern_for(
-      rule_pack : DescribeLibraryRulePack,
-      rule : DescribeLibraryRulePack::Rule,
-    ) : Regex?
+    private def trigger_pattern_for(rule : DescribeLibraryRulePack::Rule) : Regex?
       unless rule.check.trigger_regex_pattern.empty?
         return Regex.new(rule.check.trigger_regex_pattern)
       end
 
-      mode = rule_pack.modes_by_name[rule.list_of_mode_names.first]?
-      tenant_column_name = mode.try(&.tenant_column_name)
-      return nil unless tenant_column_name
-      return nil unless tenant_column_name.matches?(/\A[a-zA-Z_][a-zA-Z0-9_]*\z/)
-
-      Regex.new("^\\s*column\\s+#{tenant_column_name}\\b")
+      nil
     end
 
     private def call_outside_block_diagnostics_for(
@@ -213,6 +202,112 @@ module AmberLSP::LibraryRulePacks
       end
     rescue Crystal::SyntaxException
       [] of Rules::Diagnostic
+    end
+
+    private def crystal_ast_diagnostics_for(
+      rule : DescribeLibraryRulePack::Rule,
+      project_state : DetermineProjectRulePackState,
+      file_path : String,
+      content : String,
+    ) : Array(Rules::Diagnostic)
+      ast = Crystal::Parser.new(content).parse
+
+      case rule.check.operation_name
+      when "chained_unscoped_in_request_code"
+        visitor = GrantTenancy::VisitChainableUnscopedModelCalls.new(project_state)
+        visitor.accept(ast)
+        diagnostics_for_unscoped_calls(visitor.list_of_chainable_unscoped_calls, rule)
+      when "chained_unscoped_bulk_write"
+        visitor = GrantTenancy::VisitChainableUnscopedModelCalls.new(project_state)
+        visitor.accept(ast)
+        list_of_bulk_write_calls = visitor.list_of_chainable_unscoped_calls.select(&.has_bulk_write_after?)
+        diagnostics_for_unscoped_calls(list_of_bulk_write_calls, rule)
+      when "chained_unscoped_on_tenant_model"
+        visitor = GrantTenancy::VisitChainableUnscopedModelCalls.new(project_state)
+        visitor.accept(ast)
+        list_of_read_calls = visitor.list_of_chainable_unscoped_calls.reject(&.has_bulk_write_after?)
+        diagnostics_for_unscoped_calls(list_of_read_calls, rule)
+      when "unscoped_block_in_request_code"
+        visitor = GrantTenancy::VisitChainableUnscopedModelCalls.new(project_state)
+        visitor.accept(ast)
+        diagnostics_for_calls(visitor.list_of_block_unscoped_calls, rule)
+      when "spawn_inside_tenant_block"
+        visitor = GrantTenancy::VisitSpawnCallsInsideGrantTenantBlocks.new
+        visitor.accept(ast)
+        diagnostics_for_calls(visitor.list_of_spawn_calls_inside_tenant_blocks, rule)
+      when "tenant_column_without_multitenant"
+        list_of_findings = project_state.list_of_tenant_column_declarations_for(file_path)
+        diagnostics_for_tenant_column_findings(list_of_findings, rule)
+      when "raw_connection_sql_on_tenant_table"
+        visitor = GrantTenancy::VisitRawConnectionSqlCallSites.new(project_state)
+        visitor.accept(ast)
+        list_of_calls = visitor.list_of_raw_connection_sql_call_sites.map(&.call)
+        diagnostics_for_calls(list_of_calls, rule)
+      when "tenant_clear_in_app_code"
+        visitor = GrantTenancy::VisitGrantTenantClearCalls.new
+        visitor.accept(ast)
+        diagnostics_for_calls(visitor.list_of_tenant_clear_calls, rule)
+      when "schema_query_outside_tenant"
+        visitor = GrantTenancy::VisitGrantSchemaQueriesOutsideTenantBlocks.new(project_state)
+        visitor.accept(ast)
+        diagnostics_for_calls(visitor.list_of_schema_queries_outside_tenant_blocks, rule)
+      else
+        [] of Rules::Diagnostic
+      end
+    rescue Crystal::SyntaxException
+      [] of Rules::Diagnostic
+    end
+
+    private def diagnostics_for_unscoped_calls(
+      list_of_occurrences : Array(GrantTenancy::VisitChainableUnscopedModelCalls::Occurrence),
+      rule : DescribeLibraryRulePack::Rule,
+    ) : Array(Rules::Diagnostic)
+      list_of_occurrences.compact_map { |occurrence| diagnostic_for_source_node(rule, occurrence.call) }
+    end
+
+    private def diagnostics_for_tenant_column_findings(
+      list_of_findings : Array(Tuple(String, Crystal::ASTNode)),
+      rule : DescribeLibraryRulePack::Rule,
+    ) : Array(Rules::Diagnostic)
+      list_of_findings.compact_map do |finding|
+        diagnostic_for_source_node(rule, finding[1], finding[0])
+      end
+    end
+
+    private def diagnostics_for_calls(
+      list_of_calls : Array(Crystal::Call),
+      rule : DescribeLibraryRulePack::Rule,
+    ) : Array(Rules::Diagnostic)
+      list_of_calls.compact_map { |call| diagnostic_for_source_node(rule, call) }
+    end
+
+    private def diagnostic_for_source_node(
+      rule : DescribeLibraryRulePack::Rule,
+      source_node : Crystal::ASTNode,
+      source_name : String? = nil,
+    ) : Rules::Diagnostic?
+      location = if source_node.is_a?(Crystal::Call)
+                   source_node.name_location || source_node.location
+                 else
+                   source_node.location
+                 end
+      return nil unless location
+
+      start_character = (location.column_number - 1).to_i32
+      display_name = source_name || source_node.as?(Crystal::Call).try(&.name) || ""
+      end_character = start_character + display_name.size
+      range = Rules::TextRange.new(
+        Rules::Position.new((location.line_number - 1).to_i32, start_character),
+        Rules::Position.new((location.line_number - 1).to_i32, end_character),
+      )
+      diagnostic_message = source_name ? rule.diagnostic_message.gsub("{tenant_column}", source_name) : rule.diagnostic_message
+
+      Rules::Diagnostic.new(
+        range,
+        severity_for(rule.severity_name),
+        rule.rule_id,
+        diagnostic_message,
+      )
     end
 
     private def diagnostic_at_start_of_file(

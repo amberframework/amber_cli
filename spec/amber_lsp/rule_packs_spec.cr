@@ -1,423 +1,492 @@
 require "./spec_helper"
-require "../../src/amber_lsp/rules/controllers/action_return_rule"
 
-GRANT_RULE_PACK_FIXTURE = <<-YAML
-  pack: grant/tenancy
-  library: grant
-  version: 1.0.0
-  modes:
-    row:
-      declared_by:
-        key_path: grant.tenancy
-        expected_value: row
-      evidence:
-        - '^\\s*multitenant\\b'
-      tenant_column: tenant_id
-      context: |
-        Scope queries with Grant::Tenant.with.
-    schema:
-      declared_by:
-        key_path: grant.tenancy
-        expected_value: schema
-      evidence:
-        - '^\\s*Grant::SchemaTenant\\.with\\b'
-        - '^\\s*schema_tenant_excluded\\b'
-      context: |
-        Schema-specific rules are not included yet.
-  rules:
-    - id: grant/tenant-column-without-multitenant
-      modes: [row]
-      severity: error
-      applies_to: ["src/models/**"]
-      message: Tenant columns require multitenant.
-      check:
-        kind: file_requires
-        required_pattern: '^\\s*multitenant\\b'
-    - id: grant/tenancy-modes-mixed
-      modes: [row, schema]
-      severity: error
-      applies_to: ["**/*.cr"]
-      message: Choose one tenancy mode.
-      check:
-        kind: project_conflict
-        condition: mixed_modes
-    - id: grant/row-query-outside-tenant
-      modes: [row]
-      severity: warning
-      applies_to: ["**/*.cr"]
-      exclude_from: ["src/controllers/**"]
-      message: Query must be tenant-scoped.
-      check:
-        kind: call_outside_block
-        source_globs: ["src/models/**"]
-        tenant_macro: multitenant
-        methods: [all, where, find!]
-        required_call: Grant::Tenant.with
-        escape_call: unscoped
-    - id: grant/unscoped-in-request-code
-      modes: [row]
-      severity: warning
-      applies_to: ["src/controllers/**"]
-      message: Do not use unscoped in request code.
-      check:
-        kind: line_regex
-        pattern: '^\\s*[^#]*\\.unscoped\\b'
-    - id: grant/raw-sql-on-scoped-model
-      modes: [row]
-      severity: warning
-      applies_to: ["**/*.cr"]
-      message: Raw SQL must use an unscoped block.
-      check:
-        kind: call_outside_block
-        source_globs: ["src/models/**"]
-        tenant_macro: multitenant
-        methods: [exec, query, scalar]
-        escape_call: unscoped
-    - id: grant/tenancy-undeclared
-      modes: [row]
-      severity: warning
-      applies_to: ["**/*.cr"]
-      message: Declare Grant tenancy in shard.yml.
-      check:
-        kind: project_conflict
-        condition: evidence_without_declaration
-  YAML
+GRANT_TENANCY_PACK_FIXTURE_PATH = File.join(
+  Dir.current,
+  "spec",
+  "fixtures",
+  "rule_pack_apps",
+  "row_app",
+  "lib",
+  "grant",
+  ".amber-lsp",
+  "packs",
+  "tenancy.yml",
+)
 
-def write_rule_pack_project(
-  root : String,
-  shard_content : String = "name: tenant_app\nversion: 0.1.0\ngrant:\n  tenancy: row\n",
-  pack_content : String = GRANT_RULE_PACK_FIXTURE,
-) : Nil
-  Dir.mkdir_p(File.join(root, ".claude", "rules"))
-  File.write(File.join(root, "shard.yml"), shard_content)
-  File.write(File.join(root, ".claude", "rules", "tenancy.yml"), pack_content)
+GRANT_TENANCY_REQUEST_PATHS = [
+  "src/controllers/invoices_controller.cr",
+  "src/channels/invoice_channel.cr",
+  "src/sockets/invoice_socket.cr",
+  "src/pipes/tenant_pipe.cr",
+]
+
+def install_tenancy_fixture_app(root : String, fixture_name : String) : Nil
+  fixture_root = File.join(Dir.current, "spec", "fixtures", "rule_pack_apps", fixture_name)
+
+  ["src", "config", "lib"].each do |directory_name|
+    FileUtils.rm_rf(File.join(root, directory_name))
+  end
+
+  File.write(File.join(root, "shard.yml"), "name: #{fixture_name}\nversion: 0.1.0\n")
+
+  ["src", "config"].each do |source_directory_name|
+    source_directory = File.join(fixture_root, source_directory_name)
+    next unless Dir.exists?(source_directory)
+
+    FileUtils.cp_r(source_directory, root)
+  end
+
+  pack_path = File.join(root, "lib", "grant", ".amber-lsp", "packs", "tenancy.yml")
+  Dir.mkdir_p(File.dirname(pack_path))
+  File.write(pack_path, File.read(GRANT_TENANCY_PACK_FIXTURE_PATH))
 end
 
-def analyze_pack_file(root : String, file_path : String, content : String) : Array(AmberLSP::Rules::Diagnostic)
+def analyze_tenancy_fixture_source(
+  root : String,
+  relative_file_path : String,
+  content : String,
+) : Array(AmberLSP::Rules::Diagnostic)
+  file_path = File.join(root, relative_file_path)
   Dir.mkdir_p(File.dirname(file_path))
   File.write(file_path, content)
+
   project_context = AmberLSP::ProjectContext.detect(root)
   analyzer = AmberLSP::Analyzer.new
   analyzer.configure(project_context)
   analyzer.analyze(file_path, content)
 end
 
-def diagnostic_codes(diagnostics : Array(AmberLSP::Rules::Diagnostic)) : Array(String)
+def has_tenancy_diagnostic_code?(diagnostics : Array(AmberLSP::Rules::Diagnostic), code : String) : Bool
+  diagnostics.any? { |diagnostic| diagnostic.code == code }
+end
+
+def tenancy_diagnostic_codes(diagnostics : Array(AmberLSP::Rules::Diagnostic)) : Array(String)
   diagnostics.map(&.code)
 end
 
-describe "AmberLSP library rule packs" do
+describe "AmberLSP Grant tenancy rule pack v2" do
   before_each do
     AmberLSP::Rules::RuleRegistry.clear
   end
 
-  it "loads packs from installed dependencies and project rules" do
+  it "loads the library pack from the harness-neutral dependency path" do
     with_tempdir do |root|
-      write_rule_pack_project(root)
-      dependency_root = File.join(root, "dependency_source")
-      dependency_pack_path = File.join(dependency_root, ".claude", "rules", "tenancy.yml")
-      project_pack_path = File.join(root, ".claude", "rules", "project.yml")
-      Dir.mkdir_p(File.dirname(dependency_pack_path))
-      File.write(dependency_pack_path, GRANT_RULE_PACK_FIXTURE)
-      Dir.mkdir_p(File.join(root, "lib"))
-      File.symlink(dependency_root, File.join(root, "lib", "grant"))
-      File.write(
-        project_pack_path,
-        GRANT_RULE_PACK_FIXTURE.gsub("grant/tenancy", "project/tenancy").gsub("library: grant", "library: project"),
+      install_tenancy_fixture_app(root, "row_app")
+
+      project_context = AmberLSP::ProjectContext.detect(root)
+      list_of_rule_packs = AmberLSP::LibraryRulePacks::LoadRulePacksForProject.new(project_context).load_rule_packs
+
+      list_of_rule_packs.map(&.pack_id).should eq(["grant/tenancy"])
+      File.exists?(File.join(root, "lib", "grant", ".amber-lsp", "packs", "tenancy.yml")).should be_true
+      File.exists?(File.join(root, "lib", "grant", ".claude", "rules", "tenancy.yml")).should be_false
+    end
+  end
+
+  it "gives agents the Grant runtime context for detected modes" do
+    with_tempdir do |root|
+      install_tenancy_fixture_app(root, "row_app")
+      project_context = AmberLSP::ProjectContext.detect(root)
+      rule_pack = AmberLSP::LibraryRulePacks::LoadRulePacksForProject.new(project_context).load_rule_packs.first
+
+      rule_pack.should_not be_nil
+      if loaded_rule_pack = rule_pack
+        row_context = loaded_rule_pack.modes_by_name["row"].guidance_text
+        row_context.should contain("detected from the app's `multitenant` model macros")
+        row_context.should contain("ScopedRawSqlError")
+        row_context.should contain("fiber-local")
+        schema_context = loaded_rule_pack.modes_by_name["schema"].guidance_text
+        schema_context.should contain("default search path without an error")
+        schema_context.should contain("PostgreSQL")
+      end
+    end
+  end
+
+  it "loads exactly ten rules with only the two intended errors" do
+    with_tempdir do |root|
+      install_tenancy_fixture_app(root, "row_app")
+      project_context = AmberLSP::ProjectContext.detect(root)
+      loaded_rule_pack = AmberLSP::LibraryRulePacks::LoadRulePacksForProject.new(project_context).load_rule_packs.first
+
+      loaded_rule_pack.should_not be_nil
+      if rule_pack = loaded_rule_pack
+        rule_pack.list_of_rules.size.should eq(10)
+        rule_pack.list_of_rules.count { |rule| rule.severity_name == "error" }.should eq(2)
+        rule_pack.list_of_rules.count { |rule| rule.severity_name == "warning" }.should eq(8)
+      end
+    end
+  end
+
+  it "runs a pack in a non-Amber app and detects the account_id macro argument" do
+    with_tempdir do |root|
+      install_tenancy_fixture_app(root, "row_app")
+      project_context = AmberLSP::ProjectContext.detect(root)
+      project_context.amber_project?.should be_false
+
+      diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "src/controllers/invoices_controller.cr",
+        "Invoice.unscoped.all\n",
       )
 
-      project_context = AmberLSP::ProjectContext.detect(root)
-      packs = AmberLSP::LibraryRulePacks::LoadRulePacksForProject.new(project_context).load_rule_packs
-
-      packs.map(&.pack_id).should eq(["grant/tenancy", "project/tenancy"])
+      has_tenancy_diagnostic_code?(diagnostics, "grant/chained-unscoped-in-request-code").should be_true
+      diagnostics.any? do |diagnostic|
+        diagnostic.code == "grant/chained-unscoped-in-request-code" &&
+          diagnostic.severity == AmberLSP::Rules::Severity::Error
+      end.should be_true
     end
   end
 
-  it "keeps a library's own pack inactive while allowing clean LSP checks" do
+  it "reports chainable unscoped calls in each request path and allows block-form unscoped" do
     with_tempdir do |root|
-      shard_content = "name: grant\nversion: 0.1.0\n"
-      write_rule_pack_project(root, shard_content)
+      install_tenancy_fixture_app(root, "row_app")
 
-      project_context = AmberLSP::ProjectContext.detect(root)
-      packs = AmberLSP::LibraryRulePacks::LoadRulePacksForProject.new(project_context).load_rule_packs
-      packs.map(&.pack_id).should eq(["grant/tenancy"])
+      GRANT_TENANCY_REQUEST_PATHS.each do |relative_path|
+        diagnostics = analyze_tenancy_fixture_source(root, relative_path, "Invoice.unscoped.all\n")
+        has_tenancy_diagnostic_code?(diagnostics, "grant/chained-unscoped-in-request-code").should be_true
 
-      file_path = File.join(root, "src", "grant", "scale", "tenant.cr")
-      content = "multitenant :tenant_id\n"
-      analyzer = AmberLSP::Analyzer.new
-      analyzer.configure(project_context)
-      analyzer.has_applicable_library_rule_pack?(file_path, content).should be_true
-      analyzer.analyze(file_path, content).should be_empty
+        block_diagnostics = analyze_tenancy_fixture_source(
+          root,
+          relative_path,
+          "Invoice.unscoped { Invoice.all }\n",
+        )
+        has_tenancy_diagnostic_code?(block_diagnostics, "grant/chained-unscoped-in-request-code").should be_false
+      end
     end
   end
 
-  it "runs a declared dependency pack in a non-Amber project" do
+  it "reports unscoped bulk writes and leaves scoped writes clean" do
     with_tempdir do |root|
-      write_rule_pack_project(root)
-      Dir.mkdir_p(File.join(root, "src", "jobs"))
-      file_path = File.join(root, "src", "jobs", "fixture.cr")
-      diagnostics = analyze_pack_file(root, file_path, "puts \"unscoped\"\n")
+      install_tenancy_fixture_app(root, "row_app")
 
-      diagnostics.map(&.code).should eq([] of String)
+      bulk_write_diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "src/jobs/delete_invoices_job.cr",
+        "Invoice.unscoped.delete_all\n",
+      )
+      has_tenancy_diagnostic_code?(bulk_write_diagnostics, "grant/chained-unscoped-bulk-write").should be_true
+      bulk_write_diagnostics.any? do |diagnostic|
+        diagnostic.code == "grant/chained-unscoped-bulk-write" && diagnostic.severity == AmberLSP::Rules::Severity::Error
+      end.should be_true
+
+      scoped_write_diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "src/jobs/delete_invoices_job.cr",
+        "Invoice.where(id: 1).delete_all\n",
+      )
+      has_tenancy_diagnostic_code?(scoped_write_diagnostics, "grant/chained-unscoped-bulk-write").should be_false
+
+      spec_diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "spec/delete_invoices_spec.cr",
+        "Invoice.unscoped.update_all({\"status\" => \"archived\"})\n",
+      )
+      has_tenancy_diagnostic_code?(spec_diagnostics, "grant/chained-unscoped-bulk-write").should be_false
+
+      db_diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "db/backfill.cr",
+        "Invoice.unscoped.delete_all\n",
+      )
+      has_tenancy_diagnostic_code?(db_diagnostics, "grant/chained-unscoped-bulk-write").should be_false
     end
   end
 
-  it "runs line_regex checks and ignores full-line comments" do
+  it "warns about chainable unscoped reads outside request code and excludes bulk writes" do
     with_tempdir do |root|
-      write_rule_pack_project(root)
-      file_path = File.join(root, "src", "controllers", "todos_controller.cr")
-      content = "# Todo.unscoped is only documentation\nTodo.unscoped.all\n"
+      install_tenancy_fixture_app(root, "row_app")
 
-      diagnostics = analyze_pack_file(root, file_path, content)
+      read_diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/read_invoices_job.cr", "Invoice.unscoped.all\n")
+      has_tenancy_diagnostic_code?(read_diagnostics, "grant/chained-unscoped-on-tenant-model").should be_true
 
-      diagnostics.map(&.code).should eq(["grant/unscoped-in-request-code"])
-      diagnostics.first.range.start.line.should eq(1)
-      diagnostics.first.severity.should eq(AmberLSP::Rules::Severity::Warning)
+      request_diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "src/controllers/invoices_controller.cr",
+        "Invoice.unscoped.all\n",
+      )
+      has_tenancy_diagnostic_code?(request_diagnostics, "grant/chained-unscoped-on-tenant-model").should be_false
+
+      write_diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "src/jobs/delete_invoices_job.cr",
+        "Invoice.unscoped.delete_all\n",
+      )
+      has_tenancy_diagnostic_code?(write_diagnostics, "grant/chained-unscoped-on-tenant-model").should be_false
+
+      scoped_read_diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/read_invoices_job.cr", "Invoice.all\n")
+      has_tenancy_diagnostic_code?(scoped_read_diagnostics, "grant/chained-unscoped-on-tenant-model").should be_false
     end
   end
 
-  it "reports a tenant column without multitenant and accepts the declared macro" do
+  it "warns about block-form unscoped in request code and allows the default scope" do
     with_tempdir do |root|
-      write_rule_pack_project(root)
-      file_path = File.join(root, "src", "models", "account.cr")
-      Dir.mkdir_p(File.dirname(file_path))
-      missing_macro = "class Account\n  column tenant_id : Int64\nend\n"
+      install_tenancy_fixture_app(root, "row_app")
 
-      diagnostics = analyze_pack_file(root, file_path, missing_macro)
+      unsafe_diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "src/controllers/invoices_controller.cr",
+        "Invoice.unscoped { Invoice.all }\n",
+      )
+      has_tenancy_diagnostic_code?(unsafe_diagnostics, "grant/unscoped-block-in-request-code").should be_true
 
-      diagnostics.map(&.code).should contain("grant/tenant-column-without-multitenant")
-      diagnostics.find(&.code.==("grant/tenant-column-without-multitenant")).not_nil!.severity.should eq(AmberLSP::Rules::Severity::Error)
-
-      valid_model = "class Account\n  column tenant_id : Int64\n  multitenant :tenant_id\nend\n"
-      valid_diagnostics = analyze_pack_file(root, file_path, valid_model)
-
-      valid_diagnostics.map(&.code).should_not contain("grant/tenant-column-without-multitenant")
+      safe_diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "src/controllers/invoices_controller.cr",
+        "Invoice.all\n",
+      )
+      has_tenancy_diagnostic_code?(safe_diagnostics, "grant/unscoped-block-in-request-code").should be_false
     end
   end
 
-  it "uses the configured tenant column for file_requires" do
+  it "warns when spawn is inside either tenant block and allows spawn outside" do
     with_tempdir do |root|
-      pack_content = GRANT_RULE_PACK_FIXTURE.gsub("tenant_column: tenant_id", "tenant_column: account_id")
-      write_rule_pack_project(root, pack_content: pack_content)
-      file_path = File.join(root, "src", "models", "account.cr")
-      Dir.mkdir_p(File.dirname(file_path))
+      install_tenancy_fixture_app(root, "row_app")
+      row_diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "src/jobs/invoice_job.cr",
+        "Grant::Tenant.with(7) { spawn { Invoice.all } }\n",
+      )
+      has_tenancy_diagnostic_code?(row_diagnostics, "grant/spawn-inside-tenant-block").should be_true
 
-      diagnostics = analyze_pack_file(root, file_path, "class Account\n  column account_id : Int64\nend\n")
+      outside_diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "src/jobs/invoice_job.cr",
+        "spawn { Invoice.all }\n",
+      )
+      has_tenancy_diagnostic_code?(outside_diagnostics, "grant/spawn-inside-tenant-block").should be_false
 
-      diagnostics.map(&.code).should contain("grant/tenant-column-without-multitenant")
+      install_tenancy_fixture_app(root, "schema_app")
+      schema_diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "src/jobs/invoice_job.cr",
+        "Grant::SchemaTenant.with(\"acme\") { spawn { Invoice.all } }\n",
+      )
+      has_tenancy_diagnostic_code?(schema_diagnostics, "grant/spawn-inside-tenant-block").should be_true
     end
   end
 
-  it "reports a multitenant query outside the required block" do
+  it "uses captured tenant columns and skips a model whose table the column references" do
     with_tempdir do |root|
-      write_rule_pack_project(root)
-      Dir.mkdir_p(File.join(root, "src", "models"))
-      File.write(File.join(root, "src", "models", "todo.cr"), "class Todo\n  multitenant :tenant_id\nend\n")
-      file_path = File.join(root, "src", "jobs", "cleanup_job.cr")
-      Dir.mkdir_p(File.dirname(file_path))
+      install_tenancy_fixture_app(root, "row_app")
 
-      diagnostics = analyze_pack_file(root, file_path, "Todo.where(active: true)\n")
+      missing_macro = File.read(File.join(
+        Dir.current,
+        "spec",
+        "fixtures",
+        "rule_pack_apps",
+        "row_app",
+        "src",
+        "models",
+        "invoice_export.cr",
+      ))
+      missing_diagnostics = analyze_tenancy_fixture_source(root, "src/models/invoice_export.cr", missing_macro)
+      has_tenancy_diagnostic_code?(missing_diagnostics, "grant/tenant-column-without-multitenant").should be_true
+      missing_diagnostics.any? do |diagnostic|
+        diagnostic.code == "grant/tenant-column-without-multitenant" && diagnostic.message.includes?("account_id")
+      end.should be_true
 
-      diagnostics.map(&.code).should contain("grant/row-query-outside-tenant")
+      declared_macro = missing_macro.sub("column account_id : Int64", "column account_id : Int64\n  multitenant :account_id")
+      declared_diagnostics = analyze_tenancy_fixture_source(root, "src/models/invoice_export.cr", declared_macro)
+      has_tenancy_diagnostic_code?(declared_diagnostics, "grant/tenant-column-without-multitenant").should be_false
+
+      referenced_table = File.read(File.join(
+        Dir.current,
+        "spec",
+        "fixtures",
+        "rule_pack_apps",
+        "row_app",
+        "src",
+        "models",
+        "account.cr",
+      ))
+      referenced_diagnostics = analyze_tenancy_fixture_source(root, "src/models/account.cr", referenced_table)
+      has_tenancy_diagnostic_code?(referenced_diagnostics, "grant/tenant-column-without-multitenant").should be_false
+
+      unrelated_column = missing_macro.sub("account_id", "owner_id")
+      unrelated_diagnostics = analyze_tenancy_fixture_source(root, "src/models/invoice_export.cr", unrelated_column)
+      has_tenancy_diagnostic_code?(unrelated_diagnostics, "grant/tenant-column-without-multitenant").should be_false
     end
   end
 
-  it "accepts queries inside the required block and nested blocks" do
+  it "finds raw connection SQL naming a row tenant table but ignores model raw SQL" do
     with_tempdir do |root|
-      write_rule_pack_project(root)
-      Dir.mkdir_p(File.join(root, "src", "models"))
-      File.write(File.join(root, "src", "models", "todo.cr"), "class Todo\n  multitenant :tenant_id\nend\n")
-      file_path = File.join(root, "src", "jobs", "cleanup_job.cr")
-      Dir.mkdir_p(File.dirname(file_path))
-      content = <<-CRYSTAL
-        Grant::Tenant.with(7) do
-          Todo.where(active: true)
-          run do
-            Todo.all
-          end
+      install_tenancy_fixture_app(root, "row_app")
+
+      connection_sql = <<-CRYSTAL
+        Invoice.adapter.open do |db|
+          db.exec("SELECT * FROM invoices WHERE account_id = 7")
         end
         CRYSTAL
+      connection_diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/raw_report_job.cr", connection_sql)
+      has_tenancy_diagnostic_code?(connection_diagnostics, "grant/raw-connection-sql-on-tenant-table").should be_true
 
-      diagnostics = analyze_pack_file(root, file_path, content)
-
-      diagnostics.map(&.code).should_not contain("grant/row-query-outside-tenant")
-    end
-  end
-
-  it "does not treat a method defined inside a tenant block as scoped" do
-    with_tempdir do |root|
-      write_rule_pack_project(root)
-      Dir.mkdir_p(File.join(root, "src", "models"))
-      File.write(File.join(root, "src", "models", "todo.cr"), "class Todo\n  multitenant :tenant_id\nend\n")
-      file_path = File.join(root, "src", "jobs", "cleanup_job.cr")
-      Dir.mkdir_p(File.dirname(file_path))
-      content = <<-CRYSTAL
-        Grant::Tenant.with(7) do
-          def load_todos
-            Todo.all
-          end
+      model_raw_sql = <<-CRYSTAL
+        Invoice.unscoped do
+          Invoice.exec("SELECT * FROM invoices")
         end
         CRYSTAL
+      model_diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/raw_report_job.cr", model_raw_sql)
+      has_tenancy_diagnostic_code?(model_diagnostics, "grant/raw-connection-sql-on-tenant-table").should be_false
 
-      diagnostics = analyze_pack_file(root, file_path, content)
-
-      diagnostics.map(&.code).should contain("grant/row-query-outside-tenant")
-    end
-  end
-
-  it "does not scope a method body just because its call is inside a tenant block" do
-    with_tempdir do |root|
-      write_rule_pack_project(root)
-      Dir.mkdir_p(File.join(root, "src", "models"))
-      File.write(File.join(root, "src", "models", "todo.cr"), "class Todo\n  multitenant :tenant_id\nend\n")
-      file_path = File.join(root, "src", "jobs", "cleanup_job.cr")
-      Dir.mkdir_p(File.dirname(file_path))
-      content = <<-CRYSTAL
-        def load_todos
-          Todo.all
-        end
-        Grant::Tenant.with(7) { load_todos }
-        CRYSTAL
-
-      diagnostics = analyze_pack_file(root, file_path, content)
-
-      diagnostics.map(&.code).should contain("grant/row-query-outside-tenant")
-    end
-  end
-
-  it "allows a same-model unscoped block but not a different model's query" do
-    with_tempdir do |root|
-      write_rule_pack_project(root)
-      Dir.mkdir_p(File.join(root, "src", "models"))
-      File.write(File.join(root, "src", "models", "todo.cr"), "class Todo\n  multitenant :tenant_id\nend\n")
-      File.write(File.join(root, "src", "models", "invoice.cr"), "class Invoice\n  multitenant :tenant_id\nend\n")
-      file_path = File.join(root, "src", "jobs", "cleanup_job.cr")
-      Dir.mkdir_p(File.dirname(file_path))
-
-      same_model = analyze_pack_file(root, file_path, "Todo.unscoped { Todo.where(active: true) }\n")
-      same_model.map(&.code).should_not contain("grant/row-query-outside-tenant")
-
-      different_model = analyze_pack_file(root, file_path, "Todo.unscoped { Invoice.all }\n")
-      different_model.map(&.code).should contain("grant/row-query-outside-tenant")
-    end
-  end
-
-  it "does not flag raw_all and allows raw SQL inside the same model's unscoped block" do
-    with_tempdir do |root|
-      write_rule_pack_project(root)
-      Dir.mkdir_p(File.join(root, "src", "models"))
-      File.write(File.join(root, "src", "models", "todo.cr"), "class Todo\n  multitenant :tenant_id\nend\n")
-      file_path = File.join(root, "src", "jobs", "cleanup_job.cr")
-      Dir.mkdir_p(File.dirname(file_path))
-
-      raw_all_diagnostics = analyze_pack_file(root, file_path, "Todo.raw_all(\"WHERE active = true\")\n")
-      raw_all_diagnostics.map(&.code).should_not contain("grant/raw-sql-on-scoped-model")
-
-      scoped_sql = <<-CRYSTAL
-        Todo.unscoped do
-          Todo.exec("DELETE FROM todos")
-          Todo.query("SELECT 1") { }
-          Todo.scalar("SELECT COUNT(*) FROM todos") { |value| value }
+      other_table_sql = <<-CRYSTAL
+        Invoice.adapter.open do |db|
+          db.exec("SELECT * FROM audit_events")
         end
         CRYSTAL
-      scoped_sql_diagnostics = analyze_pack_file(root, file_path, scoped_sql)
-      scoped_sql_diagnostics.map(&.code).should_not contain("grant/raw-sql-on-scoped-model")
+      other_table_diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/raw_report_job.cr", other_table_sql)
+      has_tenancy_diagnostic_code?(other_table_diagnostics, "grant/raw-connection-sql-on-tenant-table").should be_false
 
-      unsafe_sql = "Todo.exec(\"DELETE FROM todos\")\nTodo.query(\"SELECT 1\") { }\nTodo.scalar(\"SELECT 1\") { |value| value }\n"
-      unsafe_sql_diagnostics = analyze_pack_file(root, file_path, unsafe_sql)
-      unsafe_sql_diagnostics.count(&.code.==("grant/raw-sql-on-scoped-model")).should eq(3)
+      default_table_model = File.read(File.join(
+        Dir.current,
+        "spec",
+        "fixtures",
+        "rule_pack_apps",
+        "row_app",
+        "src",
+        "models",
+        "ledger_entry.cr",
+      ))
+      analyze_tenancy_fixture_source(root, "src/models/ledger_entry.cr", default_table_model)
+      default_table_sql = <<-CRYSTAL
+        Grant::Connections["primary"][:writer].open do |db|
+          db.scalar("SELECT COUNT(*) FROM ledger_entry")
+        end
+        CRYSTAL
+      default_table_diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/raw_report_job.cr", default_table_sql)
+      has_tenancy_diagnostic_code?(default_table_diagnostics, "grant/raw-connection-sql-on-tenant-table").should be_true
+
+      annotated_table_model = File.read(File.join(
+        Dir.current,
+        "spec",
+        "fixtures",
+        "rule_pack_apps",
+        "row_app",
+        "src",
+        "models",
+        "custom_document.cr",
+      ))
+      analyze_tenancy_fixture_source(root, "src/models/custom_document.cr", annotated_table_model)
+      annotated_table_sql = <<-CRYSTAL
+        Grant::Connections["primary"][:writer].open do |db|
+          db.query("SELECT * FROM custom_documents") { }
+        end
+        CRYSTAL
+      annotated_table_diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/raw_report_job.cr", annotated_table_sql)
+      has_tenancy_diagnostic_code?(annotated_table_diagnostics, "grant/raw-connection-sql-on-tenant-table").should be_true
     end
   end
 
-  it "reports mixed modes as an error and undeclared row use as a warning" do
+  it "warns about Tenant.clear outside specs and allows it in specs" do
     with_tempdir do |root|
-      write_rule_pack_project(root)
-      file_path = File.join(root, "src", "jobs", "tenancy_job.cr")
-      Dir.mkdir_p(File.dirname(file_path))
-      mixed_content = "Grant::SchemaTenant.with(\"acme\") { run_job }\n"
+      install_tenancy_fixture_app(root, "row_app")
 
-      mixed_diagnostics = analyze_pack_file(root, file_path, mixed_content)
-      mixed_diagnostic = mixed_diagnostics.find(&.code.==("grant/tenancy-modes-mixed")).not_nil!
-      mixed_diagnostic.severity.should eq(AmberLSP::Rules::Severity::Error)
+      app_diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "src/jobs/reset_tenant_job.cr",
+        "Grant::Tenant.clear\n",
+      )
+      has_tenancy_diagnostic_code?(app_diagnostics, "grant/tenant-clear-in-app-code").should be_true
 
-      shard_content = "name: tenant_app\nversion: 0.1.0\n"
-      write_rule_pack_project(root, shard_content)
-      Dir.mkdir_p(File.join(root, "src", "models"))
-      File.write(File.join(root, "src", "models", "todo.cr"), "class Todo\n  multitenant :tenant_id\nend\n")
-      undeclared_path = File.join(root, "src", "jobs", "undeclared_job.cr")
-      undeclared_diagnostics = analyze_pack_file(root, undeclared_path, "Todo.all\n")
-      undeclared = undeclared_diagnostics.find(&.code.==("grant/tenancy-undeclared")).not_nil!
-      undeclared.severity.should eq(AmberLSP::Rules::Severity::Warning)
+      spec_diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "spec/reset_tenant_spec.cr",
+        "Grant::Tenant.clear\n",
+      )
+      has_tenancy_diagnostic_code?(spec_diagnostics, "grant/tenant-clear-in-app-code").should be_false
+
+      other_clear = analyze_tenancy_fixture_source(root, "src/jobs/reset_tenant_job.cr", "Grant::SchemaTenant.clear\n")
+      has_tenancy_diagnostic_code?(other_clear, "grant/tenant-clear-in-app-code").should be_false
     end
   end
 
-  it "keeps Amber built-in rules gated on Amber dependencies" do
+  it "warns about schema queries outside a tenant block and skips excluded models" do
     with_tempdir do |root|
-      write_rule_pack_project(root)
-      file_path = File.join(root, "src", "controllers", "home_controller.cr")
-      Dir.mkdir_p(File.dirname(file_path))
-      content = "class HomeController < ApplicationController\n  def index\n    User.all\n  end\nend\n"
-      AmberLSP::Rules::RuleRegistry.register(AmberLSP::Rules::Controllers::ActionReturnRule.new)
-      non_amber_analyzer = AmberLSP::Analyzer.new
-      non_amber_analyzer.configure(AmberLSP::ProjectContext.detect(root))
+      install_tenancy_fixture_app(root, "schema_app")
 
-      non_amber_diagnostics = non_amber_analyzer.analyze(file_path, content)
-      non_amber_diagnostics.map(&.code).should_not contain("amber/action-return-type")
+      unsafe_diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/rebuild_invoice_job.cr", "Invoice.all\n")
+      has_tenancy_diagnostic_code?(unsafe_diagnostics, "grant/schema-query-outside-tenant").should be_true
 
-      shard_content = <<-YAML
-        name: tenant_app
-        version: 0.1.0
-        grant:
-          tenancy: row
-        dependencies:
-          amber:
-            github: amberframework/amber
-        YAML
-      File.write(File.join(root, "shard.yml"), shard_content)
-      amber_analyzer = AmberLSP::Analyzer.new
-      amber_analyzer.configure(AmberLSP::ProjectContext.detect(root))
+      scoped_diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "src/jobs/rebuild_invoice_job.cr",
+        "Grant::SchemaTenant.with(\"acme\") { Invoice.all }\n",
+      )
+      has_tenancy_diagnostic_code?(scoped_diagnostics, "grant/schema-query-outside-tenant").should be_false
 
-      amber_diagnostics = amber_analyzer.analyze(file_path, content)
-      amber_diagnostics.map(&.code).should contain("amber/action-return-type")
+      excluded_diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/rebuild_invoice_job.cr", "Country.all\n")
+      has_tenancy_diagnostic_code?(excluded_diagnostics, "grant/schema-query-outside-tenant").should be_false
+
+      request_diagnostics = analyze_tenancy_fixture_source(
+        root,
+        "src/controllers/invoices_controller.cr",
+        "Invoice.all\n",
+      )
+      has_tenancy_diagnostic_code?(request_diagnostics, "grant/schema-query-outside-tenant").should be_false
     end
   end
 
-  it "prints declared context and warns when feature use has no declaration" do
+  it "detects schema mode from schema_tenant_excluded without requiring a with call" do
     with_tempdir do |root|
-      write_rule_pack_project(root)
-      file_path = File.join(root, "src", "models", "todo.cr")
-      Dir.mkdir_p(File.dirname(file_path))
-      File.write(file_path, "class Todo\n  multitenant :tenant_id\nend\n")
-      binary_path = File.join(Dir.current, "bin", "amber-lsp")
-      stdout = IO::Memory.new
-      stderr = IO::Memory.new
-      status = Process.run(binary_path, ["context", "--root", root], output: stdout, error: stderr)
+      install_tenancy_fixture_app(root, "schema_app")
+      File.delete(File.join(root, "config", "tenant_scope.cr"))
 
-      status.success?.should be_true
-      stderr.to_s.should be_empty
-      stdout.to_s.should contain("grant/tenancy (row)")
-      stdout.to_s.should contain("Scope queries with Grant::Tenant.with.")
+      diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/rebuild_invoice_job.cr", "Invoice.all\n")
 
-      undeclared_shard = "name: tenant_app\nversion: 0.1.0\n"
-      write_rule_pack_project(root, undeclared_shard)
-      stdout = IO::Memory.new
-      stderr = IO::Memory.new
-      status = Process.run(binary_path, ["context", "--root", root], output: stdout, error: stderr)
-
-      status.success?.should be_true
-      stdout.to_s.should contain("warning: grant/tenancy feature is used but shard.yml does not declare grant.tenancy.")
+      has_tenancy_diagnostic_code?(diagnostics, "grant/schema-query-outside-tenant").should be_true
     end
   end
 
-  it "prints nothing when no pack is declared or evidenced" do
+  it "warns when both source-detected modes appear and leaves either mode alone" do
     with_tempdir do |root|
-      File.write(File.join(root, "shard.yml"), "name: empty_app\nversion: 0.1.0\n")
-      binary_path = File.join(Dir.current, "bin", "amber-lsp")
-      stdout = IO::Memory.new
-      status = Process.run(binary_path, ["context", "--root", root], output: stdout, error: Process::Redirect::Close)
+      install_tenancy_fixture_app(root, "mixed_app")
 
-      status.success?.should be_true
-      stdout.to_s.should be_empty
+      mixed_diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/check_tenant_job.cr", "Invoice.all\n")
+      has_tenancy_diagnostic_code?(mixed_diagnostics, "grant/tenancy-modes-mixed").should be_true
+      mixed_diagnostics.any? do |diagnostic|
+        diagnostic.code == "grant/tenancy-modes-mixed" && diagnostic.message.includes?("docs/schema_tenancy.md")
+      end.should be_true
+
+      install_tenancy_fixture_app(root, "row_app")
+      row_diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/check_tenant_job.cr", "Invoice.all\n")
+      has_tenancy_diagnostic_code?(row_diagnostics, "grant/tenancy-modes-mixed").should be_false
+
+      install_tenancy_fixture_app(root, "schema_app")
+      schema_diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/check_tenant_job.cr", "Invoice.all\n")
+      has_tenancy_diagnostic_code?(schema_diagnostics, "grant/tenancy-modes-mixed").should be_false
+    end
+  end
+
+  it "ignores tenancy keys in shard.yml and reports no diagnostics for an app with no tenancy" do
+    with_tempdir do |root|
+      install_tenancy_fixture_app(root, "no_tenancy_app")
+      File.write(
+        File.join(root, "shard.yml"),
+        "name: no_tenancy_app\nversion: 0.1.0\ngrant:\n  tenancy: row\n",
+      )
+      Dir.mkdir_p(File.join(root, "spec"))
+      File.write(File.join(root, "spec", "fake_tenancy.cr"), "Grant::SchemaTenant.with(\"spec\") { nil }\n")
+      Dir.mkdir_p(File.join(root, "lib", "other"))
+      File.write(File.join(root, "lib", "other", "fake_tenancy.cr"), "Grant::SchemaTenant.with(\"lib\") { nil }\n")
+      File.write(
+        File.join(root, "src", "models", "commented_macro.cr"),
+        "# multitenant :account_id\nMESSAGE = \"schema_tenant_excluded\"\nclass Invoice\n  def configure\n    multitenant :account_id\n  end\nend\n",
+      )
+
+      diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/clean_job.cr", "Grant::Tenant.clear\nInvoice.all\n")
+
+      diagnostics.should be_empty
+      File.read(File.join(root, "shard.yml")).should contain("grant:")
+    end
+  end
+
+  it "skips malformed Crystal files without crashing or inventing another mode" do
+    with_tempdir do |root|
+      install_tenancy_fixture_app(root, "row_app")
+      Dir.mkdir_p(File.join(root, "config"))
+      File.write(File.join(root, "config", "broken.cr"), "Grant::SchemaTenant.with(\"broken\") do\n")
+
+      diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/clean_job.cr", "Invoice.all\n")
+
+      diagnostics.should be_empty
     end
   end
 end

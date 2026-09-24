@@ -6,13 +6,10 @@ module AmberLSP
     getter? amber_project : Bool
     getter shard_name : String?
 
-    @shard_configuration : YAML::Any?
-
     def initialize(
       @root_path : String,
       @amber_project : Bool = false,
       @shard_name : String? = nil,
-      @shard_configuration : YAML::Any? = nil,
     )
     end
 
@@ -31,26 +28,9 @@ module AmberLSP
         root_path,
         amber_project: is_amber,
         shard_name: shard_name,
-        shard_configuration: shard_configuration,
       )
     rescue YAML::ParseException
       ProjectContext.new(root_path, amber_project: false)
-    end
-
-    def has_shard_declaration?(key_path : String, expected_value : String) : Bool
-      shard_configuration = @shard_configuration
-      return false unless shard_configuration
-
-      current_value = shard_configuration
-      key_path.split('.').each do |key|
-        next_value = current_value[key]?
-        return false unless next_value
-        current_value = next_value
-      end
-
-      current_value.as_s? == expected_value
-    rescue TypeCastError
-      false
     end
 
     private def self.has_amber_dependency?(shard_configuration : YAML::Any) : Bool
