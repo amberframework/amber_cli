@@ -2,7 +2,7 @@ require "compiler/crystal/syntax"
 
 module AmberLSP::LibraryRulePacks::GrantTenancy
   class VisitChainableUnscopedModelCalls < Crystal::Visitor
-    class Occurrence
+    struct Occurrence
       getter call : Crystal::Call
       getter model_reference_name : String
       getter? has_bulk_write_after : Bool

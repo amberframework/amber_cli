@@ -1,5 +1,10 @@
+require "log"
+require "yaml"
+
 module AmberLSP::LibraryRulePacks
   class PrintDetectedRulePackContexts
+    Log = ::Log.for(self)
+
     def initialize(@list_of_arguments : Array(String))
     end
 
@@ -19,8 +24,10 @@ module AmberLSP::LibraryRulePacks
 
       STDOUT.puts(list_of_output_lines.join('\n')) unless list_of_output_lines.empty?
       0
-    rescue ex
-      STDERR.puts "amber-lsp context failed: #{ex.message}"
+    rescue ex : ArgumentError | YAML::ParseException | IO::Error
+      Log.error(exception: ex) do
+        "amber-lsp context failed: #{ex.class}: #{ex.message}"
+      end
       1
     end
 

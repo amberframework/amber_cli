@@ -2,7 +2,7 @@ require "compiler/crystal/syntax"
 
 module AmberLSP::LibraryRulePacks::GrantTenancy
   class VisitRawConnectionSqlCallSites < Crystal::Visitor
-    class Occurrence
+    struct Occurrence
       getter call : Crystal::Call
       getter sql_literal : Crystal::StringLiteral
 

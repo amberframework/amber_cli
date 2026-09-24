@@ -35,14 +35,20 @@ module AmberLSP::LibraryRulePacks
     end
 
     private def load_rule_pack(pack_path : String) : DescribeLibraryRulePack?
-      rule_pack = DescribeLibraryRulePack.from_yaml(File.read(pack_path))
+      rule_pack = DescribeLibraryRulePack.from_yaml(read_rule_pack_contents(pack_path))
       return rule_pack if rule_pack_is_valid?(rule_pack)
 
       Log.warn { "Ignoring invalid amber-lsp rule pack at #{pack_path}." }
       nil
-    rescue ex
-      Log.warn { "Could not load amber-lsp rule pack at #{pack_path}: #{ex.message}" }
+    rescue ex : YAML::ParseException | IO::Error
+      Log.warn(exception: ex) do
+        "Could not load amber-lsp rule pack at #{pack_path} (#{ex.class}): #{ex.message}"
+      end
       nil
+    end
+
+    protected def read_rule_pack_contents(pack_path : String) : String
+      File.read(pack_path)
     end
 
     private def rule_pack_is_valid?(rule_pack : DescribeLibraryRulePack) : Bool

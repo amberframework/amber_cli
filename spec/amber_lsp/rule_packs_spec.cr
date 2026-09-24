@@ -64,6 +64,15 @@ def tenancy_diagnostic_codes(diagnostics : Array(AmberLSP::Rules::Diagnostic)) :
   diagnostics.map(&.code)
 end
 
+class UnexpectedRulePackReadError < Exception
+end
+
+class RaiseUnexpectedRulePackReadError < AmberLSP::LibraryRulePacks::LoadRulePacksForProject
+  protected def read_rule_pack_contents(pack_path : String) : String
+    raise UnexpectedRulePackReadError.new("unexpected read failure")
+  end
+end
+
 describe "AmberLSP Grant tenancy rule pack v2" do
   before_each do
     AmberLSP::Rules::RuleRegistry.clear
@@ -79,6 +88,48 @@ describe "AmberLSP Grant tenancy rule pack v2" do
       list_of_rule_packs.map(&.pack_id).should eq(["grant/tenancy"])
       File.exists?(File.join(root, "lib", "grant", ".amber-lsp", "packs", "tenancy.yml")).should be_true
       File.exists?(File.join(root, "lib", "grant", ".claude", "rules", "tenancy.yml")).should be_false
+    end
+  end
+
+  it "skips malformed and unreadable pack files" do
+    with_tempdir do |root|
+      pack_directory = File.join(root, "lib", "grant", ".amber-lsp", "packs")
+      Dir.mkdir_p(pack_directory)
+      File.write(File.join(pack_directory, "malformed.yml"), "pack: [\n")
+      Dir.mkdir(File.join(pack_directory, "unreadable.yml"))
+
+      project_context = AmberLSP::ProjectContext.new(root)
+      list_of_rule_packs = AmberLSP::LibraryRulePacks::LoadRulePacksForProject.new(project_context).load_rule_packs
+
+      list_of_rule_packs.should be_empty
+    end
+  end
+
+  it "propagates unexpected pack read errors" do
+    with_tempdir do |root|
+      pack_path = File.join(root, "lib", "grant", ".amber-lsp", "packs", "tenancy.yml")
+      Dir.mkdir_p(File.dirname(pack_path))
+      File.write(pack_path, "pack: test\n")
+
+      project_context = AmberLSP::ProjectContext.new(root)
+
+      expect_raises(UnexpectedRulePackReadError, "unexpected read failure") do
+        RaiseUnexpectedRulePackReadError.new(project_context).load_rule_packs
+      end
+    end
+  end
+
+  it "logs the exception class when the context command rejects its arguments" do
+    log_backend = Log::MemoryBackend.new
+    Log.setup(:error, log_backend)
+
+    begin
+      result = AmberLSP::LibraryRulePacks::PrintDetectedRulePackContexts.new(["--unexpected"]).perform
+
+      result.should eq(1)
+      log_backend.entries.last.message.should contain("ArgumentError")
+    ensure
+      Log.setup
     end
   end
 
