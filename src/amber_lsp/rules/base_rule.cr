@@ -6,6 +6,10 @@ module AmberLSP::Rules
     abstract def applies_to : Array(String)
     abstract def check(file_path : String, content : String) : Array(Diagnostic)
 
+    def requires_amber_project? : Bool
+      true
+    end
+
     # Finds the line and character range for the first occurrence of a pattern.
     # Returns nil if the pattern is not found.
     def find_line_range(content : String, pattern : Regex) : TextRange?
