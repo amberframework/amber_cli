@@ -29,7 +29,6 @@ module AmberCLI::Generators
 
       create_directories
       create_shard_yml
-      File.write(File.join(path, "shard.lock"), GrantDependencyLock::SHARD_LOCK_CONTENT)
       create_amber_yml
       create_gitignore
       create_makefile
@@ -124,7 +123,7 @@ dependencies:
   # Grant ORM (ActiveRecord-style, replaces Granite in V2)
   grant:
     github: crimson-knight/grant
-    commit: c6b5e72c1e2663fe6b5cb6794a5beddd0c34f7a3
+    commit: 039b29468e3a1b853d9e16ba9d0738c12ea1ee23
 
   # Asset Pipeline (cross-platform UI: AppKit, UIKit, Android Views)
   asset_pipeline:
@@ -246,12 +245,9 @@ all: macos
 
 # --- First-time setup ---
 
+# Writes a checksum-verified shard.lock; commit it with the project.
 setup:
-	@if command -v shards-alpha >/dev/null 2>&1; then \
-		shards-alpha install; \
-	else \
-		shards install; \
-	fi
+	shards-alpha install
 	@# crystal-audio shard name has a hyphen but source uses underscore
 	@# Crystal's require resolution needs the underscore directory
 	@if [ ! -e lib/crystal_audio ]; then \\
@@ -1841,10 +1837,5 @@ TESTING
     private def pascal_case(s : String) : String
       s.split(/[-_]/).map(&.capitalize).join
     end
-  end
-
-  # :nodoc:
-  module GrantDependencyLock
-    SHARD_LOCK_CONTENT = {{ read_file("src/amber_cli/templates/app/shard.lock.ecr") }}
   end
 end

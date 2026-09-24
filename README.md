@@ -15,7 +15,7 @@ on authentication, API-resource, or native output.
 
 ## Install
 
-Prerequisites: Crystal 1.20 or newer (but earlier than 2.0), `shards`, and Git.
+Prerequisites: Crystal 1.20 or newer (but earlier than 2.0), `shards-alpha`, and Git.
 
 ### Homebrew on macOS or Linux
 
@@ -58,13 +58,13 @@ command with `sudo` if `/usr/local/bin` is not writable.
 amber new my_app --type web
 cd my_app
 amber assets check
-crystal spec
-crystal build src/my_app.cr -o bin/my_app
+crystal-alpha spec
+crystal-alpha build src/my_app.cr -o bin/my_app
 amber watch
 ```
 
 `amber new` installs shards by default and compiles the starter assets. Pass
-`--no-deps` when an offline or CI workflow needs to run `shards install` later.
+`--no-deps` when an offline or CI workflow needs to run `shards-alpha install` later.
 `amber watch` recompiles assets before the application whenever an ECR template
 or a file under `app/assets/` changes. Open <http://127.0.0.1:3000>.
 
@@ -180,9 +180,9 @@ See the [LSP setup guide](https://github.com/amberframework/amber/blob/v2.0.0-be
 ## Contributing
 
 ```bash
-shards install
-crystal tool format --check src spec
-crystal spec
+shards-alpha install
+crystal-alpha tool format --check src spec
+crystal-alpha spec
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the project workflow.
