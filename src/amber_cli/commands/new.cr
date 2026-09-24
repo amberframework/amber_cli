@@ -43,6 +43,11 @@ module AmberCLI::Commands
     getter no_deps : Bool = false
     getter name : String = ""
 
+    # :nodoc:
+    def self.find_shards_executable(path_lookup : Proc(String, String?)) : String?
+      path_lookup.call("shards-alpha") || path_lookup.call("shards")
+    end
+
     def help_description : String
       "Generates a new Amber V2 project"
     end
@@ -197,8 +202,9 @@ module AmberCLI::Commands
 
     private def install_dependencies(path : String)
       info "Installing dependencies..."
+      shards_executable = self.class.find_shards_executable(->(command : String) { Process.find_executable(command) })
       status = Process.run(
-        "shards",
+        shards_executable || "shards",
         ["install"],
         chdir: path,
         input: Process::Redirect::Inherit,
@@ -287,7 +293,7 @@ dependencies:
     version: 2.0.0-beta.5
   grant:
     github: crimson-knight/grant
-    commit: 2665a978b43ac608c68cde9243821f8f8f053372
+    commit: 039b29468e3a1b853d9e16ba9d0738c12ea1ee23
   asset_pipeline:
     github: amberframework/asset_pipeline
     version: ~> 0.37.0
@@ -329,6 +335,8 @@ amber generate scaffold Pet name:string:required species:string:required adopted
 amber database migrate
 amber watch
 ```
+
+`shards-alpha install` writes a checksum-verified `shard.lock` when `shards-alpha` is installed; commit the lock with the application.
 
 Open <http://127.0.0.1:3000> for the starter page or
 <http://127.0.0.1:3000/pets/new> after generating the example scaffold.

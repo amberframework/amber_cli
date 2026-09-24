@@ -32,6 +32,9 @@ describe AmberCLI::Generators::NativeApp do
         shard_content.should contain("amber:")
         shard_content.should contain("github: amberframework/amber")
         shard_content.should contain("version: 2.0.0-beta.5")
+        shard_content.should contain("github: crimson-knight/grant")
+        shard_content.should contain("commit: 039b29468e3a1b853d9e16ba9d0738c12ea1ee23")
+        File.exists?(File.join(project_path, "shard.lock")).should be_false
 
         # Must have the released asset_pipeline with cross-platform UI support
         shard_content.should contain("asset_pipeline:")
@@ -132,9 +135,11 @@ describe AmberCLI::Generators::NativeApp do
         makefile_content.should contain("macos-release:")
         makefile_content.should contain("setup:")
         makefile_content.should contain("spec:")
-        makefile_content.should contain("command -v shards-alpha")
+        makefile_content.should contain("if command -v shards-alpha >/dev/null 2>&1; then")
+        makefile_content.should contain("shards-alpha install;")
+        makefile_content.should contain("else")
+        makefile_content.should contain("shards install;")
         makefile_content.should contain("$(CRYSTAL) spec spec/ -Dmacos")
-        makefile_content.should_not contain("shards install || true")
       end
     end
 

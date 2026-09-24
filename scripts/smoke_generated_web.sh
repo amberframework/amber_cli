@@ -9,6 +9,17 @@ fi
 cli_path="$1"
 framework_commit="${2:-}"
 framework_repository="${3:-amberframework/amber}"
+if command -v shards-alpha >/dev/null 2>&1; then
+  shards_command="shards-alpha"
+else
+  shards_command="shards"
+fi
+if command -v crystal-alpha >/dev/null 2>&1; then
+  crystal_command="crystal-alpha"
+else
+  crystal_command="crystal"
+fi
+echo "Using dependency installer: $shards_command"
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 if [[ "$cli_path" != /* ]]; then
   cli_path="$(cd "$(dirname "$cli_path")" && pwd)/$(basename "$cli_path")"
@@ -28,13 +39,23 @@ cleanup() {
 trap cleanup EXIT
 
 "$cli_path" --version | grep -E "Amber CLI v2\.0\.[0-9]+"
-"$cli_path" new "$app_path" --type web --no-deps
+"$cli_path" new "$app_path" --type web
+test -s "$app_path/shard.lock"
+
+grep -F 'shards install' "$app_path/README.md"
+grep -F 'crystal spec' "$app_path/README.md"
+grep -F '`shards-alpha install` writes a checksum-verified `shard.lock` when `shards-alpha` is installed; commit the lock with the application.' "$app_path/README.md"
+test "$(grep -cF '`shards-alpha install` writes a checksum-verified `shard.lock` when `shards-alpha` is installed; commit the lock with the application.' "$app_path/README.md")" -eq 1
+! grep -F 'crystal-alpha' "$app_path/.amber.yml"
+grep -F 'AMBER_ENV=test crystal spec' "$script_dir/../src/amber_cli/templates/app/.amber.yml.ecr"
+! grep -F 'crystal-alpha' "$script_dir/../src/amber_cli/templates/app/.amber.yml.ecr"
 
 grep -F "github: amberframework/amber" "$app_path/shard.yml"
 grep -F "version: 2.0.0-beta.5" "$app_path/shard.yml"
 grep -F "github: crimson-knight/grant" "$app_path/shard.yml"
 grep -F "github: amberframework/asset_pipeline" "$app_path/shard.yml"
 grep -F "version: ~> 0.37.0" "$app_path/shard.yml"
+grep -F "commit: 039b29468e3a1b853d9e16ba9d0738c12ea1ee23" "$app_path/shard.yml"
 grep -F "github: crystal-lang/crystal-sqlite3" "$app_path/shard.yml"
 grep -F "template: ecr" "$app_path/.amber.yml"
 grep -F "database: sqlite" "$app_path/.amber.yml"
@@ -57,14 +78,28 @@ if [[ -n "$framework_commit" ]]; then
 fi
 
 cd "$app_path"
+test -s shard.lock
+! grep -F "shard.lock" .gitignore
 "$cli_path" assets check
 env GIT_CONFIG_COUNT=1 \
   GIT_CONFIG_KEY_0=core.hooksPath \
   GIT_CONFIG_VALUE_0=/dev/null \
-  shards install
+  "$shards_command" install
+test -s shard.lock
+grep -F "version: 0.23.4+git.commit.039b29468e3a1b853d9e16ba9d0738c12ea1ee23" shard.lock
+grep -F "version: 0.14.0" shard.lock
+if [[ "$shards_command" == "shards-alpha" ]]; then
+  grep -F "checksum: sha256:04f8f32387f3562f615ef0472f920ecc62ae4254745bea7cb51563a019c2c739" shard.lock
+  grep -F "checksum: sha256:4a4dea15c27b985cd9d8c5c545024daafab347b56986252fd24fcc3f18e5c024" shard.lock
+  shard_count="$(grep -cE '^  [[:alnum:]_-]+:$' shard.lock)"
+  checksum_count="$(grep -cE '^    checksum: sha256:[0-9a-f]{64}$' shard.lock)"
+  test "$checksum_count" -eq "$shard_count"
+else
+  echo "shards-alpha unavailable; checksum lock assertions skipped" >&2
+fi
 "$cli_path" assets build
 "$cli_path" assets check
-crystal spec
+"$crystal_command" spec
 
 "$cli_path" generate scaffold Pet name:string:required species:string:required adopted:bool
 "$cli_path" generate job PublishPost --queue=default
@@ -96,13 +131,13 @@ if find src spec -iname '*slang*' -print | grep -q .; then
   echo "a core generator emitted a Slang file" >&2
   exit 1
 fi
-crystal tool format --check src spec
-crystal spec
+"$crystal_command" tool format --check src spec
+"$crystal_command" spec
 "$cli_path" assets build
 "$cli_path" assets check
-crystal build src/amber_beta_smoke.cr -o bin/amber_beta_smoke
+"$crystal_command" build src/amber_beta_smoke.cr -o bin/amber_beta_smoke
 
-asset_paths="$(crystal run "$script_dir/read_asset_paths.cr" -- \
+asset_paths="$("$crystal_command" run "$script_dir/read_asset_paths.cr" -- \
   public/assets/manifest.json \
   stylesheets/app.css \
   javascript/app.js \
