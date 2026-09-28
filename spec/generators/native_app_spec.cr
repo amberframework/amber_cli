@@ -33,7 +33,7 @@ describe AmberCLI::Generators::NativeApp do
         shard_content.should contain("github: amberframework/amber")
         shard_content.should contain("version: 2.0.0-beta.5")
         shard_content.should contain("github: crimson-knight/grant")
-        shard_content.should contain("commit: 039b29468e3a1b853d9e16ba9d0738c12ea1ee23")
+        shard_content.should contain("commit: 70ac8beaa172f03c389bacaff06cd8f3c520805c")
         File.exists?(File.join(project_path, "shard.lock")).should be_false
 
         # Must have the released asset_pipeline with cross-platform UI support
