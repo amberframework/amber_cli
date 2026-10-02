@@ -123,7 +123,7 @@ dependencies:
   # Grant ORM (ActiveRecord-style, replaces Granite in V2)
   grant:
     github: crimson-knight/grant
-    commit: 2665a978b43ac608c68cde9243821f8f8f053372
+    commit: da1e06161148f156dbce262a4a4efcb39cba5ba4
 
   # Asset Pipeline (cross-platform UI: AppKit, UIKit, Android Views)
   asset_pipeline:
@@ -246,10 +246,10 @@ all: macos
 # --- First-time setup ---
 
 setup:
-	@if command -v shards-alpha >/dev/null 2>&1; then \
-		shards-alpha install; \
-	else \
-		shards install; \
+	@if command -v shards-alpha >/dev/null 2>&1; then \\
+		shards-alpha install; \\
+	else \\
+		shards install; \\
 	fi
 	@# crystal-audio shard name has a hyphen but source uses underscore
 	@# Crystal's require resolution needs the underscore directory
