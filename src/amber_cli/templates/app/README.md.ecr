@@ -14,6 +14,8 @@ amber database migrate
 amber watch
 ```
 
+`shards-alpha install` writes a checksum-verified `shard.lock` when `shards-alpha` is installed; commit the lock with the application.
+
 Open <http://127.0.0.1:3000>. Authored CSS, JavaScript, images, fonts, and other
 files live under `app/assets/`. `amber assets build` fingerprints them into the
 generated, gitignored `public/assets/` tree and writes `manifest.json`; edit the
