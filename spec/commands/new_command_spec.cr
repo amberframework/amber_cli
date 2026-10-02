@@ -169,6 +169,10 @@ describe AmberCLI::Commands::NewCommand do
         compiled_stylesheet = File.read(File.join(destination, "public", css_url.lchop('/')))
         compiled_stylesheet.should contain(logo_url)
 
+        spec_helper = File.read(File.join(destination, "spec/spec_helper.cr"))
+        spec_helper.should start_with(%(# Specs use the test database.))
+        (spec_helper.index!(%(ENV["AMBER_ENV"] ||= "test")) < spec_helper.index!(%(require "../config/*"))).should be_true
+
         gitignore = File.read(File.join(destination, ".gitignore"))
         gitignore.should contain("/public/assets/")
         gitignore.should contain("*.db\n")

@@ -620,6 +620,10 @@ VIEW
 
     private def create_spec_helper(path : String, name : String)
       spec_helper = <<-SPEC
+# Specs use the test database. This must run before config/ reads the
+# environment, or specs write to the development database.
+ENV["AMBER_ENV"] ||= "test"
+
 require "spec"
 require "../config/*"
 require "../src/controllers/**"
