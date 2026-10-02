@@ -397,6 +397,11 @@ Thumbs.db
 # Build artifacts
 /tmp/
 /public/assets/
+
+# SQLite databases (WAL mode also writes -wal and -shm files)
+*.db
+*.db-wal
+*.db-shm
 GITIGNORE
 
       write_text(File.join(path, ".gitignore"), gitignore_content)
@@ -486,12 +491,14 @@ Amber::Server.configure do
     get "/", HomeController, :index
   end
 
+  # API routes must stay above the static block, whose wildcard GET route
+  # would otherwise answer /api/... requests.
+  # routes :api do
+  # end
+
   routes :static do
     get "/*", Amber::Controller::Static, :index
   end
-
-  # routes :api do
-  # end
 end
 ROUTES
 
@@ -621,6 +628,10 @@ VIEW
 
     private def create_spec_helper(path : String, name : String)
       spec_helper = <<-SPEC
+# Specs use the test database. This must run before config/ reads the
+# environment, or specs write to the development database.
+ENV["AMBER_ENV"] ||= "test"
+
 require "spec"
 require "../config/*"
 require "../src/controllers/**"

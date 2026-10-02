@@ -74,12 +74,19 @@ module AmberCLI::Commands
       "timestamp" => {type: "Time", options: ", format: \"datetime\""},
       "email"     => {type: "String", options: ", format: \"email\""},
       "uuid"      => {type: "String", options: ", format: \"uuid\""},
+      "reference" => {type: "Int64", options: ""},
     }
+
+    DEFAULT_AUTH_MODEL_NAME = "User"
 
     getter generator_type : String = ""
     getter name : String = ""
     getter fields : Array(Tuple(String, String)) = [] of Tuple(String, String)
     getter actions : Array(String) = [] of String
+
+    # Association names for `name:reference` fields. Each one becomes a
+    # `belongs_to` and a `<name>_id` foreign key column.
+    getter references : Array(String) = [] of String
 
     # Job generator options
     getter queue_name : String = "default"
@@ -164,20 +171,26 @@ module AmberCLI::Commands
         exit(1)
       end
 
-      if remaining_arguments.size < 2
+      if remaining_arguments.size < 2 && generator_type != "auth"
         error "Name is required"
         puts option_parser
         exit(1)
       end
 
-      @name = remaining_arguments[1]
+      @name = remaining_arguments[1]? || DEFAULT_AUTH_MODEL_NAME
 
       # Parse remaining arguments as fields or actions
-      remaining_arguments[2..].each do |arg|
+      (remaining_arguments[2..]? || [] of String).each do |arg|
         if arg.includes?(":")
           parts = arg.split(":")
           field_name = parts[0]
           field_type = parts[1].downcase
+
+          if field_type == "reference"
+            association_name = field_name.chomp("_id")
+            references << association_name
+            field_name = "#{association_name}_id"
+          end
           is_required = parts.size > 2 && parts[2].downcase == "required"
 
           @fields << {field_name, field_type}
@@ -670,14 +683,23 @@ SPEC
       spec_path = "spec/models/#{file_name}_spec.cr"
       create_file(spec_path, model_spec_template)
 
+      references.each do |association_name|
+        info "#{class_name} belongs_to :#{association_name}; generate the #{association_name.camelcase} model before compiling."
+      end
+
       success "Model #{class_name} generated successfully!"
     end
 
     private def model_template
       field_definitions = fields.map do |field_name, field_type|
-        crystal_type = FIELD_TYPE_MAP[field_type]? || "String"
-        crystal_type += "?" unless field_required?(field_name)
-        "  column #{field_name} : #{crystal_type}"
+        if field_type == "reference"
+          # belongs_to declares the `<name>_id` Int64? foreign key column itself.
+          "  belongs_to :#{field_name.chomp("_id")}"
+        else
+          crystal_type = FIELD_TYPE_MAP[field_type]? || "String"
+          crystal_type += "?" unless field_required?(field_name)
+          "  column #{field_name} : #{crystal_type}"
+        end
       end.join("\n")
 
       <<-MODEL
@@ -871,6 +893,8 @@ SCHEMA
       controller_path = "src/controllers/#{file_name}_controller.cr"
       create_file(controller_path, scaffold_controller_template)
 
+      create_file("spec/support/csrf_helpers.cr", csrf_helpers_template)
+
       spec_path = "spec/controllers/#{file_name}_controller_spec.cr"
       create_file(spec_path, scaffold_spec_template)
     end
@@ -898,7 +922,7 @@ class #{controller_name} < ApplicationController
   @errors = [] of Amber::Schema::Error
 
   def index
-    @#{plural_variable_name} = #{class_name}.all.to_a
+    @#{plural_variable_name} = #{class_name}.order(id: :desc).to_a
     render("index.#{template_ext}")
   end
 
@@ -1002,14 +1026,49 @@ CONTROLLER
     end
 
     private def scaffold_spec_template
+      changed_field = fields.find { |_, type| %w[string text email].includes?(type) }
+      sample_hash = form_hash_literal
+      updated_hash = changed_field ? form_hash_literal(changed_field[0], "Updated") : sample_hash
+
+      update_check = if changed_field
+                       <<-CHECK
+
+      if reloaded = #{class_name}.find(saved.id)
+        reloaded.#{changed_field[0]}.should eq("Updated")
+      else
+        fail "#{class_name} disappeared after the update"
+      end
+CHECK
+                     else
+                       ""
+                     end
+
       <<-SPEC
 require "../spec_helper"
+require "../support/csrf_helpers"
+
+#{parent_helpers_source}def create_sample_#{variable_name} : #{class_name}
+  saved = #{class_name}.new
+#{fields.map { |field_name, field_type| "  saved.#{field_name} = #{sample_expression(field_name, field_type)}" }.join("\n")}
+  saved.save.should be_true
+  saved
+end
 
 describe #{controller_name} do
+  before_each do
+    #{class_name}.clear
+#{parent_clear_source}  end
+
   describe "GET /#{plural_name}" do
     it "responds successfully" do
       response = get("/#{plural_name}")
       assert_response_success(response)
+    end
+
+    it "lists the newest #{plural_name} first" do
+      older = create_sample_#{variable_name}
+      newer = create_sample_#{variable_name}
+      #{class_name}.order(id: :desc).to_a.map(&.id).should eq([newer.id, older.id])
     end
   end
 
@@ -1022,29 +1081,53 @@ describe #{controller_name} do
 
   describe "GET /#{plural_name}/:id" do
     it "responds successfully" do
-      response = get("/#{plural_name}/1")
-      # assert_response_success(response)
+      saved = create_sample_#{variable_name}
+      response = get("/#{plural_name}/\#{saved.id}")
+      assert_response_success(response)
     end
   end
 
   describe "GET /#{plural_name}/:id/edit" do
     it "responds successfully" do
-      response = get("/#{plural_name}/1/edit")
-      # assert_response_success(response)
+      saved = create_sample_#{variable_name}
+      response = get("/#{plural_name}/\#{saved.id}/edit")
+      assert_response_success(response)
     end
   end
 
   describe "POST /#{plural_name}" do
     it "creates a new #{class_name.underscore}" do
-      response = post("/#{plural_name}")
-      # assert_response_redirect(response)
+      headers = csrf_headers("/#{plural_name}/new")
+      response = post("/#{plural_name}", body: HTTP::Params.encode(#{sample_hash}), headers: headers)
+      assert_response_redirect(response)
+      #{class_name}.all.to_a.size.should eq(1)
+    end
+
+    it "rejects a request without a CSRF token" do
+      headers = HTTP::Headers{"Content-Type" => "application/x-www-form-urlencoded"}
+      response = post("/#{plural_name}", body: HTTP::Params.encode(#{sample_hash}), headers: headers)
+      assert_response_status(response, 403)
+      #{class_name}.all.to_a.size.should eq(0)
+    end
+  end
+
+  describe "PUT /#{plural_name}/:id" do
+    it "updates the #{class_name.underscore}" do
+      saved = create_sample_#{variable_name}
+      headers = csrf_headers("/#{plural_name}/\#{saved.id}/edit")
+      response = put("/#{plural_name}/\#{saved.id}", body: HTTP::Params.encode(#{updated_hash}), headers: headers)
+      assert_response_redirect(response)
+#{update_check}
     end
   end
 
   describe "DELETE /#{plural_name}/:id" do
     it "deletes the #{class_name.underscore}" do
-      response = delete("/#{plural_name}/1")
-      # assert_response_redirect(response)
+      saved = create_sample_#{variable_name}
+      headers = csrf_headers("/#{plural_name}/\#{saved.id}/edit")
+      response = delete("/#{plural_name}/\#{saved.id}", headers: headers)
+      assert_response_redirect(response)
+      #{class_name}.find(saved.id).should be_nil
     end
   end
 end
@@ -1124,12 +1207,12 @@ SQL
       spec_path = "spec/controllers/api_#{file_name}_controller_spec.cr"
       create_file(spec_path, api_spec_template)
 
+      add_api_route
+
       success "API #{class_name} generated successfully!"
       puts ""
-      info "Don't forget to add routes to config/routes.cr:"
-      info "  routes :api do"
-      info "    resources \"/#{plural_name}\", Api::#{controller_name}"
-      info "  end"
+      info "Added resources \"/#{plural_name}\", Api::#{controller_name} under /api in config/routes.cr"
+      info "Run 'amber database migrate' before calling /api/#{plural_name}."
     end
 
     private def api_controller_template
@@ -1150,15 +1233,15 @@ module Api
     schema :update, #{class_name}Schema
 
     def index
-      #{plural_variable_name} = #{class_name}.all.to_a
-      render json: #{plural_variable_name}.to_json
+      #{plural_variable_name} = #{class_name}.order(id: :desc).to_a
+      respond_with { json #{plural_variable_name}.to_json }
     end
 
     def show
       if #{variable_name} = #{class_name}.find(params[:id])
-        render json: #{variable_name}.to_json
+        respond_with { json #{variable_name}.to_json }
       else
-        render json: {error: "#{class_name} not found"}.to_json, status: 404
+        respond_with(404) { json({error: "#{class_name} not found"}.to_json) }
       end
     end
 
@@ -1168,9 +1251,9 @@ module Api
 #{schema_field_assignments}
 
       if #{variable_name}.save
-        render json: #{variable_name}.to_json, status: 201
+        respond_with(201) { json #{variable_name}.to_json }
       else
-        render json: {error: "Could not create #{class_name}"}.to_json, status: 422
+        respond_with(422) { json({error: "Could not create #{class_name}"}.to_json) }
       end
     end
 
@@ -1180,21 +1263,21 @@ module Api
 #{update_field_assignments}
 
         if #{variable_name}.save
-          render json: #{variable_name}.to_json
+          respond_with { json #{variable_name}.to_json }
         else
-          render json: {error: "Could not update #{class_name}"}.to_json, status: 422
+          respond_with(422) { json({error: "Could not update #{class_name}"}.to_json) }
         end
       else
-        render json: {error: "#{class_name} not found"}.to_json, status: 404
+        respond_with(404) { json({error: "#{class_name} not found"}.to_json) }
       end
     end
 
     def destroy
       if #{variable_name} = #{class_name}.find(params[:id])
         #{variable_name}.destroy
-        render json: {message: "#{class_name} deleted"}.to_json
+        respond_with { json({message: "#{class_name} deleted"}.to_json) }
       else
-        render json: {error: "#{class_name} not found"}.to_json, status: 404
+        respond_with(404) { json({error: "#{class_name} not found"}.to_json) }
       end
     end
   end
@@ -1203,22 +1286,85 @@ CONTROLLER
     end
 
     private def api_spec_template
+      sample_json = fields.map { |field_name, field_type| "#{field_name}: #{sample_expression(field_name, field_type)}" }.join(", ")
+      changed_field = fields.find { |_, type| %w[string text email].includes?(type) }
+      updated_json = fields.map do |field_name, field_type|
+        value = changed_field && changed_field[0] == field_name ? "\"Updated\"" : sample_expression(field_name, field_type)
+        "#{field_name}: #{value}"
+      end.join(", ")
+
+      update_check = if changed_field
+                       "      assert_json_body(response)[\"#{changed_field[0]}\"].as_s.should eq(\"Updated\")"
+                     else
+                       ""
+                     end
+
       <<-SPEC
 require "../spec_helper"
 
+#{parent_helpers_source}def create_sample_#{variable_name} : #{class_name}
+  saved = #{class_name}.new
+#{fields.map { |field_name, field_type| "  saved.#{field_name} = #{sample_expression(field_name, field_type)}" }.join("\n")}
+  saved.save.should be_true
+  saved
+end
+
 describe Api::#{controller_name} do
+  before_each do
+    #{class_name}.clear
+#{parent_clear_source}  end
+
   describe "GET /api/#{plural_name}" do
-    it "responds with JSON" do
+    it "responds with a JSON list, newest first" do
+      older = create_sample_#{variable_name}
+      newer = create_sample_#{variable_name}
       response = get("/api/#{plural_name}")
       assert_response_success(response)
+      assert_json_content_type(response)
+      response.json.as_a.map { |row| row["id"].as_i64 }.should eq([newer.id, older.id])
+    end
+  end
+
+  describe "GET /api/#{plural_name}/:id" do
+    it "responds with the record" do
+      saved = create_sample_#{variable_name}
+      response = get("/api/#{plural_name}/\#{saved.id}")
+      assert_response_success(response)
+      assert_json_content_type(response)
+      response.json["id"].as_i64.should eq(saved.id)
+    end
+
+    it "responds with 404 for an unknown id" do
+      response = get("/api/#{plural_name}/0")
+      assert_response_not_found(response)
       assert_json_content_type(response)
     end
   end
 
   describe "POST /api/#{plural_name}" do
     it "creates a new #{class_name.underscore}" do
-      # response = post_json("/api/#{plural_name}", {})
-      # assert_response_status(response, 201)
+      response = post_json("/api/#{plural_name}", {#{sample_json}})
+      assert_response_status(response, 201)
+      assert_json_content_type(response)
+      #{class_name}.all.to_a.size.should eq(1)
+    end
+  end
+
+  describe "PUT /api/#{plural_name}/:id" do
+    it "updates the #{class_name.underscore}" do
+      saved = create_sample_#{variable_name}
+      response = put_json("/api/#{plural_name}/\#{saved.id}", {#{updated_json}})
+      assert_response_success(response)
+#{update_check}
+    end
+  end
+
+  describe "DELETE /api/#{plural_name}/:id" do
+    it "deletes the #{class_name.underscore}" do
+      saved = create_sample_#{variable_name}
+      response = delete("/api/#{plural_name}/\#{saved.id}")
+      assert_response_success(response)
+      #{class_name}.find(saved.id).should be_nil
     end
   end
 end
@@ -1230,77 +1376,235 @@ SPEC
     # =========================================================================
 
     private def generate_auth
-      info "Generating authentication system"
+      info "Generating authentication system for #{class_name}"
 
       template_ext = detect_template_extension
 
-      # Generate User model
-      @fields = [{"email", "string"}, {"hashed_password", "string"}]
-      @name = "User"
-      generate_model
+      # The model declares password_digest and email itself; the migration
+      # needs them as required columns.
+      @fields = [{"email", "string"}, {"password_digest", "string"}]
+      @schema_fields = [{"email", "string", true}, {"password_digest", "string", true}]
 
-      # Generate session controller
-      session_controller = <<-CONTROLLER
+      create_file("src/models/#{file_name}.cr", auth_model_template)
+      generate_migration_for_model
+      create_file("spec/models/#{file_name}_spec.cr", auth_model_spec_template)
+
+      create_file("src/controllers/session_controller.cr", session_controller_template(template_ext))
+      create_file("src/controllers/registration_controller.cr", registration_controller_template(template_ext))
+
+      create_file("src/views/session/new.#{template_ext}", login_view_template)
+      create_file("src/views/registration/new.#{template_ext}", register_view_template)
+
+      create_file("spec/support/csrf_helpers.cr", csrf_helpers_template)
+      create_file("spec/controllers/authentication_controller_spec.cr", auth_controller_spec_template)
+
+      add_routes([
+        "    get \"/login\", SessionController, :new",
+        "    post \"/session\", SessionController, :create",
+        "    delete \"/session\", SessionController, :destroy",
+        "    get \"/register\", RegistrationController, :new",
+        "    post \"/register\", RegistrationController, :create",
+      ])
+
+      success "Authentication system generated!"
+      puts ""
+      info "Added login, logout, and registration routes to config/routes.cr"
+      info "Run 'amber database migrate' before opening /register."
+    end
+
+    private def auth_model_template
+      <<-MODEL
+require "crypto/bcrypt/password"
+
+class #{class_name} < Grant::Base
+  connection primary
+  table #{table_name}
+
+  MINIMUM_PASSWORD_LENGTH = 8
+
+  column id : Int64, primary: true
+  column email : String?
+  column password_digest : String?
+
+  timestamps
+
+  # The plain-text password is only held in memory. Only its bcrypt digest
+  # is stored.
+  getter password : String?
+
+  def password=(value : String) : String
+    @password = value
+    self.password_digest = Crypto::Bcrypt::Password.create(value).to_s
+    value
+  end
+
+  validate :email, "can't be blank" do |#{variable_name}|
+    !#{variable_name}.email.to_s.strip.empty?
+  end
+
+  validate :email, "is already taken" do |#{variable_name}|
+    email = #{variable_name}.email.to_s
+    existing = #{class_name}.find_by(email: email)
+    existing.nil? || existing.id == #{variable_name}.id
+  end
+
+  validate :password_digest, "can't be blank" do |#{variable_name}|
+    !#{variable_name}.password_digest.to_s.empty?
+  end
+
+  validate :password, "is too short" do |#{variable_name}|
+    plain_text = #{variable_name}.password
+    plain_text.nil? || plain_text.size >= MINIMUM_PASSWORD_LENGTH
+  end
+
+  # Returns the #{variable_name} when the email and password match, otherwise nil.
+  def self.authenticate(email : String?, password : String?) : #{class_name}?
+    return nil if email.nil? || password.nil?
+
+    #{variable_name} = find_by(email: email)
+    return nil if #{variable_name}.nil?
+
+    digest = #{variable_name}.password_digest
+    return nil if digest.nil?
+
+    #{variable_name} if Crypto::Bcrypt::Password.new(digest).verify(password)
+  rescue Crypto::Bcrypt::Error
+    nil
+  end
+end
+MODEL
+    end
+
+    private def auth_model_spec_template
+      <<-SPEC
+require "../spec_helper"
+
+def create_#{variable_name}(email = "person@example.com", password = "correct horse") : #{class_name}
+  #{variable_name} = #{class_name}.new
+  #{variable_name}.email = email
+  #{variable_name}.password = password
+  #{variable_name}.save.should be_true
+  #{variable_name}
+end
+
+describe #{class_name} do
+  before_each do
+    #{class_name}.clear
+  end
+
+  it "uses the #{table_name} table" do
+    #{class_name}.table_name.should eq("#{table_name}")
+  end
+
+  it "stores a bcrypt digest and never the plain-text password" do
+    #{variable_name} = create_#{variable_name}
+    #{variable_name}.password_digest.to_s.should_not contain("correct horse")
+    #{variable_name}.password_digest.to_s.should start_with("$2")
+  end
+
+  it "authenticates with the right email and password" do
+    created = create_#{variable_name}
+    found = #{class_name}.authenticate("person@example.com", "correct horse")
+    found.should_not be_nil
+    found.try(&.id).should eq(created.id)
+  end
+
+  it "rejects a wrong password" do
+    create_#{variable_name}
+    #{class_name}.authenticate("person@example.com", "wrong password").should be_nil
+  end
+
+  it "rejects an unknown email" do
+    #{class_name}.authenticate("nobody@example.com", "correct horse").should be_nil
+  end
+
+  it "rejects a missing email or password" do
+    #{class_name}.authenticate(nil, "correct horse").should be_nil
+    #{class_name}.authenticate("person@example.com", nil).should be_nil
+  end
+
+  it "does not save a duplicate email" do
+    create_#{variable_name}
+    duplicate = #{class_name}.new
+    duplicate.email = "person@example.com"
+    duplicate.password = "another password"
+    duplicate.save.should be_false
+  end
+
+  it "does not save a password that is too short" do
+    #{variable_name} = #{class_name}.new
+    #{variable_name}.email = "short@example.com"
+    #{variable_name}.password = "short"
+    #{variable_name}.save.should be_false
+  end
+end
+SPEC
+    end
+
+    private def session_controller_template(template_ext : String)
+      <<-CONTROLLER
 class SessionController < ApplicationController
   def new
     render("new.#{template_ext}")
   end
 
   def create
-    if user = User.authenticate(params[:email], params[:password])
-      session[:user_id] = user.id.to_s
+    #{variable_name} = #{class_name}.authenticate(params["email"]?, params["password"]?)
+
+    if #{variable_name}
+      session[:#{variable_name}_id] = #{variable_name}.id.to_s
       flash[:success] = "Welcome back!"
       redirect_to "/"
     else
+      response.status_code = 401
       flash[:danger] = "Invalid email or password"
       render("new.#{template_ext}")
     end
   end
 
   def destroy
-    session.delete(:user_id)
+    session.delete(:#{variable_name}_id)
     flash[:info] = "You have been logged out"
     redirect_to "/"
   end
 end
 CONTROLLER
+    end
 
-      create_file("src/controllers/session_controller.cr", session_controller)
-
-      # Generate registration controller
-      registration_controller = <<-CONTROLLER
+    private def registration_controller_template(template_ext : String)
+      <<-CONTROLLER
 class RegistrationController < ApplicationController
   def new
-    @user = User.new
     render("new.#{template_ext}")
   end
 
   def create
-    user = User.new
-    user.email = params[:email]
-    user.password = params[:password]
+    password = params["password"]?.to_s
 
-    if user.save
-      session[:user_id] = user.id.to_s
+    #{variable_name} = #{class_name}.new
+    #{variable_name}.email = params["email"]?.to_s
+    #{variable_name}.password = password if password == params["password_confirmation"]?.to_s
+
+    if #{variable_name}.save
+      session[:#{variable_name}_id] = #{variable_name}.id.to_s
       flash[:success] = "Welcome! Your account has been created."
       redirect_to "/"
     else
-      @user = user
+      response.status_code = 422
       flash[:danger] = "Could not create account"
       render("new.#{template_ext}")
     end
   end
 end
 CONTROLLER
+    end
 
-      create_file("src/controllers/registration_controller.cr", registration_controller)
-
-      # Create view directories and views
-      if template_ext == "ecr"
-        login_view = <<-VIEW
+    private def login_view_template
+      <<-VIEW
 <h1>Login</h1>
 
-<%= form_for("/session", method: "POST") { %>
+<form action="/session" method="POST">
+  <%= csrf_tag %>
   <div class="form-group">
     <%= label("email") %>
     <%= email_field("email") %>
@@ -1310,13 +1614,16 @@ CONTROLLER
     <%= password_field("password") %>
   </div>
   <%= submit_button("Login") %>
-<% } %>
+</form>
 VIEW
+    end
 
-        register_view = <<-VIEW
+    private def register_view_template
+      <<-VIEW
 <h1>Create Account</h1>
 
-<%= form_for("/register", method: "POST") { %>
+<form action="/register" method="POST">
+  <%= csrf_tag %>
   <div class="form-group">
     <%= label("email") %>
     <%= email_field("email") %>
@@ -1330,48 +1637,105 @@ VIEW
     <%= password_field("password_confirmation") %>
   </div>
   <%= submit_button("Create Account") %>
-<% } %>
+</form>
 VIEW
-      else
-        login_view = <<-VIEW
-h1 Login
-== form(action: "/session", method: "post") do
-  .form-group
-    label Email
-    input type="email" name="email" required=true
-  .form-group
-    label Password
-    input type="password" name="password" required=true
-  button type="submit" Login
-VIEW
+    end
 
-        register_view = <<-VIEW
-h1 Create Account
-== form(action: "/register", method: "post") do
-  .form-group
-    label Email
-    input type="email" name="email" required=true
-  .form-group
-    label Password
-    input type="password" name="password" required=true
-  .form-group
-    label Confirm Password
-    input type="password" name="password_confirmation" required=true
-  button type="submit" Create Account
-VIEW
-      end
+    private def auth_controller_spec_template
+      <<-SPEC
+require "../spec_helper"
+require "../support/csrf_helpers"
 
-      create_file("src/views/session/new.#{template_ext}", login_view)
-      create_file("src/views/registration/new.#{template_ext}", register_view)
+describe SessionController do
+  before_each do
+    #{class_name}.clear
+  end
 
-      success "Authentication system generated!"
-      puts ""
-      info "Add these routes to config/routes.cr:"
-      info "  get \"/login\", SessionController, :new"
-      info "  post \"/session\", SessionController, :create"
-      info "  delete \"/session\", SessionController, :destroy"
-      info "  get \"/register\", RegistrationController, :new"
-      info "  post \"/register\", RegistrationController, :create"
+  describe "GET /login" do
+    it "renders the login form" do
+      response = get("/login")
+      assert_response_success(response)
+      assert_body_contains(response, "Login")
+    end
+  end
+
+  describe "POST /session" do
+    it "logs in with the right password" do
+      #{variable_name} = #{class_name}.new
+      #{variable_name}.email = "person@example.com"
+      #{variable_name}.password = "correct horse"
+      #{variable_name}.save.should be_true
+
+      headers = csrf_headers("/login")
+      body = HTTP::Params.encode({"email" => "person@example.com", "password" => "correct horse"})
+      response = post("/session", body: body, headers: headers)
+      assert_redirect_to(response, "/")
+    end
+
+    it "rejects a wrong password" do
+      headers = csrf_headers("/login")
+      body = HTTP::Params.encode({"email" => "person@example.com", "password" => "wrong password"})
+      response = post("/session", body: body, headers: headers)
+      assert_response_status(response, 401)
+    end
+
+    it "rejects a request without a CSRF token" do
+      body = HTTP::Params.encode({"email" => "person@example.com", "password" => "correct horse"})
+      headers = HTTP::Headers{"Content-Type" => "application/x-www-form-urlencoded"}
+      response = post("/session", body: body, headers: headers)
+      assert_response_status(response, 403)
+    end
+  end
+
+  describe "DELETE /session" do
+    it "logs out" do
+      headers = csrf_headers("/login")
+      response = delete("/session", headers: headers)
+      assert_redirect_to(response, "/")
+    end
+  end
+end
+
+describe RegistrationController do
+  before_each do
+    #{class_name}.clear
+  end
+
+  describe "GET /register" do
+    it "renders the registration form" do
+      response = get("/register")
+      assert_response_success(response)
+      assert_body_contains(response, "Create Account")
+    end
+  end
+
+  describe "POST /register" do
+    it "creates an account" do
+      headers = csrf_headers("/register")
+      body = HTTP::Params.encode({
+        "email"                 => "new@example.com",
+        "password"              => "correct horse",
+        "password_confirmation" => "correct horse",
+      })
+      response = post("/register", body: body, headers: headers)
+      assert_redirect_to(response, "/")
+      #{class_name}.all.to_a.size.should eq(1)
+    end
+
+    it "does not create an account when the confirmation differs" do
+      headers = csrf_headers("/register")
+      body = HTTP::Params.encode({
+        "email"                 => "new@example.com",
+        "password"              => "correct horse",
+        "password_confirmation" => "different",
+      })
+      response = post("/register", body: body, headers: headers)
+      assert_response_status(response, 422)
+      #{class_name}.all.to_a.size.should eq(0)
+    end
+  end
+end
+SPEC
     end
 
     # =========================================================================
@@ -1538,10 +1902,10 @@ VIEW
       if ext == "slang"
         form_fields = fields.map do |field_name, field_type|
           input_type = case field_type
-                       when "text"                                                 then "textarea"
-                       when "bool", "boolean"                                      then "checkbox"
-                       when "integer", "int", "int32", "int64", "float", "decimal" then "number"
-                       else                                                             "text"
+                       when "text"                                                              then "textarea"
+                       when "bool", "boolean"                                                   then "checkbox"
+                       when "integer", "int", "int32", "int64", "reference", "float", "decimal" then "number"
+                       else                                                                          "text"
                        end
 
           if input_type == "textarea"
@@ -1598,7 +1962,14 @@ FIELD
     <%= email_field("#{field_name}", value: @#{variable_name}.#{field_name}?) %>
   </div>
 FIELD
-          when "integer", "int", "int32", "int64", "float", "float64", "decimal"
+          when "time", "timestamp"
+            <<-FIELD
+  <div class="form-group">
+    <%= label("#{field_name}") %>
+    <%= text_field("#{field_name}", value: @#{variable_name}.#{field_name}?.try(&.to_rfc3339)) %>
+  </div>
+FIELD
+          when "integer", "int", "int32", "int64", "reference", "float", "float64", "decimal"
             <<-FIELD
   <div class="form-group">
     <%= label("#{field_name}") %>
@@ -1704,17 +2075,173 @@ VIEW
       end
     end
 
+    private def csrf_helpers_template
+      <<-SUPPORT
+require "../spec_helper"
+
+class CsrfTokenNotFound < Exception
+end
+
+# Amber's CSRF pipe rejects POST, PUT, PATCH, and DELETE requests unless they
+# carry the token stored in the session. These helpers work the way a browser
+# does: request a page that renders a form, then send the session cookie and
+# the token from that page with the next request.
+module CsrfSpecHelpers
+  # Headers that make a write request pass the CSRF pipe. `form_path` must be
+  # a page that renders `csrf_tag`, such as a new or edit form.
+  def csrf_headers(form_path : String, content_type : String = "application/x-www-form-urlencoded") : HTTP::Headers
+    page = get(form_path)
+    token_match = page.body.match(/name="_csrf" value="([^"]+)"/)
+    raise CsrfTokenNotFound.new("No CSRF token found in GET \#{form_path}; render csrf_tag in that page") if token_match.nil?
+
+    headers = HTTP::Headers{"X-CSRF-TOKEN" => token_match[1], "Content-Type" => content_type}
+    set_cookies = page.headers.get?("Set-Cookie")
+    unless set_cookies.nil?
+      headers["Cookie"] = set_cookies.map { |cookie| cookie.split(';').first }.join("; ")
+    end
+    headers
+  end
+end
+
+include CsrfSpecHelpers
+SUPPORT
+    end
+
+    # A Crystal Hash(String, String) literal of sample form values, used to
+    # build request bodies in generated specs.
+    private def form_hash_literal(override_field : String? = nil, override_value : String? = nil) : String
+      pairs = fields.map do |field_name, field_type|
+        value = if field_name == override_field
+                  override_value.to_s.inspect
+                elsif field_type == "reference"
+                  "create_parent_#{field_name.chomp("_id")}.id.to_s"
+                else
+                  sample_form_value(field_type).inspect
+                end
+        "#{field_name.inspect} => #{value}"
+      end
+      "{#{pairs.join(", ")}} of String => String"
+    end
+
+    # Crystal source for a typed sample value of one field.
+    private def sample_expression(field_name : String, field_type : String) : String
+      if field_type == "reference"
+        "create_parent_#{field_name.chomp("_id")}.id"
+      else
+        sample_literal(field_type)
+      end
+    end
+
+    # Spec helpers that create the parent record of each `belongs_to`.
+    # Grant validates that the parent exists, so a child cannot be saved
+    # without one. Required (non-nilable) columns of an existing parent model
+    # are filled in from its source file.
+    private def parent_helpers_source : String
+      references.map do |association_name|
+        parent_class = association_name.camelcase
+        assignments = required_column_assignments(association_name).map { |line| "  #{line}\n" }.join
+        "def create_parent_#{association_name} : #{parent_class}\n" \
+        "  parent = #{parent_class}.new\n" \
+        "#{assignments}" \
+        "  parent.save(validate: false).should be_true\n" \
+        "  parent\n" \
+        "end\n\n"
+      end.join
+    end
+
+    private def parent_clear_source : String
+      references.map { |association_name| "    #{association_name.camelcase}.clear\n" }.join
+    end
+
+    private def required_column_assignments(association_name : String) : Array(String)
+      model_path = "src/models/#{association_name.underscore}.cr"
+      return [] of String unless File.exists?(model_path)
+
+      File.read_lines(model_path).compact_map do |line|
+        match = line.match(/^\s*column (\w+) : (String|Int32|Int64|Float64|Bool|Time)\s*$/)
+        next if match.nil?
+
+        literal = case match[2]
+                  when "String"  then "\"Sample\""
+                  when "Int32"   then "1"
+                  when "Int64"   then "1_i64"
+                  when "Float64" then "1.5"
+                  when "Bool"    then "true"
+                  else                "Time.utc(2026, 1, 1)"
+                  end
+        "parent.#{match[1]} = #{literal}"
+      end
+    end
+
+    private def sample_form_value(field_type : String) : String
+      case field_type
+      when "text"                                          then "Sample text"
+      when "email"                                         then "sample@example.com"
+      when "integer", "int", "int32", "int64", "reference" then "1"
+      when "float", "float64", "decimal"                   then "1.5"
+      when "bool", "boolean"                               then "true"
+      when "time", "timestamp"                             then "2026-01-01T00:00:00Z"
+      when "uuid"                                          then "3f2b8c1e-5d4a-4e6f-9b7a-1c2d3e4f5a6b"
+      else                                                      "Sample"
+      end
+    end
+
+    # Crystal source for a typed sample value, used to build records in specs.
+    private def sample_literal(field_type : String) : String
+      case field_type
+      when "integer", "int", "int32"     then "1"
+      when "int64", "reference"          then "1_i64"
+      when "float", "float64", "decimal" then "1.5"
+      when "bool", "boolean"             then "true"
+      when "time", "timestamp"           then "Time.utc(2026, 1, 1)"
+      else                                    sample_form_value(field_type).inspect
+      end
+    end
+
     private def add_resource_route
+      add_routes(["    resources \"/#{plural_name}\", #{controller_name}"])
+    end
+
+    private def add_api_route
       routes_path = "config/routes.cr"
       unless File.exists?(routes_path)
-        warning "Could not add the resource route because #{routes_path} does not exist."
+        warning "Could not add the API route because #{routes_path} does not exist."
         return
       end
 
       content = File.read(routes_path)
-      route = "    resources \"/#{plural_name}\", #{controller_name}"
+      route = "    resources \"/#{plural_name}\", Api::#{controller_name}, except: [:new, :edit]"
       return if content.includes?(route)
 
+      newline = content.includes?("\r\n") ? "\r\n" : "\n"
+      active_anchor = "  routes :api, \"/api\" do"
+      commented_block = /(?:^  # API routes must stay[^\n]*\n  # would otherwise[^\n]*\n)?^  # routes :api do\r?\n  # end\r?\n(?:\r?\n)?/m
+      static_anchor = "  routes :static do"
+      api_block = "#{active_anchor}#{newline}#{route}#{newline}  end#{newline}#{newline}"
+
+      if content.includes?(active_anchor)
+        File.write(routes_path, content.sub(active_anchor, "#{active_anchor}#{newline}#{route}"))
+      elsif content.includes?(static_anchor)
+        # The static block ends in a wildcard GET route, so the API routes
+        # must be declared before it or GET /api/... falls through to it.
+        File.write(routes_path, content.sub(commented_block, "").sub(static_anchor, "#{api_block}#{static_anchor}"))
+      else
+        warning "Could not find a place for the API routes block in #{routes_path}."
+        info "Add this before the static routes in config/routes.cr:"
+        info "  routes :api, \"/api\" do"
+        info route
+        info "  end"
+      end
+    end
+
+    private def add_routes(route_lines : Array(String))
+      routes_path = "config/routes.cr"
+      unless File.exists?(routes_path)
+        warning "Could not add routes because #{routes_path} does not exist."
+        return
+      end
+
+      content = File.read(routes_path)
       anchor = "  routes :web do"
       unless content.includes?(anchor)
         warning "Could not find the web routes block in #{routes_path}."
@@ -1722,7 +2249,10 @@ VIEW
       end
 
       newline = content.includes?("\r\n") ? "\r\n" : "\n"
-      File.write(routes_path, content.sub(anchor, "#{anchor}#{newline}#{route}"))
+      missing = route_lines.reject { |line| content.includes?(line) }
+      return if missing.empty?
+
+      File.write(routes_path, content.sub(anchor, "#{anchor}#{newline}#{missing.join(newline)}"))
     end
 
     private def field_assignments

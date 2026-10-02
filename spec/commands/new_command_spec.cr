@@ -152,6 +152,7 @@ describe AmberCLI::Commands::NewCommand do
         routes.should contain("pipeline :static")
         routes.should contain("Amber::Pipe::Static.new")
         routes.should contain(%(get "/*", Amber::Controller::Static, :index))
+        (routes.index!("# routes :api do") < routes.index!("routes :static do")).should be_true
 
         index = File.read(File.join(destination, "src/views/home/index.ecr"))
         index.should contain("Your new idea")
@@ -203,8 +204,15 @@ describe AmberCLI::Commands::NewCommand do
         compiled_stylesheet = File.read(File.join(destination, "public", css_url.lchop('/')))
         compiled_stylesheet.should contain(logo_url)
 
+        spec_helper = File.read(File.join(destination, "spec/spec_helper.cr"))
+        spec_helper.should start_with(%(# Specs use the test database.))
+        (spec_helper.index!(%(ENV["AMBER_ENV"] ||= "test")) < spec_helper.index!(%(require "../config/*"))).should be_true
+
         gitignore = File.read(File.join(destination, ".gitignore"))
         gitignore.should contain("/public/assets/")
+        gitignore.should contain("*.db\n")
+        gitignore.should contain("*.db-wal")
+        gitignore.should contain("*.db-shm")
 
         File.exists?(File.join(destination, "src/views/home/index.ecr")).should be_true
         File.exists?(File.join(destination, "src/views/home/index.slang")).should be_false
