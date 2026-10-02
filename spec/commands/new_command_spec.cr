@@ -112,7 +112,7 @@ describe AmberCLI::Commands::NewCommand do
         shard.should contain("version: 2.0.0-beta.5")
         shard.should contain("grant:")
         shard.should contain("github: crimson-knight/grant")
-        shard.should contain("commit: 161134247745cedc82fd333965c45aa0c1bed6cf")
+        shard.should contain("commit: da1e06161148f156dbce262a4a4efcb39cba5ba4")
         shard.should contain("asset_pipeline:")
         shard.should contain("github: amberframework/asset_pipeline")
         shard.should contain("github: crystal-lang/crystal-sqlite3")

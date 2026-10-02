@@ -55,7 +55,7 @@ grep -F "version: 2.0.0-beta.5" "$app_path/shard.yml"
 grep -F "github: crimson-knight/grant" "$app_path/shard.yml"
 grep -F "github: amberframework/asset_pipeline" "$app_path/shard.yml"
 grep -F "version: ~> 0.37.0" "$app_path/shard.yml"
-grep -F "commit: 161134247745cedc82fd333965c45aa0c1bed6cf" "$app_path/shard.yml"
+grep -F "commit: da1e06161148f156dbce262a4a4efcb39cba5ba4" "$app_path/shard.yml"
 grep -F "github: crystal-lang/crystal-sqlite3" "$app_path/shard.yml"
 grep -F "template: ecr" "$app_path/.amber.yml"
 grep -F "database: sqlite" "$app_path/.amber.yml"
@@ -86,10 +86,10 @@ env GIT_CONFIG_COUNT=1 \
   GIT_CONFIG_VALUE_0=/dev/null \
   "$shards_command" install
 test -s shard.lock
-grep -F "version: 0.23.4+git.commit.161134247745cedc82fd333965c45aa0c1bed6cf" shard.lock
+grep -F "version: 0.23.4+git.commit.da1e06161148f156dbce262a4a4efcb39cba5ba4" shard.lock
 grep -F "version: 0.14.0" shard.lock
 if [[ "$shards_command" == "shards-alpha" ]]; then
-  grep -F "checksum: sha256:dccc800043adc27995155203821fe5de6db57a6eed1518359214a07aba1c189b" shard.lock
+  grep -F "checksum: sha256:ad693a4f04294abbb0c827a34da141f1e9cd0a96293fc4d7039d55e1b8eb3005" shard.lock
   grep -F "checksum: sha256:4a4dea15c27b985cd9d8c5c545024daafab347b56986252fd24fcc3f18e5c024" shard.lock
   shard_count="$(grep -cE '^  [[:alnum:]_-]+:$' shard.lock)"
   checksum_count="$(grep -cE '^    checksum: sha256:[0-9a-f]{64}$' shard.lock)"
