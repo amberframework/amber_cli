@@ -1,6 +1,14 @@
 require "../amber_cli_spec"
 require "../../src/amber_cli/commands/setup_agent"
 
+class RecordSetupAgentMessages < AmberCLI::Commands::SetupAgentCommand
+  getter list_of_info_messages : Array(String) = [] of String
+
+  protected def info(message : String)
+    @list_of_info_messages << message
+  end
+end
+
 describe "amber setup:agent" do
   it "registers the setup command and short alias" do
     AmberCLI::Core::CommandRegistry.find_command("setup:agent").should_not be_nil
@@ -56,7 +64,7 @@ describe "amber setup:agent" do
       File.write(".claude/settings.json", %({"permissions":{"allow":["Read"]}}))
       File.write(".codex/hooks.json", %({"description":"keep this","hooks":{"SessionStart":[]}}))
 
-      command = AmberCLI::Commands::SetupAgentCommand.new("setup:agent")
+      command = RecordSetupAgentMessages.new("setup:agent")
       command.execute
       first_claude = File.read(".claude/settings.json")
       first_codex = File.read(".codex/hooks.json")
@@ -72,9 +80,11 @@ describe "amber setup:agent" do
       File.read("CLAUDE.md").should eq(first_instructions)
       File.read("AGENTS.md").scan(/amber-agent-loop:start/).size.should eq(1)
       first_instructions.should contain("# Existing Claude instructions")
+      first_instructions.should contain("crystal-alpha spec --affected")
       first_script.should contain("build --no-codegen 'src/custom_entry.cr'")
       File.file?(".lsp.json").should be_true
       File.info("bin/amber-agent-hook").permissions.to_i.&(0o111).should_not eq(0)
+      command.list_of_info_messages.count("Updated: bin/amber-agent-hook").should eq(1)
     end
   end
 
@@ -95,6 +105,7 @@ describe "amber setup:agent" do
       File.write(lsp, "#!/bin/sh\nprintf 'lsp %s\\n' \"$*\" >> \"$TEST_COMMAND_LOG\"\nif [ \"${TEST_LSP_EXIT:-0}\" -ne 0 ]; then\n  echo 'lsp violation'\n  exit \"$TEST_LSP_EXIT\"\nfi\n")
       File.chmod(compiler, 0o755)
       File.chmod(lsp, 0o755)
+      File.write(".lsp.json", {"amber" => {"command" => lsp}}.to_pretty_json + "\n")
       path = "#{tools}:/usr/bin:/bin"
       hook = File.join(project, "bin/amber-agent-hook")
 
@@ -170,6 +181,147 @@ describe "amber setup:agent" do
         error: IO::Memory.new, env: {"PATH" => path, "CRYSTAL_ALPHA" => override_compiler, "TEST_COMMAND_LOG" => log})
       override_status.exit_code.should eq(0)
       File.read(log).should contain("override watch hold")
+    end
+  end
+
+  it "uses the no-targets shard name as the main file" do
+    SpecHelper.within_temp_directory do
+      Dir.mkdir_p("src")
+      File.write("shard.yml", "name: fallback_app\nversion: 0.1.0\n")
+      File.write("src/fallback_app.cr", "puts :ok\n")
+
+      AmberCLI::Commands::SetupAgentCommand.new("setup:agent").execute
+
+      File.read("bin/amber-agent-hook").should contain("build --no-codegen 'src/fallback_app.cr'")
+    end
+  end
+
+  it "corrects older marked agent instructions on rerun" do
+    SpecHelper.within_temp_directory do
+      Dir.mkdir_p("src")
+      File.write("shard.yml", "name: my_app\n")
+      File.write("src/my_app.cr", "puts :ok\n")
+      older_instructions = "# Keep this\n\n<!-- amber-agent-loop:start -->\nUse `crystal spec --affected` when available.\n<!-- amber-agent-loop:end -->\n"
+      File.write("CLAUDE.md", older_instructions)
+      File.write("AGENTS.md", older_instructions)
+
+      command = AmberCLI::Commands::SetupAgentCommand.new("setup:agent")
+      command.execute
+      first_instructions = File.read("CLAUDE.md")
+      first_instructions.should contain("# Keep this")
+      first_instructions.should contain("Use `crystal-alpha spec --affected`")
+      first_instructions.should_not contain("Use `crystal spec --affected`")
+      File.read("AGENTS.md").should eq(first_instructions)
+
+      command.execute
+      File.read("CLAUDE.md").should eq(first_instructions)
+    end
+  end
+
+  it "treats the installed alpha without watch coordination as a build-only compiler" do
+    SpecHelper.within_temp_directory do |project|
+      Dir.mkdir_p("src")
+      File.write("shard.yml", "name: my_app\ntargets:\n  my_app:\n    main: src/my_app.cr\n")
+      File.write("src/my_app.cr", "puts :ok\n")
+      AmberCLI::Commands::SetupAgentCommand.new("setup:agent").execute
+
+      tools = File.join(project, "fake-tools")
+      Dir.mkdir_p(tools)
+      compiler = File.join(tools, "crystal-alpha")
+      log = File.join(project, "calls.log")
+      File.write(compiler, "#!/bin/sh\nprintf 'compiler %s\\n' \"$*\" >> \"$TEST_COMMAND_LOG\"\ncase \"$1\" in\n  watch) echo 'Usage: crystal watch [options] [programfile]'; exit 1 ;;\n  build) exit 0 ;;\nesac\n")
+      File.chmod(compiler, 0o755)
+      hook = File.join(project, "bin/amber-agent-hook")
+      environment = {"PATH" => "#{tools}:/usr/bin:/bin", "TEST_COMMAND_LOG" => log}
+
+      pre_output = IO::Memory.new
+      pre_errors = IO::Memory.new
+      pre_status = Process.run(hook, ["pre"], input: IO::Memory.new("{}"), output: pre_output, error: pre_errors, env: environment)
+      pre_status.exit_code.should eq(0)
+      pre_output.to_s.should_not contain("Usage:")
+
+      stop_output = IO::Memory.new
+      stop_errors = IO::Memory.new
+      stop_status = Process.run(hook, ["stop"], input: IO::Memory.new("{}"), output: stop_output, error: stop_errors, env: environment)
+      stop_status.exit_code.should eq(0)
+      stop_errors.to_s.should_not contain("Usage:")
+      calls = File.read(log)
+      calls.scan(/compiler watch status/).size.should eq(2)
+      calls.should_not contain("compiler watch hold")
+      calls.should_not contain("compiler watch release")
+      calls.should_not contain("compiler watch build")
+      calls.should contain("compiler build --no-codegen src/my_app.cr")
+    end
+  end
+
+  it "formats without an LSP and finds a project LSP when configured one is absent" do
+    SpecHelper.within_temp_directory do |project|
+      Dir.mkdir_p("src")
+      File.write("shard.yml", "name: my_app\ntargets:\n  my_app:\n    main: src/my_app.cr\n")
+      File.write("src/my_app.cr", "puts :ok\n")
+      AmberCLI::Commands::SetupAgentCommand.new("setup:agent").execute
+      File.write(".lsp.json", {"amber" => {"command" => "/missing/amber-lsp"}}.to_pretty_json + "\n")
+
+      tools = File.join(project, "fake-tools")
+      Dir.mkdir_p(tools)
+      compiler = File.join(tools, "crystal-alpha")
+      log = File.join(project, "calls.log")
+      File.write(compiler, "#!/bin/sh\nprintf 'compiler %s\\n' \"$*\" >> \"$TEST_COMMAND_LOG\"\nif [ \"${TEST_FORMAT_EXIT:-0}\" -ne 0 ]; then\n  echo 'format failed'\n  exit \"$TEST_FORMAT_EXIT\"\nfi\n")
+      File.chmod(compiler, 0o755)
+      hook = File.join(project, "bin/amber-agent-hook")
+      payload = {"tool_input" => {"file_path" => "src/my_app.cr"}}.to_json
+      File.write("src/other.cr", "puts :other\n")
+      patch = "*** Begin Patch\n*** Update File: src/my_app.cr\n*** Update File: src/other.cr\n*** End Patch"
+      multiple_files_payload = {"tool_name" => "apply_patch", "tool_input" => {"command" => patch}}.to_json
+      environment = {"PATH" => "#{tools}:/usr/bin:/bin", "TEST_COMMAND_LOG" => log}
+
+      errors = IO::Memory.new
+      missing_status = Process.run(hook, ["post"], input: IO::Memory.new(multiple_files_payload), output: IO::Memory.new, error: errors, env: environment)
+      missing_status.exit_code.should eq(0)
+      errors.to_s.scan(/amber-lsp unavailable/).size.should eq(1)
+      File.read(log).scan(/compiler tool format /).size.should eq(2)
+
+      project_lsp = File.join(project, "bin/amber-lsp")
+      File.write(project_lsp, "#!/bin/sh\nprintf 'project-lsp %s\\n' \"$*\" >> \"$TEST_COMMAND_LOG\"\n")
+      File.chmod(project_lsp, 0o755)
+      errors = IO::Memory.new
+      project_status = Process.run(hook, ["post"], input: IO::Memory.new(payload), output: IO::Memory.new, error: errors, env: environment)
+      project_status.exit_code.should eq(0)
+      errors.to_s.should be_empty
+      File.read(log).should contain("project-lsp --check ")
+
+      path_lsp = File.join(tools, "amber-lsp")
+      File.write(path_lsp, "#!/bin/sh\nprintf 'path-lsp %s\\n' \"$*\" >> \"$TEST_COMMAND_LOG\"\n")
+      File.chmod(path_lsp, 0o755)
+      File.write(".lsp.json", {"amber" => {"command" => "amber-lsp"}}.to_pretty_json + "\n")
+      project_calls_before = File.read(log).scan(/project-lsp --check /).size
+      project_priority = Process.run(hook, ["post"], input: IO::Memory.new(payload), output: IO::Memory.new,
+        error: IO::Memory.new, env: environment)
+      project_priority.exit_code.should eq(0)
+      File.read(log).scan(/project-lsp --check /).size.should eq(project_calls_before + 1)
+      File.read(log).should_not contain("path-lsp --check ")
+
+      File.delete(project_lsp)
+      File.write(".lsp.json", {"amber" => {"command" => "/missing/amber-lsp"}}.to_pretty_json + "\n")
+      path_status = Process.run(hook, ["post"], input: IO::Memory.new(payload), output: IO::Memory.new,
+        error: IO::Memory.new, env: environment)
+      path_status.exit_code.should eq(0)
+      File.read(log).should contain("path-lsp --check ")
+
+      configured_lsp = File.join(tools, "configured-lsp")
+      File.write(configured_lsp, "#!/bin/sh\nprintf 'configured-lsp %s\\n' \"$*\" >> \"$TEST_COMMAND_LOG\"\n")
+      File.chmod(configured_lsp, 0o755)
+      File.write(".lsp.json", {"amber" => {"command" => configured_lsp}}.to_pretty_json + "\n")
+      configured_status = Process.run(hook, ["post"], input: IO::Memory.new(payload), output: IO::Memory.new,
+        error: IO::Memory.new, env: environment)
+      configured_status.exit_code.should eq(0)
+      File.read(log).should contain("configured-lsp --check ")
+
+      format_errors = IO::Memory.new
+      failed_format = Process.run(hook, ["post"], input: IO::Memory.new(payload), output: IO::Memory.new,
+        error: format_errors, env: environment.merge({"TEST_FORMAT_EXIT" => "1"}))
+      failed_format.exit_code.should eq(2)
+      format_errors.to_s.should contain("format failed")
     end
   end
 end

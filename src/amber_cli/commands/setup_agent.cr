@@ -114,9 +114,17 @@ module AmberCLI::Commands
 
       manifest = YAML.parse(File.read("shard.yml"))
       targets = manifest["targets"]?.try(&.as_h?)
-      main_file = targets.try(&.values.first?).try(&.["main"]?).try(&.as_s?)
+      first_target = targets.try(&.values.first?)
+      target_main = first_target.try(&.["main"]?)
+      main_file = target_main.try(&.as_s?)
+
+      unless first_target
+        project_name = manifest["name"]?.try(&.as_s?)
+        main_file = "src/#{project_name}.cr" if project_name
+      end
+
       unless main_file && main_file.matches?(/\A(?:src\/)?[A-Za-z0-9_\/.-]+\.cr\z/) && !main_file.includes?("..") && File.file?(main_file)
-        raise "shard.yml must declare an existing targets.<name>.main Crystal file"
+        raise "shard.yml must declare an existing targets.<name>.main or src/<name>.cr Crystal file"
       end
       main_file
     end
@@ -135,14 +143,28 @@ module AmberCLI::Commands
       path = "bin/amber-agent-hook"
       content = AGENT_HOOK_SCRIPT.sub("__AMBER_MAIN__", main_file)
       Dir.mkdir_p("bin")
-      File.write(path, content) unless File.file?(path) && File.read(path) == content
+      if !File.file?(path) || File.read(path) != content
+        File.write(path, content)
+        info "Updated: #{path}"
+      end
       File.chmod(path, 0o755)
-      info "Updated: #{path}"
     end
 
     private def append_agent_loop_instructions(path : String) : Nil
       content = File.file?(path) ? File.read(path) : ""
-      return if content.includes?(DOCUMENT_START) && content.includes?(DOCUMENT_END)
+      if content.includes?(DOCUMENT_START) && content.includes?(DOCUMENT_END)
+        marker_start = content.index(DOCUMENT_START)
+        marker_end = content.index(DOCUMENT_END)
+        if marker_start && marker_end && marker_start < marker_end
+          section = content[marker_start...marker_end]
+          updated_section = section.sub("Use `crystal spec --affected`", "Use `crystal-alpha spec --affected`")
+          if updated_section != section
+            File.write(path, content.sub(section, updated_section))
+            info "Updated: #{path}"
+          end
+          return
+        end
+      end
       raise "Incomplete Amber agent loop marker in #{path}" if content.includes?(DOCUMENT_START) || content.includes?(DOCUMENT_END)
 
       section = <<-MARKDOWN
@@ -150,7 +172,7 @@ module AmberCLI::Commands
       ## Agent loop
 
       Run `crystal-alpha watch build` after edits. Do not start another watcher.
-      Use `crystal spec --affected` when available. Format Crystal files with
+      Use `crystal-alpha spec --affected` when available. Format Crystal files with
       `crystal-alpha tool format`. The installed hooks hold the watcher during
       edits, check each changed file, and build when the agent stops.
       #{DOCUMENT_END}

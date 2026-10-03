@@ -20,9 +20,78 @@ else
   exit 2
 fi
 
+watch_coordination_is_available() {
+  [ "$compiler_is_stock" -eq 0 ] || return 1
+  "$compiler" watch status >/dev/null 2>&1
+  watch_status=$?
+  [ "$watch_status" -eq 0 ] || [ "$watch_status" -eq 2 ]
+}
+
+find_lsp() {
+  configured_lsp=''
+  if [ -f .lsp.json ]; then
+    configured_lsp=$(awk '
+      function string_value(    character, escaped, result) {
+        result = ""; escaped = 0
+        while (position <= length(document)) {
+          character = substr(document, position++, 1)
+          if (escaped) {
+            if (character == "u") return ""
+            result = result character
+            escaped = 0; continue
+          }
+          if (character == "\\") { escaped = 1; continue }
+          if (character == "\"") return result
+          result = result character
+        }
+        return ""
+      }
+      { document = document $0 "\n" }
+      END {
+        position = 1
+        while (position <= length(document)) {
+          if (substr(document, position++, 1) != "\"") continue
+          key = string_value()
+          while (substr(document, position, 1) ~ /[[:space:]]/) position++
+          if (substr(document, position++, 1) != ":") continue
+          while (substr(document, position, 1) ~ /[[:space:]]/) position++
+          if (substr(document, position++, 1) != "\"") continue
+          value = string_value()
+          if (key == "command") { print value; exit }
+        }
+      }
+    ' .lsp.json)
+  fi
+
+  if [ -n "$configured_lsp" ]; then
+    if [ -x "$configured_lsp" ]; then
+      printf '%s\n' "$configured_lsp"
+      return 0
+    fi
+    case "$configured_lsp" in
+      amber-lsp) ;;
+      *)
+        if command -v "$configured_lsp" >/dev/null 2>&1; then
+          printf '%s\n' "$configured_lsp"
+          return 0
+        fi
+        ;;
+    esac
+  fi
+  if [ -x bin/amber-lsp ]; then
+    printf '%s\n' bin/amber-lsp
+    return 0
+  fi
+  if command -v amber-lsp >/dev/null 2>&1; then
+    printf '%s\n' amber-lsp
+    return 0
+  fi
+  return 1
+}
+
 case "${1:-}" in
   pre)
-    if [ "$compiler_is_stock" -eq 0 ]; then
+    if watch_coordination_is_available; then
       "$compiler" watch hold
       status=$?
       [ "$status" -eq 2 ] && exit 0
@@ -83,6 +152,7 @@ case "${1:-}" in
       }
     ')
     [ -n "$edited_files" ] || exit 0
+    lsp=$(find_lsp) || lsp=''
     printf '%s\n' "$edited_files" | while IFS= read -r edited_file; do
       case "$edited_file" in
         *.cr) ;;
@@ -99,9 +169,15 @@ case "${1:-}" in
         "$project_root"|"$project_root"/*) ;;
         *) continue ;;
       esac
-      "$compiler" tool format "$edited_file" || exit 2
-      if command -v amber-lsp >/dev/null 2>&1; then
-        diagnostics=$(amber-lsp --check "$edited_file" 2>&1)
+      format_output=$("$compiler" tool format "$edited_file" 2>&1)
+      format_status=$?
+      if [ "$format_status" -ne 0 ]; then
+        [ -z "$format_output" ] || printf '%s\n' "$format_output" >&2
+        exit 2
+      fi
+      [ -z "$format_output" ] || printf '%s\n' "$format_output"
+      if [ -n "$lsp" ]; then
+        diagnostics=$("$lsp" --check "$edited_file" 2>&1)
         diagnostic_status=$?
         if [ "$diagnostic_status" -ne 0 ]; then
           [ -z "$diagnostics" ] || printf '%s\n' "$diagnostics" >&2
@@ -109,14 +185,16 @@ case "${1:-}" in
         fi
         [ -z "$diagnostics" ] || printf '%s\n' "$diagnostics"
       else
-        echo 'amber-agent-hook: amber-lsp is required for file diagnostics' >&2
-        exit 2
+        if [ "${warned_missing_lsp:-0}" -eq 0 ]; then
+          echo 'amber-agent-hook: amber-lsp unavailable; skipping file diagnostics' >&2
+          warned_missing_lsp=1
+        fi
       fi
     done
     exit $?
     ;;
   stop)
-    if [ "$compiler_is_stock" -eq 0 ]; then
+    if watch_coordination_is_available; then
       "$compiler" watch release >/dev/null 2>&1 || :
       output=$("$compiler" watch build 2>&1)
       status=$?
@@ -128,6 +206,8 @@ case "${1:-}" in
         [ -z "$output" ] || printf '%s\n' "$output" >&2
         exit 2
       fi
+    elif [ "$compiler_is_stock" -eq 0 ]; then
+      echo 'amber-agent-hook: watch coordination unavailable; using direct build' >&2
     fi
     output=$("$compiler" build --no-codegen '__AMBER_MAIN__' 2>&1)
     status=$?
