@@ -1,0 +1,25 @@
+# Maintainer: Amber Framework <crimsonknightstudios@gmail.com>
+pkgname=amber-cli-bin
+pkgver=2.0.6
+pkgrel=1
+pkgdesc='Amber V2 command-line tool and language server (prebuilt static binaries)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/amberframework/amber_cli'
+license=('MIT')
+optdepends=('crystal-alpha: Crystal compiler used to build generated apps'
+            'crystal: Crystal compiler used to build generated apps')
+provides=("amber-cli=${pkgver}")
+conflicts=('amber-cli')
+options=('!strip' '!debug')
+source=("LICENSE-${pkgver}::https://raw.githubusercontent.com/amberframework/amber_cli/v${pkgver}/LICENSE")
+source_x86_64=("amber_cli-${pkgver}-linux-x86_64.tar.gz::https://github.com/amberframework/amber_cli/releases/download/v${pkgver}/amber_cli-linux-x86_64.tar.gz")
+source_aarch64=("amber_cli-${pkgver}-linux-arm64.tar.gz::https://github.com/amberframework/amber_cli/releases/download/v${pkgver}/amber_cli-linux-arm64.tar.gz")
+sha256sums=('8a859ceb1a659af317a2b597f9e763d9a63cc4392f01628c211d2a5a38d77a4a')
+sha256sums_x86_64=('74cb45729d8c1f208d678003a81017df4832f7dad38e9103ee17583feddd4f73')
+sha256sums_aarch64=('8b914f3cacf8432dee388af4973bb68984676314a8a0f162ac7b6a9040412ac0')
+
+package() {
+  install -Dm755 amber "${pkgdir}/usr/bin/amber"
+  install -Dm755 amber-lsp "${pkgdir}/usr/bin/amber-lsp"
+  install -Dm644 "LICENSE-${pkgver}" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
