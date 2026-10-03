@@ -1,0 +1,111 @@
+name: Linux packaging
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'packaging/**'
+      - 'scripts/packaging/**'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/packaging.yml'
+  workflow_dispatch:
+
+env:
+  # Both images are pinned by digest (tag shown for humans only).
+  UBUNTU_IMAGE: ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60
+  ARCH_IMAGE: archlinux:base-devel@sha256:51dd3d24f7fba779e7c471caeee7804c50e8c134ad948e19685a1c83a42facc3
+
+jobs:
+  deb:
+    name: Build and install .deb (${{ matrix.deb_arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - deb_arch: amd64
+            runner: ubuntu-latest
+            archive_arch: x86_64
+            sha_var: PINNED_SHA256_LINUX_X86_64
+          - deb_arch: arm64
+            runner: ubuntu-24.04-arm
+            archive_arch: arm64
+            sha_var: PINNED_SHA256_LINUX_ARM64
+    steps:
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+    - name: Download pinned release archive
+      run: |
+        set -euo pipefail
+        source packaging/pinned_release.env
+        expected="${{ matrix.sha_var }}"
+        curl -fsSL -o archive.tar.gz \
+          "https://github.com/amberframework/amber_cli/releases/download/v${PINNED_VERSION}/amber_cli-linux-${{ matrix.archive_arch }}.tar.gz"
+        echo "${!expected}  archive.tar.gz" | sha256sum -c -
+        echo "PINNED_VERSION=${PINNED_VERSION}" >> "$GITHUB_ENV"
+        echo "EXPECTED_SHA=${!expected}" >> "$GITHUB_ENV"
+
+    - name: Build .deb in an Ubuntu container
+      run: |
+        mkdir -p out
+        docker run --rm -v "$PWD:/w" -w /w "$UBUNTU_IMAGE" \
+          scripts/packaging/build_deb.sh "$PINNED_VERSION" "${{ matrix.deb_arch }}" archive.tar.gz "$EXPECTED_SHA" out
+
+    - name: Install and smoke test in a fresh Ubuntu container
+      run: |
+        docker run --rm -v "$PWD/out:/out:ro" "$UBUNTU_IMAGE" bash -euxc '
+          deb=/out/amber-cli_'"$PINNED_VERSION"'_${{ matrix.deb_arch }}.deb
+          dpkg-deb -I "$deb"
+          dpkg-deb -c "$deb"
+          dpkg -i "$deb"
+          test -x /usr/bin/amber
+          test -x /usr/bin/amber-lsp
+          amber --version | tee /tmp/version
+          grep -F "'"$PINNED_VERSION"'" /tmp/version
+          amber-lsp --help || true
+          dpkg -s amber-cli | grep -F "Recommends: crystal-alpha | crystal"
+          dpkg -r amber-cli
+          test ! -e /usr/bin/amber
+        '
+
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      with:
+        name: debs-${{ matrix.deb_arch }}
+        path: out/*.deb
+
+  arch:
+    name: Build and install amber-cli-bin (Arch, x86_64)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+    - name: PKGBUILD pins agree with packaging/pinned_release.env
+      run: |
+        set -euo pipefail
+        source packaging/pinned_release.env
+        pkgbuild=packaging/arch/amber-cli-bin/PKGBUILD
+        grep -Fx "pkgver=${PINNED_VERSION}" "$pkgbuild"
+        grep -F "sha256sums_x86_64=('${PINNED_SHA256_LINUX_X86_64}')" "$pkgbuild"
+        grep -F "sha256sums_aarch64=('${PINNED_SHA256_LINUX_ARM64}')" "$pkgbuild"
+
+    - name: makepkg, pacman -U, and smoke test as a non-root builder
+      run: |
+        docker run --rm -v "$PWD/packaging/arch/amber-cli-bin:/src:ro" "$ARCH_IMAGE" bash -euxc '
+          useradd -m builder
+          cp -r /src /home/builder/pkg
+          chown -R builder /home/builder/pkg
+          cd /home/builder/pkg
+          # .SRCINFO must match the PKGBUILD
+          su builder -c "makepkg --printsrcinfo" | diff -u .SRCINFO -
+          # fails closed on any checksum mismatch
+          su builder -c "makepkg --noconfirm"
+          ls -l *.pkg.tar.*
+          pacman -U --noconfirm ./*.pkg.tar.zst
+          amber --version | tee /tmp/version
+          grep -F "$(sed -n "s/^pkgver=//p" PKGBUILD)" /tmp/version
+          amber-lsp --help || true
+          pacman -Qi amber-cli-bin
+        '

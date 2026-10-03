@@ -52,6 +52,44 @@ amber --version
 On Linux, use `sha256sum -c` for the checksum. Prefix only the `install`
 command with `sudo` if `/usr/local/bin` is not writable.
 
+### Ubuntu and Debian (.deb)
+
+Release `2.0.6` and later attach `amber-cli_<version>_amd64.deb` and
+`amber-cli_<version>_arm64.deb` plus a `SHA256SUMS` file to the GitHub release
+(the package job in `release.yml` builds them from the same static archives).
+The package installs `/usr/bin/amber` and `/usr/bin/amber-lsp` and recommends
+a Crystal compiler (`crystal-alpha` or `crystal`).
+
+```bash
+version=2.0.6
+deb="amber-cli_${version}_amd64.deb"   # or _arm64.deb
+curl -fLO "https://github.com/amberframework/amber_cli/releases/download/v${version}/${deb}"
+curl -fLO "https://github.com/amberframework/amber_cli/releases/download/v${version}/SHA256SUMS"
+sha256sum --ignore-missing -c SHA256SUMS
+sudo apt install "./${deb}"
+amber --version
+```
+
+Coming soon: apt repo. Until a hosting location is chosen, install the
+`.deb` directly as shown above. Only `.deb` files from releases published after
+this packaging lands exist; `2.0.6` itself ships archives only.
+
+### Arch Linux and Omarchy (pacman, AUR)
+
+Omarchy is Arch-based, so the Arch package covers it. The `amber-cli-bin`
+`PKGBUILD` in `packaging/arch/` installs the prebuilt static binaries with
+pinned sha256 sums:
+
+```bash
+git clone https://github.com/amberframework/amber_cli
+cd amber_cli/packaging/arch/amber-cli-bin
+makepkg -si
+amber --version
+```
+
+Coming soon: `yay -S amber-cli-bin` once the AUR package is published. See
+`packaging/arch/README.md` for maintainer steps.
+
 ## Create and verify a web app
 
 ```bash

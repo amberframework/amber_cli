@@ -1,0 +1,22 @@
+pkgbase = amber-cli-bin
+	pkgdesc = Amber V2 command-line tool and language server (prebuilt static binaries)
+	pkgver = 2.0.6
+	pkgrel = 1
+	url = https://github.com/amberframework/amber_cli
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	optdepends = crystal-alpha: Crystal compiler used to build generated apps
+	optdepends = crystal: Crystal compiler used to build generated apps
+	provides = amber-cli=2.0.6
+	conflicts = amber-cli
+	options = !strip
+	options = !debug
+	source = LICENSE-2.0.6::https://raw.githubusercontent.com/amberframework/amber_cli/v2.0.6/LICENSE
+	sha256sums = 8a859ceb1a659af317a2b597f9e763d9a63cc4392f01628c211d2a5a38d77a4a
+	source_x86_64 = amber_cli-2.0.6-linux-x86_64.tar.gz::https://github.com/amberframework/amber_cli/releases/download/v2.0.6/amber_cli-linux-x86_64.tar.gz
+	sha256sums_x86_64 = 74cb45729d8c1f208d678003a81017df4832f7dad38e9103ee17583feddd4f73
+	source_aarch64 = amber_cli-2.0.6-linux-arm64.tar.gz::https://github.com/amberframework/amber_cli/releases/download/v2.0.6/amber_cli-linux-arm64.tar.gz
+	sha256sums_aarch64 = 8b914f3cacf8432dee388af4973bb68984676314a8a0f162ac7b6a9040412ac0
+
+pkgname = amber-cli-bin
