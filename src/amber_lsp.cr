@@ -24,5 +24,15 @@ require "./amber_lsp/configuration"
 require "./amber_lsp/analyzer"
 require "./amber_lsp/controller"
 require "./amber_lsp/server"
+require "./amber_lsp/check_file_for_diagnostics"
 
-AmberLSP::Server.new(STDIN, STDOUT).run
+if ARGV[0]? == "--check"
+  file_path = ARGV[1]?
+  unless file_path
+    STDERR.puts "Usage: amber-lsp --check FILE.cr"
+    exit(2)
+  end
+  exit(AmberLSP::CheckFileForDiagnostics.new(file_path).perform)
+else
+  AmberLSP::Server.new(STDIN, STDOUT).run
+end

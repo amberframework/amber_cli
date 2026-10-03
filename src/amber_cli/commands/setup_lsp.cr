@@ -1,4 +1,5 @@
 require "../core/base_command"
+require "../agent/resolve_compiler_for_agent_loop"
 
 # The `setup:lsp` command configures the Amber LSP server for Claude Code
 # integration in an Amber project directory.
@@ -126,12 +127,6 @@ module AmberCLI::Commands
         return Dir.current
       end
 
-      # Check the known development location
-      dev_path = File.expand_path("~/open_source_coding_projects/amber_cli")
-      if File.exists?(File.join(dev_path, "src", "amber_lsp.cr"))
-        return dev_path
-      end
-
       nil
     end
 
@@ -145,8 +140,18 @@ module AmberCLI::Commands
 
       Dir.mkdir_p(File.join(cli_project_root, "bin")) unless Dir.exists?(File.join(cli_project_root, "bin"))
 
+      resolver = AmberCLI::Agent::ResolveCompilerForAgentLoop.new(
+        ENV["CRYSTAL_ALPHA"]?, ->(command : String) { Process.find_executable(command) }
+      )
+      compiler = resolver.perform
+      unless compiler
+        error "No Crystal compiler found (CRYSTAL_ALPHA, crystal-alpha, acrystal, crystal)"
+        exit(1)
+      end
+      warning "Fast rebuilds need crystal-alpha; using stock crystal." if resolver.stock_compiler?
+
       process = Process.run(
-        "crystal",
+        compiler,
         ["build", source_path, "-o", binary_path, "--release"],
         output: Process::Redirect::Inherit,
         error: Process::Redirect::Inherit

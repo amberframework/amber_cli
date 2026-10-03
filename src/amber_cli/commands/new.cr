@@ -197,6 +197,7 @@ module AmberCLI::Commands
       info "  amber generate scaffold Pet name:string:required species:string:required"
       info "  amber database migrate"
       info "  amber watch"
+      info "  Tip: run amber setup:agent to install Claude Code and Codex hooks."
       info "  # Choose -d pg or -d mysql when you need a server database."
     end
 
