@@ -1,0 +1,144 @@
+#!/bin/sh
+set -u
+
+project_root=$(CDPATH='' cd "$(dirname "$0")/.." && pwd -P) || exit 2
+cd "$project_root" || exit 2
+
+compiler_is_stock=0
+if [ -n "${CRYSTAL_ALPHA:-}" ]; then
+  compiler=$CRYSTAL_ALPHA
+elif command -v crystal-alpha >/dev/null 2>&1; then
+  compiler=crystal-alpha
+elif command -v acrystal >/dev/null 2>&1; then
+  compiler=acrystal
+elif command -v crystal >/dev/null 2>&1; then
+  compiler=crystal
+  compiler_is_stock=1
+  echo 'amber-agent-hook: fast rebuilds need crystal-alpha; using stock crystal' >&2
+else
+  echo 'amber-agent-hook: no Crystal compiler found' >&2
+  exit 2
+fi
+
+case "${1:-}" in
+  pre)
+    if [ "$compiler_is_stock" -eq 0 ]; then
+      "$compiler" watch hold
+      status=$?
+      [ "$status" -eq 2 ] && exit 0
+      exit "$status"
+    fi
+    ;;
+  post)
+    # Claude supplies file_path; Codex supplies an apply_patch command.
+    # Parse JSON strings and patch headers without another runtime.
+    edited_files=$(awk '
+      function string_value(    character, escaped, result) {
+        result = ""; escaped = 0
+        while (position <= length(payload)) {
+          character = substr(payload, position++, 1)
+          if (escaped) {
+            if (character == "n") result = result "\n"
+            else if (character == "r") result = result "\r"
+            else if (character == "t") result = result "\t"
+            else if (character == "u") return ""
+            else result = result character
+            escaped = 0; continue
+          }
+          if (character == "\\") { escaped = 1; continue }
+          if (character == "\"") return result
+          result = result character
+        }
+        return ""
+      }
+      { payload = payload $0 "\n" }
+      END {
+        position = 1
+        while (position <= length(payload)) {
+          if (substr(payload, position++, 1) != "\"") continue
+          key = string_value()
+          while (substr(payload, position, 1) ~ /[[:space:]]/) position++
+          if (substr(payload, position++, 1) != ":") continue
+          while (substr(payload, position, 1) ~ /[[:space:]]/) position++
+          if (substr(payload, position++, 1) != "\"") continue
+          value = string_value()
+          if (key == "file_path") direct_path = value
+          else if (key == "path" && direct_path == "") direct_path = value
+          else if (key == "tool_name") tool_name = value
+          else if (key == "command") patch = value
+        }
+        if (tool_name == "apply_patch" && index(patch, "*** Begin Patch") > 0) {
+          count = split(patch, lines, "\n")
+          for (line_number = 1; line_number <= count; line_number++) {
+            line = lines[line_number]
+            if (line ~ /^\*\*\* (Update|Add) File: /) {
+              sub(/^\*\*\* (Update|Add) File: /, "", line)
+              sub(/\r$/, "", line)
+              if (!seen[line]++) print line
+            }
+          }
+        } else if (direct_path != "") {
+          print direct_path
+        }
+      }
+    ')
+    [ -n "$edited_files" ] || exit 0
+    printf '%s\n' "$edited_files" | while IFS= read -r edited_file; do
+      case "$edited_file" in
+        *.cr) ;;
+        *) continue ;;
+      esac
+      case "$edited_file" in
+        /*) ;;
+        *) edited_file=$project_root/$edited_file ;;
+      esac
+      [ -f "$edited_file" ] || continue
+      [ -L "$edited_file" ] && continue
+      edited_directory=$(CDPATH='' cd "$(dirname "$edited_file")" && pwd -P) || continue
+      case "$edited_directory" in
+        "$project_root"|"$project_root"/*) ;;
+        *) continue ;;
+      esac
+      "$compiler" tool format "$edited_file" || exit 2
+      if command -v amber-lsp >/dev/null 2>&1; then
+        diagnostics=$(amber-lsp --check "$edited_file" 2>&1)
+        diagnostic_status=$?
+        if [ "$diagnostic_status" -ne 0 ]; then
+          [ -z "$diagnostics" ] || printf '%s\n' "$diagnostics" >&2
+          exit 2
+        fi
+        [ -z "$diagnostics" ] || printf '%s\n' "$diagnostics"
+      else
+        echo 'amber-agent-hook: amber-lsp is required for file diagnostics' >&2
+        exit 2
+      fi
+    done
+    exit $?
+    ;;
+  stop)
+    if [ "$compiler_is_stock" -eq 0 ]; then
+      "$compiler" watch release >/dev/null 2>&1 || :
+      output=$("$compiler" watch build 2>&1)
+      status=$?
+      if [ "$status" -eq 0 ]; then
+        [ -z "$output" ] || printf '%s\n' "$output"
+        exit 0
+      fi
+      if [ "$status" -ne 2 ]; then
+        [ -z "$output" ] || printf '%s\n' "$output" >&2
+        exit 2
+      fi
+    fi
+    output=$("$compiler" build --no-codegen '__AMBER_MAIN__' 2>&1)
+    status=$?
+    if [ "$status" -ne 0 ]; then
+      [ -z "$output" ] || printf '%s\n' "$output" >&2
+      exit 2
+    fi
+    [ -z "$output" ] || printf '%s\n' "$output"
+    ;;
+  *)
+    echo 'Usage: bin/amber-agent-hook pre|post|stop' >&2
+    exit 2
+    ;;
+esac

@@ -143,6 +143,7 @@ SQL migration to `db/migrations/`, and the resource route to `config/routes.cr`.
 | `amber assets check` | Supported | Verify manifest, bytes, integrity, MIME, and compressed output without changing it |
 | `amber new APP --type native` | Preview | Not part of the beta platform guarantee |
 | `amber setup:lsp` | Available | Configure the bundled diagnostics LSP |
+| `amber setup:agent` (`amber agent`) | Available | Install optional Claude Code and Codex feedback hooks |
 
 Run `amber --help` or `amber COMMAND --help` for command syntax. The detailed
 [web-app walkthrough](docs/BETA_WEB_APP.md) and
@@ -176,6 +177,18 @@ amber setup:lsp
 ```
 
 See the [LSP setup guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.5/docs/guides/lsp-setup.md).
+
+## AI agent setup
+
+From an Amber V2 project, run `amber setup:agent` to install Claude Code and
+Codex hooks, the project-local `bin/amber-agent-hook`, agent instructions, and
+Amber LSP discovery. Existing hook settings and instructions are merged; the
+command is safe to run again. The post-edit hook formats and checks only the
+changed Crystal file with `amber-lsp --check`; the stop hook asks
+`crystal-alpha watch build` for compiler feedback, or checks the target in
+`shard.yml` with `--no-codegen` when no watcher is running. Install
+`crystal-alpha` and `amber-lsp` for the full loop. Codex may ask you to trust
+new project hooks before it runs them.
 
 ## Contributing
 
