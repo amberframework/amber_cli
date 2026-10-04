@@ -20,7 +20,7 @@ newer.
 ```bash
 amber new amber_beta_smoke --type web -y
 cd amber_beta_smoke
-minecart install --frozen
+minecart install --frozen --skip-ai-docs
 ```
 
 The command uses Minecart to install dependencies, write a checksummed

@@ -22,7 +22,7 @@ if [ ! -f "shard.yml" ]; then
 fi
 
 echo "📦 Installing dependencies..."
-minecart install --frozen
+minecart install --frozen --skip-ai-docs
 
 echo "📖 Generating documentation..."
 

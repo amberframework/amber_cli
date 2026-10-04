@@ -75,13 +75,15 @@ fi
 cd "$app_path"
 test -s shard.lock
 test -s .claude/CLAUDE.md
+assistant_kib="$(du -sk .claude | awk '{print $1}')"
+test "$assistant_kib" -lt 10240
 grep -F 'require_exact: true' .minecart-policy.yml
 ! grep -F "shard.lock" .gitignore
 "$cli_path" assets check
 if [[ -n "$framework_commit" ]]; then
-  minecart install --strict-pinning
+  minecart install --strict-pinning --skip-ai-docs
 else
-  minecart install --frozen
+  minecart install --frozen --skip-ai-docs
 fi
 test -s shard.lock
 grep -F "version: 0.23.4+git.commit.da1e06161148f156dbce262a4a4efcb39cba5ba4" shard.lock

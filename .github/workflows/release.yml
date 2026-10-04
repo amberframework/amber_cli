@@ -68,7 +68,7 @@ jobs:
       run: scripts/install_pinned_minecart.sh
 
     - name: Install dependencies
-      run: minecart install --production
+      run: minecart install --production --skip-ai-docs
     
     - name: Build binaries (Linux)
       if: startsWith(matrix.target, 'linux-')

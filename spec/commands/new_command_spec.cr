@@ -125,6 +125,7 @@ describe AmberCLI::Commands::NewCommand do
         policy.should contain("require_exact: true")
         readme = File.read(File.join(destination, "README.md"))
         readme.should contain("minecart install --frozen")
+        readme.should contain("--skip-ai-docs")
         readme.should contain("crystal spec")
         readme.should contain("git-tree:")
         readme.should_not contain("shards install")

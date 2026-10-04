@@ -59,7 +59,7 @@ echo "🎯 Building for target: ${TARGET}"
 
 # Install dependencies
 echo "📦 Installing dependencies..."
-minecart install --production
+minecart install --production --skip-ai-docs
 
 # Build binaries
 echo "🔨 Compiling amber CLI..."

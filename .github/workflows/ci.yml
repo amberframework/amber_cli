@@ -47,7 +47,7 @@ jobs:
       run: scripts/install_pinned_minecart.sh
 
     - name: Install dependencies
-      run: minecart install --frozen
+      run: minecart install --frozen --skip-ai-docs
 
     - name: Check Amber V2 beta contract
       run: scripts/check_beta_contract.sh
@@ -127,7 +127,7 @@ jobs:
       run: scripts/install_pinned_minecart.sh
 
     - name: Install dependencies
-      run: minecart install --frozen
+      run: minecart install --frozen --skip-ai-docs
 
     - name: Test CLI functionality
       run: |
@@ -165,7 +165,7 @@ jobs:
       run: scripts/install_pinned_minecart.sh
 
     - name: Install dependencies
-      run: minecart install --frozen
+      run: minecart install --frozen --skip-ai-docs
 
     - name: Run integration tests
       run: |

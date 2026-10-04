@@ -43,7 +43,7 @@ jobs:
         run: scripts/install_pinned_minecart.sh
 
       - name: Install dependencies
-        run: minecart install --frozen
+        run: minecart install --frozen --skip-ai-docs
 
       - name: Generate documentation
         run: |

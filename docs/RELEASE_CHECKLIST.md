@@ -18,7 +18,7 @@ Homebrew formula pins Amber and Minecart source archives and checksums.
 3. Verify the generated app pins the reviewed Asset Pipeline release exactly,
    has a Minecart Git tree checksum for every dependency, and has assistant
    files.
-4. On macOS, x86-64 Linux, and ARM64 Linux, run `minecart install --frozen`; run
+4. On macOS, x86-64 Linux, and ARM64 Linux, run `minecart install --frozen --skip-ai-docs`; run
    `amber assets build` and `amber assets check`; run app specs; build and start
    the app; then follow the manifest-rendered CSS, JavaScript, SVG, and favicon
    URLs from `/`.

@@ -30,7 +30,7 @@ jobs:
         run: scripts/install_pinned_minecart.sh
 
       - name: Install CLI dependencies
-        run: minecart install --frozen
+        run: minecart install --frozen --skip-ai-docs
 
       - name: Build Amber CLI
         run: crystal build src/amber_cli.cr --no-debug -o amber
@@ -70,7 +70,7 @@ jobs:
         run: scripts/install_pinned_minecart.ps1
 
       - name: Install CLI dependencies
-        run: minecart install --frozen
+        run: minecart install --frozen --skip-ai-docs
 
       - name: Build Amber CLI
         run: crystal build src/amber_cli.cr --no-debug -o amber.exe

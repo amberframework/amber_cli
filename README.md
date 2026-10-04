@@ -63,7 +63,7 @@ command with `sudo` if `/usr/local/bin` is not writable.
 ```bash
 amber new my_app --type web -y
 cd my_app
-minecart install --frozen
+minecart install --frozen --skip-ai-docs
 amber assets check
 crystal spec
 crystal build src/my_app.cr -o bin/my_app
@@ -74,7 +74,7 @@ amber watch
 a `shard.lock` with Git tree checksums, `.minecart-policy.yml`, and `.claude/`
 assistant files. Commit those files. With `--no-deps`, the first Minecart
 install and assistant setup are deliberately deferred; run `minecart install
---strict-pinning` and `minecart assistant init` before frozen installs.
+--strict-pinning --skip-ai-docs` and `minecart assistant init` before frozen installs.
 `amber watch` recompiles assets before the application whenever an ECR template
 or a file under `app/assets/` changes. Open <http://127.0.0.1:3000>.
 
@@ -191,7 +191,7 @@ See the [LSP setup guide](https://github.com/amberframework/amber/blob/v2.0.0-be
 ## Contributing
 
 ```bash
-minecart install --frozen
+minecart install --frozen --skip-ai-docs
 crystal-alpha tool format --check src spec
 crystal-alpha spec
 ```

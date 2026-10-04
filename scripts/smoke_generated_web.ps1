@@ -61,6 +61,10 @@ if (-not $manifest.Contains("version: 0.37.0")) {
 if (-not (Test-Path (Join-Path $appPath ".claude/CLAUDE.md"))) {
   throw "Minecart did not install assistant files"
 }
+$assistantBytes = (Get-ChildItem -Path (Join-Path $appPath ".claude") -File -Recurse | Measure-Object -Property Length -Sum).Sum
+if ($assistantBytes -ge 10MB) {
+  throw "Minecart copied optional dependency AI docs into the beginner app"
+}
 if (-not ([System.IO.File]::ReadAllText((Join-Path $appPath ".minecart-policy.yml")).Contains("require_exact: true"))) {
   throw "Generated app does not require exact root dependency pins"
 }
@@ -92,9 +96,9 @@ Push-Location $appPath
 try {
   Invoke-Checked -Command $cliPath -Arguments @("assets", "check")
   if ($FrameworkCommit) {
-    Invoke-Checked -Command "minecart" -Arguments @("install", "--strict-pinning")
+    Invoke-Checked -Command "minecart" -Arguments @("install", "--strict-pinning", "--skip-ai-docs")
   } else {
-    Invoke-Checked -Command "minecart" -Arguments @("install", "--frozen")
+    Invoke-Checked -Command "minecart" -Arguments @("install", "--frozen", "--skip-ai-docs")
   }
   $lock = [System.IO.File]::ReadAllText((Join-Path $appPath "shard.lock"))
   $shardCount = [regex]::Matches($lock, '(?m)^  [A-Za-z0-9_-]+:$').Count
