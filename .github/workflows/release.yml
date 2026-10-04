@@ -182,8 +182,8 @@ jobs:
           artifacts/amber_cli-linux-x86_64/amber_cli-linux-x86_64.tar.gz.sha256
           artifacts/amber_cli-linux-arm64/amber_cli-linux-arm64.tar.gz
           artifacts/amber_cli-linux-arm64/amber_cli-linux-arm64.tar.gz.sha256
-          dist/amber_cli-source-2.0.7.tar.gz
-          dist/amber_cli-source-2.0.7.tar.gz.sha256
+          dist/amber_cli-source-*.tar.gz
+          dist/amber_cli-source-*.tar.gz.sha256
         tag_name: ${{ github.event.release.tag_name }}
         fail_on_unmatched_files: true
       env:

@@ -3,13 +3,11 @@
 Release order matters because generated apps pin a framework version and the
 Homebrew formula pins Amber and Minecart source archives and checksums.
 
-## 1. Framework prerelease
+## 1. Framework prerequisite
 
-1. Confirm `shard.yml`, `src/amber/version.cr`, and the changelog all say
-   `2.0.0-beta.5`.
-2. Run framework specs and formatting on macOS and Linux.
-3. Tag the reviewed `v2-dev` commit as `v2.0.0-beta.5`.
-4. Publish it as a GitHub prerelease with migration and support-matrix links.
+1. Confirm the published `v2.0.0-beta.5` prerelease has its source archive and
+   checksum and matches the generated app's exact framework pin.
+2. Check the framework's migration and support-matrix links.
 
 ## 2. CLI release
 
@@ -29,8 +27,9 @@ Homebrew formula pins Amber and Minecart source archives and checksums.
 7. Confirm the Windows x86-64 generated app passes its full CI smoke, including
    launch and asset probes. This is a generated-app release gate, with no
    Windows archive yet.
-8. Tag `v2.0.7`, publish the release, and wait for all archives and checksum
-   files to upload.
+8. Tag `v2.0.7`, publish the release, and wait for the binary and source
+   archives and checksum files to upload. Compare the published source archive
+   hash with the reviewed Homebrew formula before pushing the tap.
 
 ## 3. Homebrew
 

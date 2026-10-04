@@ -7,8 +7,8 @@ This guide documents the current Amber CLI release path and the checks we expect
 A successful release means all of the following have been reviewed and run:
 
 1. A published GitHub release in `amberframework/amber_cli` builds macOS and Linux binaries.
-2. The workflow uploads binary archives and checksum files. A source archive
-   from the reviewed commit is uploaded with its recorded SHA-256 for Homebrew.
+2. The workflow uploads binary archives and checksum files. It packages a
+   source archive from the tagged commit and uploads its SHA-256 for Homebrew.
 3. The reviewed tap commit contains the Amber and Minecart source archive URLs
    and SHA-256 values. It is pushed only after both archives are available.
 4. Tap install validation passes on supported Homebrew platforms.
@@ -103,11 +103,14 @@ Publishing the release triggers the automated flow:
 
 1. build macOS and Linux binaries
 2. upload archives and checksums to the release
-3. publish the binary archive checksums alongside the archives
+3. package the tagged source and publish its archive and checksum
 
-Upload the prepared `amber_cli-source-2.0.7.tar.gz` archive without rebuilding
-it. Recompute its SHA-256 and compare it with `Formula/amber_cli.rb` before
-pushing the tap commit. Then run the tap smoke on macOS and Linux.
+Before pushing the tap commit, download the published
+`amber_cli-source-2.0.7.tar.gz` archive, verify its sidecar checksum, and compare
+its SHA-256 with `Formula/amber_cli.rb`. The CI-generated gzip archive can
+have different bytes from a local archive of the same commit, so update the
+formula to the published asset hash when they differ. Then run the tap smoke
+on macOS and Linux.
 
 ## CI Gates To Check
 
