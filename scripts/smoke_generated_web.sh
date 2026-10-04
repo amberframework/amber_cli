@@ -9,17 +9,13 @@ fi
 cli_path="$1"
 framework_commit="${2:-}"
 framework_repository="${3:-amberframework/amber}"
-if command -v shards-alpha >/dev/null 2>&1; then
-  shards_command="shards-alpha"
-else
-  shards_command="shards"
-fi
+command -v minecart >/dev/null 2>&1 || { echo "Minecart is required for the generated web smoke" >&2; exit 1; }
 if command -v crystal-alpha >/dev/null 2>&1; then
   crystal_command="crystal-alpha"
 else
   crystal_command="crystal"
 fi
-echo "Using dependency installer: $shards_command"
+echo "Using dependency installer: $(command -v minecart)"
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 if [[ "$cli_path" != /* ]]; then
   cli_path="$(cd "$(dirname "$cli_path")" && pwd)/$(basename "$cli_path")"
@@ -42,10 +38,9 @@ trap cleanup EXIT
 "$cli_path" new "$app_path" --type web
 test -s "$app_path/shard.lock"
 
-grep -F 'shards install' "$app_path/README.md"
+grep -F 'minecart install --frozen' "$app_path/README.md"
 grep -F 'crystal spec' "$app_path/README.md"
-grep -F '`shards-alpha install` writes a checksum-verified `shard.lock` when `shards-alpha` is installed; commit the lock with the application.' "$app_path/README.md"
-test "$(grep -cF '`shards-alpha install` writes a checksum-verified `shard.lock` when `shards-alpha` is installed; commit the lock with the application.' "$app_path/README.md")" -eq 1
+grep -F 'git-tree:' "$app_path/README.md"
 ! grep -F 'crystal-alpha' "$app_path/.amber.yml"
 grep -F 'AMBER_ENV=test crystal spec' "$script_dir/../src/amber_cli/templates/app/.amber.yml.ecr"
 ! grep -F 'crystal-alpha' "$script_dir/../src/amber_cli/templates/app/.amber.yml.ecr"
@@ -54,7 +49,7 @@ grep -F "github: amberframework/amber" "$app_path/shard.yml"
 grep -F "version: 2.0.0-beta.5" "$app_path/shard.yml"
 grep -F "github: crimson-knight/grant" "$app_path/shard.yml"
 grep -F "github: amberframework/asset_pipeline" "$app_path/shard.yml"
-grep -F "version: ~> 0.37.0" "$app_path/shard.yml"
+grep -F "version: 0.37.0" "$app_path/shard.yml"
 grep -F "commit: da1e06161148f156dbce262a4a4efcb39cba5ba4" "$app_path/shard.yml"
 grep -F "github: crystal-lang/crystal-sqlite3" "$app_path/shard.yml"
 grep -F "template: ecr" "$app_path/.amber.yml"
@@ -79,24 +74,22 @@ fi
 
 cd "$app_path"
 test -s shard.lock
+test -s .claude/CLAUDE.md
+grep -F 'require_exact: true' .minecart-policy.yml
 ! grep -F "shard.lock" .gitignore
 "$cli_path" assets check
-env GIT_CONFIG_COUNT=1 \
-  GIT_CONFIG_KEY_0=core.hooksPath \
-  GIT_CONFIG_VALUE_0=/dev/null \
-  "$shards_command" install
+if [[ -n "$framework_commit" ]]; then
+  minecart install --strict-pinning
+else
+  minecart install --frozen
+fi
 test -s shard.lock
 grep -F "version: 0.23.4+git.commit.da1e06161148f156dbce262a4a4efcb39cba5ba4" shard.lock
 grep -F "version: 0.14.0" shard.lock
-if [[ "$shards_command" == "shards-alpha" ]]; then
-  grep -F "checksum: sha256:ad693a4f04294abbb0c827a34da141f1e9cd0a96293fc4d7039d55e1b8eb3005" shard.lock
-  grep -F "checksum: sha256:4a4dea15c27b985cd9d8c5c545024daafab347b56986252fd24fcc3f18e5c024" shard.lock
-  shard_count="$(grep -cE '^  [[:alnum:]_-]+:$' shard.lock)"
-  checksum_count="$(grep -cE '^    checksum: sha256:[0-9a-f]{64}$' shard.lock)"
-  test "$checksum_count" -eq "$shard_count"
-else
-  echo "shards-alpha unavailable; checksum lock assertions skipped" >&2
-fi
+shard_count="$(grep -cE '^  [[:alnum:]_-]+:$' shard.lock)"
+checksum_count="$(grep -cE '^    checksum: git-tree:[0-9a-f]{40}$' shard.lock)"
+test "$shard_count" -gt 0
+test "$checksum_count" -eq "$shard_count"
 "$cli_path" assets build
 "$cli_path" assets check
 "$crystal_command" spec

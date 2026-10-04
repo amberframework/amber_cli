@@ -43,8 +43,11 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-shards-
 
+    - name: Build pinned Minecart
+      run: scripts/install_pinned_minecart.sh
+
     - name: Install dependencies
-      run: shards install
+      run: minecart install --frozen
 
     - name: Check Amber V2 beta contract
       run: scripts/check_beta_contract.sh
@@ -120,8 +123,11 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-shards-
 
+    - name: Build pinned Minecart
+      run: scripts/install_pinned_minecart.sh
+
     - name: Install dependencies
-      run: shards install
+      run: minecart install --frozen
 
     - name: Test CLI functionality
       run: |
@@ -155,8 +161,11 @@ jobs:
       with:
         crystal: latest
 
+    - name: Build pinned Minecart
+      run: scripts/install_pinned_minecart.sh
+
     - name: Install dependencies
-      run: shards install
+      run: minecart install --frozen
 
     - name: Run integration tests
       run: |

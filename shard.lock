@@ -3,40 +3,50 @@ shards:
   ameba:
     git: https://github.com/crystal-ameba/ameba.git
     version: 1.7.0-dev+git.commit.cdd58b34b0d8a9c785d67183a7a8f07541549e55
+    checksum: git-tree:5fe9fbff073fc9a41923f19d8a43b9b35a528ac8
 
   asset_pipeline:
     git: https://github.com/amberframework/asset_pipeline.git
     version: 0.37.0
+    checksum: git-tree:47c884c51cc63e62d04056bc160ab6c329e1946c
 
   backtracer:
     git: https://github.com/sija/backtracer.cr.git
     version: 1.2.4
+    checksum: git-tree:54afe1195b6229aae7ee38849f857a7d8dc5788f
 
   compiled_license:
     git: https://github.com/elorest/compiled_license.git
     version: 1.2.2
+    checksum: git-tree:3e2663f5a593c9a83d05cd9052e3933f45bb2c18
 
   db:
     git: https://github.com/crystal-lang/crystal-db.git
     version: 0.13.1
+    checksum: git-tree:77be88f3f39ff1d7cbba1022062a69d09b763de4
 
   exception_page:
     git: https://github.com/crystal-loot/exception_page.git
     version: 0.2.2
+    checksum: git-tree:460d68c049fdca6ee6160fdfdf7d58b0c60ae82e
 
   micrate:
     git: https://github.com/amberframework/micrate.git
     version: 0.16.0-beta.1+git.commit.56afd5607cc591776980f3d3762495c037b98d98
+    checksum: git-tree:b8fe378a82510aaeb61b6f4306099025272ddf52
 
   mysql:
     git: https://github.com/crystal-lang/crystal-mysql.git
     version: 0.16.0
+    checksum: git-tree:7c87e8d1a35b97c3b699df61eab28099a630a856
 
   pg:
     git: https://github.com/will/crystal-pg.git
     version: 0.29.0
+    checksum: git-tree:9537ebbb1a6b936bfb9cc87307d3b661f70ab518
 
   sqlite3:
     git: https://github.com/crystal-lang/crystal-sqlite3.git
     version: 0.21.0
+    checksum: git-tree:0724768c38a3e14b9a6e9161515c4e293a7f1e0c
 

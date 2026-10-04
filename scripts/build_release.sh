@@ -5,8 +5,15 @@
 
 set -euo pipefail
 
-VERSION=${1:-"dev"}
+VERSION=${1:?"usage: scripts/build_release.sh X.Y.Z"}
 OUTPUT_DIR="dist"
+
+test "$VERSION" = "$(awk '/^version:/ { print $2; exit }' shard.yml)"
+test -z "$(git status --porcelain)" || { echo "Commit the reviewed source before packaging it" >&2; exit 1; }
+command -v crystal-alpha >/dev/null 2>&1 || { echo "crystal-alpha is required" >&2; exit 1; }
+command -v minecart >/dev/null 2>&1 || { echo "minecart is required" >&2; exit 1; }
+test -s shard.lock
+export CRYSTAL_CACHE_DIR="$PWD/.crystal-cache"
 
 echo "🔨 Building Amber CLI v${VERSION}"
 
@@ -21,8 +28,8 @@ ARCH=$(uname -m)
 case "${OS}" in
   "darwin")
     TARGET="darwin-arm64"
-    BUILD_CLI="crystal build src/amber_cli.cr -o amber --release"
-    BUILD_LSP="crystal build src/amber_lsp.cr -o amber-lsp --release"
+    BUILD_CLI="crystal-alpha build src/amber_cli.cr -o amber --release"
+    BUILD_LSP="crystal-alpha build src/amber_lsp.cr -o amber-lsp --release"
     CHECKSUM_CMD="shasum -a 256"
     if [ "${ARCH}" != "arm64" ]; then
       echo "⚠️  Warning: Building for ARM64 on ${ARCH} architecture"
@@ -38,8 +45,8 @@ case "${OS}" in
         exit 1
         ;;
     esac
-    BUILD_CLI="crystal build src/amber_cli.cr -o amber --release --static"
-    BUILD_LSP="crystal build src/amber_lsp.cr -o amber-lsp --release --static"
+    BUILD_CLI="crystal-alpha build src/amber_cli.cr -o amber --release --static"
+    BUILD_LSP="crystal-alpha build src/amber_lsp.cr -o amber-lsp --release --static"
     CHECKSUM_CMD="sha256sum"
     ;;
   *)
@@ -52,11 +59,7 @@ echo "🎯 Building for target: ${TARGET}"
 
 # Install dependencies
 echo "📦 Installing dependencies..."
-if [ -f shard.lock ]; then
-  shards install --production
-else
-  shards install
-fi
+minecart install --production
 
 # Build binaries
 echo "🔨 Compiling amber CLI..."
@@ -75,14 +78,17 @@ test -x amber-lsp
 # Create archive
 echo "📦 Creating archive..."
 tar -czf "${OUTPUT_DIR}/amber_cli-${TARGET}.tar.gz" amber amber-lsp
+git archive --format=tar --prefix="amber_cli-${VERSION}/" HEAD | gzip -n -9 > "${OUTPUT_DIR}/amber_cli-source-${VERSION}.tar.gz"
 
 # Calculate checksum
 echo "🔢 Calculating checksum..."
 cd "${OUTPUT_DIR}"
 if command -v sha256sum >/dev/null 2>&1; then
   sha256sum "amber_cli-${TARGET}.tar.gz" > "amber_cli-${TARGET}.tar.gz.sha256"
+  sha256sum "amber_cli-source-${VERSION}.tar.gz" > "amber_cli-source-${VERSION}.tar.gz.sha256"
 else
   ${CHECKSUM_CMD} "amber_cli-${TARGET}.tar.gz" > "amber_cli-${TARGET}.tar.gz.sha256"
+  ${CHECKSUM_CMD} "amber_cli-source-${VERSION}.tar.gz" > "amber_cli-source-${VERSION}.tar.gz.sha256"
 fi
 SHA256=$(cut -d' ' -f1 < "amber_cli-${TARGET}.tar.gz.sha256")
 
@@ -90,6 +96,7 @@ echo ""
 echo "🎉 Build complete!"
 echo "📁 Output: ${OUTPUT_DIR}/amber_cli-${TARGET}.tar.gz"
 echo "🔑 SHA256: ${SHA256}"
+echo "🔑 Source SHA256: $(cut -d' ' -f1 < "amber_cli-source-${VERSION}.tar.gz.sha256")"
 echo ""
 echo "To test the archive:"
 echo "  tar -xzf ${OUTPUT_DIR}/amber_cli-${TARGET}.tar.gz"

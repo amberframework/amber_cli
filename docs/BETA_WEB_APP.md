@@ -1,28 +1,30 @@
 # Amber V2 Beta Web App
 
-This guide is the consumer smoke test for Amber CLI `2.0.6` and Amber
+This guide is the consumer smoke test for Amber CLI `2.0.7` and Amber
 `2.0.0-beta.5`. It is expected to pass on Apple Silicon macOS, x86_64 Linux,
-and ARM64 Linux. Windows x86-64 compilation is checked in CI.
+and ARM64 Linux. Windows x86-64 runs the complete generated-app smoke in CI.
 
 ## 1. Verify the toolchain
 
 ```bash
 crystal --version
-shards --version
+minecart --version
 amber --version
 ```
 
-Crystal must be at least 1.20 and earlier than 2.0. Amber CLI must be 2.0.6 or
+Crystal must be at least 1.20 and earlier than 2.0. Amber CLI must be 2.0.7 or
 newer.
 
 ## 2. Generate the web app
 
 ```bash
-amber new amber_beta_smoke --type web
+amber new amber_beta_smoke --type web -y
 cd amber_beta_smoke
+minecart install --frozen
 ```
 
-The command installs dependencies unless `--no-deps` is passed. Inspect the
+The command uses Minecart to install dependencies, write a checksummed
+`shard.lock`, and add `.claude/` assistant files unless `--no-deps` is passed. Inspect the
 contract before continuing:
 
 ```bash
