@@ -25,4 +25,9 @@ require "./amber_lsp/analyzer"
 require "./amber_lsp/controller"
 require "./amber_lsp/server"
 
+if ARGV.includes?("--version")
+  STDOUT.puts AmberLSP.version_line
+  exit 0
+end
+
 AmberLSP::Server.new(STDIN, STDOUT).run
