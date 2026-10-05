@@ -53,7 +53,7 @@ module AmberLSP
         severity = @configuration.rule_severity(rule.id, rule.default_severity)
 
         rule_diagnostics.each do |diagnostic|
-          if diagnostic.severity != severity
+          if diagnostic.severity == rule.default_severity && diagnostic.severity != severity
             diagnostics << Rules::Diagnostic.new(
               range: diagnostic.range,
               severity: severity,

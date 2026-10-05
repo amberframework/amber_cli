@@ -1,8 +1,8 @@
 require "./spec_helper"
 
 describe AmberLSP::Rules::Diagnostic do
-  describe "#to_lsp_json" do
-    it "returns a hash with correct LSP structure" do
+  describe "#to_lsp_diagnostic" do
+    it "serializes with the correct LSP structure" do
       diagnostic = AmberLSP::Rules::Diagnostic.new(
         range: AmberLSP::Rules::TextRange.new(
           AmberLSP::Rules::Position.new(5, 10),
@@ -13,7 +13,7 @@ describe AmberLSP::Rules::Diagnostic do
         message: "This is a test diagnostic"
       )
 
-      json = diagnostic.to_lsp_json
+      json = JSON.parse(diagnostic.to_lsp_diagnostic.to_json)
 
       range = json["range"]
       range["start"]["line"].as_i.should eq(5)
@@ -39,7 +39,7 @@ describe AmberLSP::Rules::Diagnostic do
         source: "custom-source"
       )
 
-      json = diagnostic.to_lsp_json
+      json = JSON.parse(diagnostic.to_lsp_diagnostic.to_json)
       json["source"].as_s.should eq("custom-source")
     end
   end

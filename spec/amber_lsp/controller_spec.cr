@@ -1,4 +1,5 @@
 require "./spec_helper"
+require "../../src/amber_lsp/rules/controllers/naming_rule"
 
 describe AmberLSP::Controller do
   describe "#handle initialize" do
@@ -36,6 +37,50 @@ describe AmberLSP::Controller do
       server_info = result["serverInfo"]
       server_info["name"].as_s.should eq("amber-lsp")
       server_info["version"].as_s.should eq(AmberLSP::VERSION)
+    end
+  end
+
+  describe "#handle didChange" do
+    it "analyzes full-document unsaved content after didOpen" do
+      with_tempdir do |project|
+        Dir.mkdir_p(File.join(project, "src/controllers"))
+        File.write(File.join(project, "shard.yml"), <<-YAML)
+          name: amber_lsp_controller_spec
+          version: 0.1.0
+          dependencies:
+            amber:
+              github: amberframework/amber
+        YAML
+
+        file_path = File.join(project, "src/controllers/users_controller.cr")
+        clean_content = <<-CRYSTAL
+          # Serves the user pages.
+          class UsersController < Amber::Controller::Base
+          end
+        CRYSTAL
+        File.write(file_path, clean_content)
+        uri = "file://#{file_path}"
+
+        messages = [
+          {"jsonrpc" => "2.0", "id" => 1, "method" => "initialize", "params" => {"rootUri" => "file://#{project}"}},
+          {"jsonrpc" => "2.0", "method" => "initialized", "params" => {} of String => String},
+          {"jsonrpc" => "2.0", "method" => "textDocument/didOpen", "params" => {"textDocument" => {"uri" => uri, "text" => clean_content}}},
+          {"jsonrpc" => "2.0", "method" => "textDocument/didChange", "params" => {"textDocument" => {"uri" => uri, "version" => 2}, "contentChanges" => [{"text" => clean_content.gsub("UsersController", "UsersHandler")}]}},
+          {"jsonrpc" => "2.0", "id" => 2, "method" => "shutdown"},
+          {"jsonrpc" => "2.0", "method" => "exit"},
+        ]
+
+        responses = run_lsp_session(messages)
+        diagnostics_notifications = responses.select do |response|
+          response["method"]?.try(&.as_s?) == "textDocument/publishDiagnostics"
+        end
+
+        diagnostics_notifications.size.should eq(2)
+        diagnostics_notifications[0]["params"]["diagnostics"].as_a.should be_empty
+        changed_diagnostics = diagnostics_notifications[1]["params"]["diagnostics"].as_a
+        changed_diagnostics.map { |diagnostic| diagnostic["code"].as_s }.should contain("amber/controller-naming")
+        File.read(file_path).should eq(clean_content)
+      end
     end
   end
 
