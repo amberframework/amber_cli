@@ -7,7 +7,7 @@ module AmberLSP::Lookup
     def initialize(
       @compiler_path : String,
       @working_directory : String,
-      @entrypoint : String,
+      @list_of_entrypoints : Array(String),
       @project_name : String,
       @project_version : String,
       @docs_flags : Array(String),
@@ -28,7 +28,7 @@ module AmberLSP::Lookup
         arguments << "-D"
         arguments << flag
       end
-      arguments << @entrypoint
+      arguments.concat(@list_of_entrypoints)
 
       begin
         status = Process.run(

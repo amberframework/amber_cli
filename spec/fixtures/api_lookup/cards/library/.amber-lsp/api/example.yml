@@ -3,6 +3,9 @@ library: example
 applies_to: "~> 0.3.0"
 docs_flags:
   - example_docs
+docs_entries:
+  - src/example.cr
+  - src/ui.cr
 notes:
   - symbol: Example::Widget#id
     text: This getter follows the library's primary key.

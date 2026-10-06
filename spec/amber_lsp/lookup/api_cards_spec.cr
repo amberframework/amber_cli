@@ -21,6 +21,9 @@ describe AmberLSP::Lookup::LoadAPICards do
         "fixture_project" => ["fixture_project_docs"],
         "example"         => ["example_docs"],
       })
+      cards.docs_entries_by_library.should eq({
+        "example" => ["src/example.cr", "src/ui.cr"],
+      })
       cards.matching_notes("FixtureAPI::User#id").map(&.text).should contain(
         "The ID getter is generated from the persisted table column."
       )
@@ -79,6 +82,7 @@ private def with_api_card_project(&)
     FileUtils.cp_r(File.join(fixture_root, "project", ".amber-lsp"), project)
     Dir.mkdir_p(File.join(project, "lib", "example"))
     FileUtils.cp_r(File.join(fixture_root, "library", ".amber-lsp"), File.join(project, "lib", "example"))
+    FileUtils.cp_r(File.join(fixture_root, "library", "src"), File.join(project, "lib", "example"))
     File.write(File.join(project, "shard.lock"), "shards:\n  example:\n    version: 0.3.5\n")
     yield project
   end

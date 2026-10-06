@@ -28,6 +28,15 @@ describe "AmberLSP::Lookup::BuildLayeredAPIIndex#perform" do
         "require \"sibling\"\nmodule Tiny\n  class Client\n    def ping : Bool\n      true\n    end\n\n    def sibling_token : Sibling::Token\n      Sibling::Token.new\n    end\n  end\nend\n",
       )
       File.write(
+        File.join(project_root, "lib", "tiny", "src", "ui.cr"),
+        "module Tiny\n  module UI\n    class Label\n      def text=(new_text : String) : String\n        new_text\n      end\n    end\n  end\nend\n",
+      )
+      File.write(
+        File.join(project_root, "lib", "tiny", "src", "components.cr"),
+        "module Tiny\n  class FrameworkRegistry\n  end\n\n  class Client\n    def ping : Bool\n      true\n    end\n  end\nend\n",
+      )
+      File.write(File.join(project_root, "lib", "tiny", "src", "broken.cr"), "module Tiny\n  class Broken\n")
+      File.write(
         File.join(project_root, "lib", "sibling", "src", "sibling.cr"),
         "module Sibling\n  class Token\n  end\nend\n",
       )
@@ -71,8 +80,16 @@ describe "AmberLSP::Lookup::BuildLayeredAPIIndex#perform" do
       tiny_client.not_nil!.list_of_instance_methods.first.name.should eq("ping")
       if client = tiny_client
         client.list_of_instance_methods.find { |method| method.name == "sibling_token" }.should_not be_nil
+        client.list_of_instance_methods.count { |method| method.name == "ping" }.should eq(1)
         client.location_path.should eq(File.join(project_root, "lib", "tiny", "src", "tiny.cr"))
       end
+      tiny_types = library_layer.not_nil!.layer.not_nil!.list_of_types
+      tiny_types.any? { |type| type.name == "Tiny::UI::Label" }.should be_true
+      tiny_types.any? { |type| type.name == "Tiny::FrameworkRegistry" }.should be_true
+      failed_entries = library_layer.not_nil!.layer.not_nil!.to_json
+      failed_entries.should contain("src/broken.cr")
+      failed_entries.should contain("entry_failures")
+      failed_entries.should contain("crystal-alpha docs failed")
 
       standard_types = standard_library_layer.not_nil!.layer.not_nil!.list_of_types
       dir_type = standard_types.find { |type| type.name == "Dir" }
@@ -85,6 +102,26 @@ describe "AmberLSP::Lookup::BuildLayeredAPIIndex#perform" do
       second_build.size.should eq(4)
       second_build.each { |cached| cached.freshness.should eq("fresh") }
       Dir.children(File.join(cache_root, "docs-workspaces")).should be_empty
+    end
+  end
+
+  it "uses API-card docs entries instead of automatic library entries" do
+    with_tempdir do |root|
+      source_root = File.join(root, "src")
+      Dir.mkdir_p(File.join(source_root, "nested"))
+      ["tiny.cr", "ui.cr", "components.cr"].each do |filename|
+        File.write(File.join(source_root, filename), "module Tiny\nend\n")
+      end
+
+      automatic_entries = AmberLSP::Lookup::ResolveAPIIndexDocsEntries.new(root, "tiny").perform
+      explicit_entries = AmberLSP::Lookup::ResolveAPIIndexDocsEntries.new(
+        root,
+        "tiny",
+        ["src/ui.cr", "src/tiny.cr"],
+      ).perform
+
+      automatic_entries.should eq(["src/tiny.cr", "src/components.cr", "src/ui.cr"])
+      explicit_entries.should eq(["src/tiny.cr", "src/ui.cr"])
     end
   end
 end

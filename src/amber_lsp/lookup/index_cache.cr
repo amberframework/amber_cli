@@ -9,13 +9,19 @@ module AmberLSP::Lookup
   end
 
   class CalculateProjectLayerKey
-    def initialize(@root_path : String, @docs_flags : Array(String), @compiler_version : String)
+    def initialize(
+      @root_path : String,
+      @docs_flags : Array(String),
+      @compiler_version : String,
+      @docs_entries : Array(String) = [] of String,
+    )
     end
 
     def perform : String
       root_path = File.expand_path(@root_path)
       list_of_index_paths = source_paths(root_path)
-      key_material = ["project", @compiler_version, @docs_flags.sort.join("\0")]
+      key_material = ["project", "docs-entries-v1", @compiler_version, @docs_flags.sort.join("\0")]
+      key_material.concat(@docs_entries)
 
       list_of_index_paths.each do |path|
         relative_path = path.sub(root_path + "/", "")
@@ -47,18 +53,20 @@ module AmberLSP::Lookup
       @locked_version_or_commit : String,
       @docs_flags : Array(String),
       @compiler_version : String,
+      @docs_entries : Array(String) = [] of String,
     )
     end
 
     def perform : String
       key_material = [
         "library",
-        "docs-workspace-v1",
+        "docs-workspace-multi-entry-v2",
         @library_name,
         @locked_version_or_commit,
         @docs_flags.sort.join("\0"),
         @compiler_version,
       ]
+      key_material.concat(@docs_entries)
       Digest::SHA256.hexdigest(key_material.join("\0"))
     end
   end

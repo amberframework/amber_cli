@@ -205,6 +205,17 @@ module AmberLSP::Lookup
   end
 
   # :nodoc:
+  struct APIIndexEntryFailure
+    include JSON::Serializable
+
+    getter entry_path : String
+    getter error : String
+
+    def initialize(@entry_path : String, @error : String)
+    end
+  end
+
+  # :nodoc:
   struct APIIndexLayer
     include JSON::Serializable
 
@@ -214,6 +225,7 @@ module AmberLSP::Lookup
     getter root_path : String
     getter docs_flags : Array(String)
     getter list_of_types : Array(APIIndexType)
+    getter list_of_entry_failures : Array(APIIndexEntryFailure) = [] of APIIndexEntryFailure
 
     def initialize(
       @layer_kind : String,
@@ -222,6 +234,7 @@ module AmberLSP::Lookup
       @root_path : String,
       @docs_flags : Array(String),
       @list_of_types : Array(APIIndexType),
+      @list_of_entry_failures : Array(APIIndexEntryFailure) = [] of APIIndexEntryFailure,
     )
     end
   end

@@ -29,6 +29,7 @@ module AmberLSP::Lookup
     getter library : String
     getter applies_to : String
     getter docs_flags : Array(String) = [] of String
+    getter docs_entries : Array(String) = [] of String
     getter notes : Array(APICardNote) = [] of APICardNote
     getter error_hints : Array(APICardErrorHint) = [] of APICardErrorHint
   end
@@ -65,6 +66,16 @@ module AmberLSP::Lookup
         list_of_cards[loaded_card.card.library] = loaded_card.card.docs_flags
       end
       list_of_cards
+    end
+
+    def docs_entries_by_library : Hash(String, Array(String))
+      list_of_entries = {} of String => Array(String)
+      @list_of_cards.each do |loaded_card|
+        next if loaded_card.card.docs_entries.empty?
+
+        list_of_entries[loaded_card.card.library] = loaded_card.card.docs_entries
+      end
+      list_of_entries
     end
 
     def matching_notes(query : String) : Array(APICardNote)
@@ -236,6 +247,12 @@ module AmberLSP::Lookup
 
       card.docs_flags.each do |flag|
         raise ArgumentError.new("invalid docs flag #{flag.inspect}") unless flag.matches?(/\A[A-Za-z_][A-Za-z0-9_]*\z/)
+      end
+
+      card.docs_entries.each do |entry|
+        path = Path[entry]
+        raise ArgumentError.new("docs_entries paths must be relative to the shard root") if entry.empty? || path.absolute?
+        raise ArgumentError.new("docs_entries paths cannot traverse outside the shard root") if entry.split(/[\\\/]/).includes?("..")
       end
 
       card.notes.each do |note|

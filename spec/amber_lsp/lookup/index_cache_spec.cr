@@ -51,11 +51,19 @@ describe "AmberLSP::Lookup::CalculateLibraryLayerKey#perform" do
     changed_version = AmberLSP::Lookup::CalculateLibraryLayerKey.new("grant", "0.23.5", ["grant_docs"], "Crystal 1.21.0").perform
     changed_flags = AmberLSP::Lookup::CalculateLibraryLayerKey.new("grant", "0.23.4+git.commit.abc123", [] of String, "Crystal 1.21.0").perform
     changed_compiler = AmberLSP::Lookup::CalculateLibraryLayerKey.new("grant", "0.23.4+git.commit.abc123", ["grant_docs"], "Crystal 1.21.1").perform
+    changed_entries = AmberLSP::Lookup::CalculateLibraryLayerKey.new(
+      "grant",
+      "0.23.4+git.commit.abc123",
+      ["grant_docs"],
+      "Crystal 1.21.0",
+      ["src/grant.cr", "src/ui.cr"],
+    ).perform
 
     same_key.should eq(first_key)
     changed_version.should_not eq(first_key)
     changed_flags.should_not eq(first_key)
     changed_compiler.should_not eq(first_key)
+    changed_entries.should_not eq(first_key)
   end
 end
 
