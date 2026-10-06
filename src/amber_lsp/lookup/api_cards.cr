@@ -3,8 +3,15 @@ require "json"
 require "yaml"
 
 require "./source_models"
+require "../cards/embedded_api_cards"
 
 module AmberLSP::Lookup
+  enum APICardOrigin
+    Project
+    Library
+    Bundled
+  end
+
   struct APICardNote
     include YAML::Serializable
     include JSON::Serializable
@@ -41,8 +48,14 @@ module AmberLSP::Lookup
     getter card : APICard
     getter source_path : String
     getter resolved_version : String
+    getter origin : APICardOrigin
 
-    def initialize(@card : APICard, @source_path : String, @resolved_version : String)
+    def initialize(
+      @card : APICard,
+      @source_path : String,
+      @resolved_version : String,
+      @origin : APICardOrigin,
+    )
     end
   end
 
@@ -51,8 +64,14 @@ module AmberLSP::Lookup
     getter card_library : String
     getter card_version : String
     getter error_hint : APICardErrorHint
+    getter origin : APICardOrigin
 
-    def initialize(@card_library : String, @card_version : String, @error_hint : APICardErrorHint)
+    def initialize(
+      @card_library : String,
+      @card_version : String,
+      @error_hint : APICardErrorHint,
+      @origin : APICardOrigin,
+    )
     end
   end
 
@@ -83,7 +102,12 @@ module AmberLSP::Lookup
 
     def matching_notes(query : String) : Array(APICardNote)
       query_method_name = query.split(/[.#]/).last?
-      @list_of_cards.flat_map do |loaded_card|
+      matching_cards = @list_of_cards.select do |loaded_card|
+        loaded_card.card.notes.select do |note|
+          note.symbol == query || note.symbol == query_method_name
+        end.any?
+      end
+      prefer_non_bundled(matching_cards).flat_map do |loaded_card|
         loaded_card.card.notes.select do |note|
           note.symbol == query || note.symbol == query_method_name
         end
@@ -95,7 +119,12 @@ module AmberLSP::Lookup
     end
 
     def matching_error_hint_matches(error_text : String) : Array(APICardErrorHintMatch)
-      @list_of_cards.flat_map do |loaded_card|
+      matching_cards = @list_of_cards.select do |loaded_card|
+        loaded_card.card.error_hints.any? do |hint|
+          Regex.new(hint.pattern).match(error_text) != nil
+        end
+      end
+      prefer_non_bundled(matching_cards).flat_map do |loaded_card|
         loaded_card.card.error_hints.compact_map do |hint|
           match = Regex.new(hint.pattern).match(error_text)
           next unless match
@@ -105,9 +134,19 @@ module AmberLSP::Lookup
             substitute_captures(hint.hint, match),
             substitute_captures(hint.example, match),
           )
-          APICardErrorHintMatch.new(loaded_card.card.library, loaded_card.resolved_version, interpolated_hint)
+          APICardErrorHintMatch.new(
+            loaded_card.card.library,
+            loaded_card.resolved_version,
+            interpolated_hint,
+            loaded_card.origin,
+          )
         end
       end
+    end
+
+    private def prefer_non_bundled(cards : Array(LoadedAPICard)) : Array(LoadedAPICard)
+      non_bundled_cards = cards.reject { |loaded_card| loaded_card.origin == APICardOrigin::Bundled }
+      non_bundled_cards.empty? ? cards : non_bundled_cards
     end
 
     private def substitute_captures(template : String, match : Regex::MatchData) : String
@@ -200,13 +239,22 @@ module AmberLSP::Lookup
   end
 
   class LoadAPICards
-    def initialize(@project_root_path : String)
+    def initialize(
+      @project_root_path : String,
+      @executable_path : String? = Process.executable_path,
+      @embedded_card_yamls : Array(EmbeddedAPICardYAML) = EMBEDDED_API_CARD_YAMLS,
+    )
       @project_root_path = File.expand_path(@project_root_path)
     end
 
     def perform : APICardCollection
       project_manifest = read_project_manifest
-      list_of_targets = [CardSource.new(@project_root_path, project_manifest.name, project_manifest.version)]
+      list_of_targets = [CardSource.new(
+        @project_root_path,
+        project_manifest.name,
+        project_manifest.version,
+        APICardOrigin::Project,
+      )]
       list_of_targets.concat(library_card_sources)
 
       list_of_cards = [] of LoadedAPICard
@@ -215,17 +263,11 @@ module AmberLSP::Lookup
         next if target.library_name.empty?
 
         card_paths(target.root_path).each do |path|
-          begin
-            card = APICard.from_yaml(File.read(path))
-            validate_card(card, target, path)
-            next unless APIVersionRequirement.new(card.applies_to).matches?(target.resolved_version)
-
-            list_of_cards << LoadedAPICard.new(card, path, target.resolved_version)
-          rescue ex : YAML::ParseException | IO::Error | ArgumentError
-            list_of_errors << "#{path}: #{ex.message}"
-          end
+          load_card_file(target, path, list_of_cards, list_of_errors)
         end
       end
+
+      load_bundled_cards(list_of_cards, list_of_errors)
 
       duplicate_library_cards(list_of_cards).each do |library_name|
         list_of_errors << "More than one API card applies to #{library_name}"
@@ -253,12 +295,108 @@ module AmberLSP::Lookup
         library_root = File.join(@project_root_path, "lib", library_name)
         next unless File.directory?(library_root)
 
-        CardSource.new(library_root, library_name, locked_shard.version)
+        CardSource.new(library_root, library_name, locked_shard.version, APICardOrigin::Library)
       end
     end
 
     private def card_paths(root_path : String) : Array(String)
       Dir.glob(File.join(root_path, ".amber-lsp", "api", "*.yml")).sort
+    end
+
+    private def load_card_file(
+      target : CardSource,
+      path : String,
+      list_of_cards : Array(LoadedAPICard),
+      list_of_errors : Array(String),
+    ) : Nil
+      card = APICard.from_yaml(File.read(path))
+      validate_card(card, target, path)
+      return unless APIVersionRequirement.new(card.applies_to).matches?(target.resolved_version)
+
+      list_of_cards << LoadedAPICard.new(card, path, target.resolved_version, target.origin)
+    rescue ex : YAML::ParseException | IO::Error | ArgumentError
+      list_of_errors << "#{path}: #{ex.message}"
+    end
+
+    private def load_bundled_cards(
+      list_of_cards : Array(LoadedAPICard),
+      list_of_errors : Array(String),
+    ) : Nil
+      installed_paths = installed_bundled_card_paths
+      return if installed_paths.empty? && @embedded_card_yamls.empty?
+
+      crystal_version = read_crystal_version
+      libraries_with_precedence = list_of_cards.map(&.card.library)
+      installed_paths.each do |path|
+        load_bundled_card_file(
+          File.read(path),
+          path,
+          crystal_version,
+          list_of_cards,
+          list_of_errors,
+          libraries_with_precedence,
+        )
+      rescue ex : IO::Error
+        list_of_errors << "#{path}: #{ex.message}"
+      end
+
+      @embedded_card_yamls.each do |source_path, yaml|
+        load_bundled_card_file(
+          yaml,
+          "embedded:#{source_path}",
+          crystal_version,
+          list_of_cards,
+          list_of_errors,
+          list_of_cards.map(&.card.library),
+        )
+      end
+    rescue ex : IO::Error | ArgumentError
+      list_of_errors << "Bundled API cards: #{ex.message || ex.class.to_s}"
+    end
+
+    private def load_bundled_card_file(
+      yaml : String,
+      path : String,
+      crystal_version : String,
+      list_of_cards : Array(LoadedAPICard),
+      list_of_errors : Array(String),
+      libraries_with_precedence : Array(String),
+    ) : Nil
+      card = APICard.from_yaml(yaml)
+      target = CardSource.new("", card.library, crystal_version, APICardOrigin::Bundled)
+      validate_card(card, target, path)
+      return if libraries_with_precedence.includes?(card.library)
+      return unless APIVersionRequirement.new(card.applies_to).matches?(crystal_version)
+
+      list_of_cards << LoadedAPICard.new(card, path, crystal_version, APICardOrigin::Bundled)
+    rescue ex : YAML::ParseException | ArgumentError
+      list_of_errors << "#{path}: #{ex.message}"
+    end
+
+    private def installed_bundled_card_paths : Array(String)
+      return [] of String unless executable_path = @executable_path
+
+      real_executable_path = File.realpath(executable_path)
+      prefix_path = File.dirname(File.dirname(real_executable_path))
+      Dir.glob(File.join(prefix_path, "share", "amber_cli", "api", "*.yml")).sort
+    rescue ex : IO::Error
+      [] of String
+    end
+
+    private def read_crystal_version : String
+      output = IO::Memory.new
+      errors = IO::Memory.new
+      status = Process.run("crystal-alpha", ["--version"], output: output, error: errors)
+      unless status.success?
+        raise ArgumentError.new("crystal-alpha --version failed: #{errors.to_s.strip}")
+      end
+
+      version_match = output.to_s.match(/\bCrystal\s+(\d+\.\d+(?:\.\d+)?(?:-[0-9A-Za-z.-]+)?)/)
+      if version_match
+        version_match[1]
+      else
+        raise ArgumentError.new("could not parse Crystal version from #{output.to_s.strip.inspect}")
+      end
     end
 
     private def validate_card(card : APICard, target : CardSource, path : String) : Nil
@@ -305,8 +443,14 @@ module AmberLSP::Lookup
       getter root_path : String
       getter library_name : String
       getter resolved_version : String
+      getter origin : APICardOrigin
 
-      def initialize(@root_path : String, @library_name : String, @resolved_version : String)
+      def initialize(
+        @root_path : String,
+        @library_name : String,
+        @resolved_version : String,
+        @origin : APICardOrigin,
+      )
       end
     end
   end
