@@ -220,7 +220,7 @@ module AmberLSP::Lookup
       environment_overrides : Hash(String, String),
     ) : CachedAPIIndexLayer
       cached_layer = cache.load_layer(layer_kind, layer_name, layer_key)
-      return cached_layer if cached_layer.freshness == "fresh"
+      return cached_layer if cached_layer.freshness == "fresh" || cached_layer.failure_reason
 
       begin
         docs_json = BuildCrystalDocsJSON.new(
@@ -243,9 +243,13 @@ module AmberLSP::Lookup
         cache.write_layer(layer)
         CachedAPIIndexLayer.new(layer, "fresh")
       rescue ex : APIIndexBuildError | JSON::ParseException
-        return cached_layer if cached_layer.layer
+        failure_reason = ex.message || "crystal-alpha docs could not build this API layer"
+        cache.write_failure(layer_kind, layer_name, layer_key, failure_reason)
+        if stale_layer = cached_layer.layer
+          return CachedAPIIndexLayer.new(stale_layer, "stale", failure_reason, layer_kind, layer_name, layer_key)
+        end
 
-        CachedAPIIndexLayer.new(nil, "unavailable", ex.message, layer_kind, layer_name, layer_key)
+        CachedAPIIndexLayer.new(nil, "unavailable", failure_reason, layer_kind, layer_name, layer_key)
       end
     end
 

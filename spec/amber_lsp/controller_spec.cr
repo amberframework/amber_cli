@@ -32,6 +32,9 @@ describe AmberLSP::Controller do
       text_doc_sync["openClose"].as_bool.should be_true
       text_doc_sync["change"].as_i.should eq(1)
       text_doc_sync["save"]["includeText"].as_bool.should be_true
+      capabilities["workspaceSymbolProvider"].as_bool.should be_true
+      capabilities["hoverProvider"].as_bool.should be_true
+      capabilities["definitionProvider"].as_bool.should be_true
 
       # Check serverInfo
       server_info = result["serverInfo"]
@@ -146,7 +149,7 @@ describe AmberLSP::Controller do
       request = {
         "jsonrpc" => "2.0",
         "id"      => 99,
-        "method"  => "textDocument/hover",
+        "method"  => "textDocument/references",
       }.to_json
 
       response = server.controller.handle(request, server)

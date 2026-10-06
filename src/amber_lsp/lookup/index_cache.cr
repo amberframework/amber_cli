@@ -110,6 +110,26 @@ module AmberLSP::Lookup
     end
   end
 
+  # :nodoc:
+  struct APIIndexCacheFailure
+    include JSON::Serializable
+
+    getter layer_kind : String
+    getter layer_name : String
+    getter layer_key : String
+    getter failure_reason : String
+    getter created_at_unix : Int64
+
+    def initialize(
+      @layer_kind : String,
+      @layer_name : String,
+      @layer_key : String,
+      @failure_reason : String,
+      @created_at_unix : Int64,
+    )
+    end
+  end
+
   class APIIndexCache
     def initialize(@cache_root : String, @project_root_path : String)
     end
@@ -124,6 +144,9 @@ module AmberLSP::Lookup
 
       layer_path = File.join(directory_path, "#{layer.layer_key}.json")
       write_atomically(layer_path, layer.to_json)
+
+      failure_path = failure_marker_path(layer.layer_kind, layer.layer_name, layer.layer_key)
+      File.delete(failure_path) if File.file?(failure_path)
 
       latest_path = File.join(directory_path, "latest.json")
       write_atomically(latest_path, APIIndexCachePointer.new(layer.layer_key).to_json)
@@ -140,6 +163,12 @@ module AmberLSP::Lookup
         end
       end
 
+      if failure = load_cached_failure(layer_kind, layer_name, expected_key)
+        stale_layer = latest_layer(directory_path, layer_kind, layer_name)
+        freshness = stale_layer ? "stale" : "unavailable"
+        return CachedAPIIndexLayer.new(stale_layer, freshness, failure.failure_reason, layer_kind, layer_name, expected_key)
+      end
+
       latest_path = File.join(directory_path, "latest.json")
       return CachedAPIIndexLayer.new(nil, "unavailable", nil, layer_kind, layer_name, expected_key) unless File.file?(latest_path)
 
@@ -151,6 +180,56 @@ module AmberLSP::Lookup
       CachedAPIIndexLayer.new(stale_layer, "stale")
     rescue ex : JSON::ParseException | IO::Error
       CachedAPIIndexLayer.new(nil, "unavailable", ex.message, layer_kind, layer_name, expected_key)
+    end
+
+    def write_failure(
+      layer_kind : String,
+      layer_name : String,
+      layer_key : String,
+      failure_reason : String,
+    ) : Nil
+      marker = APIIndexCacheFailure.new(
+        layer_kind,
+        layer_name,
+        layer_key,
+        failure_reason,
+        Time.utc.to_unix,
+      )
+      write_atomically(failure_marker_path(layer_kind, layer_name, layer_key), marker.to_json)
+    end
+
+    private def load_cached_failure(
+      layer_kind : String,
+      layer_name : String,
+      layer_key : String,
+    ) : APIIndexCacheFailure?
+      marker_path = failure_marker_path(layer_kind, layer_name, layer_key)
+      return nil unless File.file?(marker_path)
+
+      marker = APIIndexCacheFailure.from_json(File.read(marker_path))
+      return nil unless marker.layer_kind == layer_kind
+      return nil unless marker.layer_name == layer_name
+      return nil unless marker.layer_key == layer_key
+      return nil if Time.utc.to_unix - marker.created_at_unix > 300
+
+      marker
+    rescue ex : JSON::ParseException | IO::Error
+      nil
+    end
+
+    private def latest_layer(directory_path : String, layer_kind : String, layer_name : String) : APIIndexLayer?
+      latest_path = File.join(directory_path, "latest.json")
+      return nil unless File.file?(latest_path)
+
+      pointer = APIIndexCachePointer.from_json(File.read(latest_path))
+      load_matching_layer(
+        File.join(directory_path, "#{pointer.key}.json"),
+        layer_kind,
+        layer_name,
+        pointer.key,
+      )
+    rescue ex : JSON::ParseException | IO::Error
+      nil
     end
 
     private def load_matching_layer(
@@ -183,11 +262,24 @@ module AmberLSP::Lookup
       end
     end
 
+    private def failure_marker_path(layer_kind : String, layer_name : String, layer_key : String) : String
+      project_key = Digest::SHA256.hexdigest(File.expand_path(@project_root_path))
+      File.join(
+        @cache_root,
+        "failures",
+        project_key,
+        safe_path_component(layer_kind),
+        safe_path_component(layer_name),
+        "#{layer_key}.json",
+      )
+    end
+
     private def safe_path_component(value : String) : String
       value.gsub(/[^A-Za-z0-9_-]/, "_")
     end
 
     private def write_atomically(path : String, contents : String) : Nil
+      Dir.mkdir_p(File.dirname(path))
       temp_path = "#{path}.tmp-#{Random::Secure.hex(12)}"
       begin
         File.write(temp_path, contents)

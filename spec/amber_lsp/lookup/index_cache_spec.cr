@@ -91,4 +91,24 @@ describe "AmberLSP::Lookup::APIIndexCache#write_layer and #load_layer" do
       Dir.glob(File.join(cache_root, "**", "*.tmp-*")).should be_empty
     end
   end
+
+  it "caches unavailable build results per project for warm retries" do
+    with_tempdir do |root|
+      cache_root = File.join(root, "cache")
+      first_project = File.join(root, "first_project")
+      second_project = File.join(root, "second_project")
+      first_cache = AmberLSP::Lookup::APIIndexCache.new(cache_root, first_project)
+      second_cache = AmberLSP::Lookup::APIIndexCache.new(cache_root, second_project)
+
+      first_cache.write_failure("library", "gemma", "gemma-key", "missing dependency")
+
+      cached_failure = first_cache.load_layer("library", "gemma", "gemma-key")
+      other_project = second_cache.load_layer("library", "gemma", "gemma-key")
+
+      cached_failure.freshness.should eq("unavailable")
+      cached_failure.failure_reason.should eq("missing dependency")
+      other_project.freshness.should eq("unavailable")
+      other_project.failure_reason.should be_nil
+    end
+  end
 end

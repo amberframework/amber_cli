@@ -2,21 +2,21 @@
 # frozen_string_literal: true
 
 # lsp_smoke.rb — live-fire proof that the built `amber-lsp` binary really
-# speaks LSP over stdio and really publishes diagnostics.
+# speaks LSP over stdio, publishes diagnostics, and serves API lookups.
 #
 # The Crystal specs under spec/amber_lsp/ exercise the server class in-process
 # with an IO::Memory pair. That proves the code, not the binary: it cannot
 # catch a stale binary on disk, a broken build, or a server that hangs instead
 # of answering. This script spawns the ACTUAL executable, drives a real framed
-# stdio session against a throwaway Amber-shaped project, and asserts on the
-# `textDocument/publishDiagnostics` notifications that come back.
+# stdio session against a throwaway Amber-shaped project, and checks diagnostics
+# plus workspace/symbol, hover, and definition responses.
 #
 #   scripts/lsp_smoke.rb                       # uses ./bin/amber-lsp
 #   scripts/lsp_smoke.rb --server /path/to/amber-lsp
 #   scripts/lsp_smoke.rb --timeout 20 --keep   # keep the fixture project
 #
-# Exit 0 = the violating fixture produced >= 1 diagnostic, the clean fixture
-# produced exactly 0, and an unsaved didChange produced its expected diagnostic.
+# Exit 0 = the diagnostic fixtures pass and the binary resolves the fixture
+# symbol through workspace/symbol, hover, and definition.
 # Exit 1 = live-fire expectations not met. Exit 2 = could not run at all (no
 # binary, handshake failure, timeout). A timeout is never reported as a pass —
 # "I could not measure it" is not "it is clean".
@@ -106,7 +106,20 @@ module LSPSmoke
       dependencies:
         amber:
           github: amberframework/amber
+      targets:
+        lsp_smoke_lookup:
+          main: src/lsp_smoke_lookup.cr
     YAML
+
+    File.write(File.join(dir, "src", "lsp_smoke_lookup.cr"), <<~CRYSTAL)
+      module SmokeLookup
+        class User
+          # Returns the user's primary key.
+          getter id : Int64?
+        end
+      end
+      # Hover target: SmokeLookup::User#id
+    CRYSTAL
 
     # Violating: class name does not end in Controller (amber/controller-naming,
     # error severity) and the action never renders (amber/action-return-type).
@@ -142,52 +155,83 @@ module LSPSmoke
     clean_content = File.read(good_file_path)
     unsaved_content = clean_content.sub("PostsController", "PostsHandler")
     raise "could not prepare unsaved didChange content" if unsaved_content == clean_content
-
-    messages = [
-      frame("jsonrpc" => "2.0", "id" => 1, "method" => "initialize",
-            "params" => { "rootUri" => root_uri, "capabilities" => {} }),
-      frame("jsonrpc" => "2.0", "method" => "initialized", "params" => {}),
-      frame("jsonrpc" => "2.0", "method" => "textDocument/didOpen",
-            "params" => { "textDocument" => {
-              "uri" => bad_uri, "languageId" => "crystal", "version" => 1,
-              "text" => File.read(File.join(dir, "src", "controllers", "users_controller.cr"))
-            } }),
-      frame("jsonrpc" => "2.0", "method" => "textDocument/didOpen",
-            "params" => { "textDocument" => {
-              "uri" => good_uri, "languageId" => "crystal", "version" => 1,
-              "text" => clean_content
-            } }),
-      frame("jsonrpc" => "2.0", "method" => "textDocument/didChange",
-            "params" => { "textDocument" => { "uri" => good_uri, "version" => 2 },
-                          "contentChanges" => [{ "text" => unsaved_content }] }),
-      frame("jsonrpc" => "2.0", "id" => 2, "method" => "shutdown"),
-      frame("jsonrpc" => "2.0", "method" => "exit")
-    ]
-
     published = Hash.new { |hash, uri| hash[uri] = [] }
-    published_count = 0
-    initialized = false
+    status_messages = []
+    lookup_uri = "file://#{File.join(dir, "src", "lsp_smoke_lookup.cr")}"
 
     io = IO.popen([server_bin], "r+", err: File::NULL)
     begin
       io.binmode
-      io.write(messages.join)
-      io.flush
-
       reader = FrameReader.new(io)
       deadline = Time.now + timeout
 
-      while published_count < 3 || !initialized
-        raw = reader.read_frame(deadline)
-        break if raw.nil?
+      initialize_response = request(
+        io, reader, 1, "initialize", { "rootUri" => root_uri, "capabilities" => {} },
+        deadline, published, status_messages
+      )
+      notify(io, "initialized", {})
+      notify(io, "textDocument/didOpen", {
+        "textDocument" => {
+          "uri" => bad_uri, "languageId" => "crystal", "version" => 1,
+          "text" => File.read(File.join(dir, "src", "controllers", "users_controller.cr"))
+        }
+      })
+      notify(io, "textDocument/didOpen", {
+        "textDocument" => {
+          "uri" => good_uri, "languageId" => "crystal", "version" => 1,
+          "text" => clean_content
+        }
+      })
+      notify(io, "textDocument/didChange", {
+        "textDocument" => { "uri" => good_uri, "version" => 2 },
+        "contentChanges" => [{ "text" => unsaved_content }]
+      })
 
-        msg = JSON.parse(raw)
-        initialized = true if msg["id"] == 1 && msg.key?("result")
-        next unless msg["method"] == "textDocument/publishDiagnostics"
+      workspace_symbol_response = nil
+      request_id = 3
+      while Time.now < deadline
+        workspace_symbol_response = request(
+          io, reader, request_id, "workspace/symbol", { "query" => "SmokeLookup::User#id" },
+          deadline, published, status_messages
+        )
+        result_symbols = workspace_symbol_response["result"]
+        unless result_symbols.is_a?(Array)
+          raise "workspace/symbol returned #{JSON.pretty_generate(workspace_symbol_response)}"
+        end
+        found_symbol = result_symbols.any? do |symbol|
+          symbol["name"].include?("SmokeLookup::User#id")
+        end
+        break if found_symbol
 
-        published[msg["params"]["uri"]] << msg
-        published_count += 1
+        request_id += 1
+        sleep 0.05
       end
+
+      lookup_source = File.read(File.join(dir, "src", "lsp_smoke_lookup.cr"))
+      lookup_line_number = lookup_source.lines.index { |line| line.include?("SmokeLookup::User#id") }
+      raise "could not locate hover target in fixture" if lookup_line_number.nil?
+      lookup_line = lookup_source.lines[lookup_line_number]
+      lookup_character = lookup_line.index("#id") + 2
+
+      hover_response = request(
+        io, reader, 40, "textDocument/hover",
+        { "textDocument" => { "uri" => lookup_uri }, "position" => { "line" => lookup_line_number, "character" => lookup_character } },
+        deadline, published, status_messages
+      )
+      definition_response = request(
+        io, reader, 41, "textDocument/definition",
+        { "textDocument" => { "uri" => lookup_uri }, "position" => { "line" => lookup_line_number, "character" => lookup_character } },
+        deadline, published, status_messages
+      )
+      shutdown_response = request(io, reader, 2, "shutdown", {}, deadline, published, status_messages)
+      notify(io, "exit", {})
+      responses = {
+        initialize: initialize_response,
+        workspace_symbol: workspace_symbol_response,
+        hover: hover_response,
+        definition: definition_response,
+        shutdown: shutdown_response
+      }
     ensure
       begin
         io.close
@@ -197,13 +241,41 @@ module LSPSmoke
     end
 
     {
-      initialized: initialized,
+      initialized: responses[:initialize] && responses[:initialize]["result"].is_a?(Hash),
       published: published,
+      lookup_uri: lookup_uri,
+      workspace_symbols: responses[:workspace_symbol] && responses[:workspace_symbol]["result"],
+      hover: responses[:hover],
+      definition: responses[:definition],
+      status_messages: status_messages,
       bad_uri: bad_uri,
       good_uri: good_uri,
       good_file_path: good_file_path,
       disk_content_unchanged: File.read(good_file_path) == clean_content
     }
+  end
+
+  def notify(io, method, params)
+    io.write(frame("jsonrpc" => "2.0", "method" => method, "params" => params))
+    io.flush
+  end
+
+  def request(io, reader, id, method, params, deadline, published, status_messages)
+    io.write(frame("jsonrpc" => "2.0", "id" => id, "method" => method, "params" => params))
+    io.flush
+
+    loop do
+      raw = reader.read_frame(deadline)
+      raise "timed out waiting for #{method}" if raw.nil?
+
+      message = JSON.parse(raw)
+      if message["method"] == "textDocument/publishDiagnostics"
+        published[message["params"]["uri"]] << message
+      elsif message["method"] == "window/logMessage"
+        status_messages << message["params"]["message"]
+      end
+      return message if message["id"] == id
+    end
   end
 
   def describe(diagnostics)
@@ -286,6 +358,23 @@ module LSPSmoke
       puts describe(changed_diags)
       puts
 
+      workspace_symbols = result[:workspace_symbols] || []
+      lookup_symbol = workspace_symbols.find do |symbol|
+        symbol["name"].include?("SmokeLookup::User#id")
+      end
+      hover = result[:hover] && result[:hover]["result"]
+      hover_value = hover && hover.dig("contents", "value")
+      definition = result[:definition] && result[:definition]["result"]
+      definition_location = definition.is_a?(Array) ? definition.first : nil
+
+      puts "--- workspace/symbol: SmokeLookup::User#id ---"
+      puts JSON.pretty_generate(lookup_symbol) if lookup_symbol
+      puts "--- textDocument/hover: SmokeLookup::User#id ---"
+      puts hover_value if hover_value
+      puts "--- textDocument/definition: SmokeLookup::User#id ---"
+      puts JSON.pretty_generate(definition_location) if definition_location
+      puts
+
       ok = true
       if bad_diags.empty?
         warn "FAIL: violating fixture produced 0 diagnostics (expected >= 1)."
@@ -303,9 +392,25 @@ module LSPSmoke
         warn "FAIL: didChange altered the clean fixture on disk."
         ok = false
       end
+      unless lookup_symbol && lookup_symbol.dig("data", "source_layer") == "lsp_smoke_app"
+        warn "FAIL: workspace/symbol did not return the fixture API entry from the project layer."
+        ok = false
+      end
+      unless hover_value && hover_value.include?("SmokeLookup::User#id() : Int64 | Nil") &&
+             hover_value.include?("Returns the user's primary key.") &&
+             hover_value.include?("Layer: lsp_smoke_app") &&
+             hover_value.include?("Freshness: unavailable")
+        warn "FAIL: hover did not return the indexed signature, documentation, layer, and freshness."
+        ok = false
+      end
+      unless definition_location && definition_location["uri"] == result[:lookup_uri] &&
+             definition_location.dig("range", "start", "line") == 3
+        warn "FAIL: definition did not return the fixture getter location."
+        ok = false
+      end
 
       if ok
-        puts "LIVE-FIRE OK: violating=#{bad_diags.size} diagnostic(s), clean=0, didChange=#{changed_diags.size} unsaved diagnostic(s), disk=unchanged."
+        puts "LIVE-FIRE OK: violating=#{bad_diags.size} diagnostic(s), clean=0, didChange=#{changed_diags.size} unsaved diagnostic(s), API workspace/symbol+hover+definition passed, disk=unchanged."
         EXIT_OK
       else
         EXIT_FAILED

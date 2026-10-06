@@ -2,6 +2,13 @@ require "json"
 require "set"
 require "uri"
 
+require "./lookup/api_cards"
+require "./lookup/api_index_service"
+require "./lookup/lsp_models"
+require "./lookup/resolve_api_query"
+require "./lookup/answer_api_query"
+require "./lookup/extract_lookup_query_at_position"
+
 module AmberLSP
   struct IncomingTextDocument
     include JSON::Serializable
@@ -16,6 +23,13 @@ module AmberLSP
     getter text : String
   end
 
+  struct IncomingPosition
+    include JSON::Serializable
+
+    getter line : Int32 = 0
+    getter character : Int32 = 0
+  end
+
   struct IncomingParams
     include JSON::Serializable
 
@@ -26,7 +40,9 @@ module AmberLSP
     @[JSON::Field(key: "textDocument")]
     getter text_document : IncomingTextDocument? = nil
     @[JSON::Field(key: "contentChanges")]
-    getter content_changes : Array(IncomingContentChange)? = nil
+    getter list_of_content_changes : Array(IncomingContentChange)? = nil
+    getter position : IncomingPosition? = nil
+    getter query : String? = nil
     getter text : String? = nil
   end
 
@@ -43,7 +59,7 @@ module AmberLSP
     include JSON::Serializable
 
     @[JSON::Field(key: "includeText")]
-    getter include_text : Bool = true
+    getter should_include_text_on_save : Bool = true
 
     def initialize
     end
@@ -54,7 +70,7 @@ module AmberLSP
     include JSON::Serializable
 
     @[JSON::Field(key: "openClose")]
-    getter open_close : Bool = true
+    getter can_open_and_close_documents : Bool = true
     getter change : Int32 = 1
     getter save : SaveOptions
 
@@ -68,8 +84,19 @@ module AmberLSP
 
     @[JSON::Field(key: "textDocumentSync")]
     getter text_document_sync : TextDocumentSyncOptions
+    @[JSON::Field(key: "workspaceSymbolProvider")]
+    getter can_provide_workspace_symbols : Bool = true
+    @[JSON::Field(key: "hoverProvider")]
+    getter can_provide_hover : Bool = true
+    @[JSON::Field(key: "definitionProvider")]
+    getter can_provide_definitions : Bool = true
 
-    def initialize(@text_document_sync : TextDocumentSyncOptions = TextDocumentSyncOptions.new)
+    def initialize(
+      @text_document_sync : TextDocumentSyncOptions = TextDocumentSyncOptions.new,
+      @can_provide_workspace_symbols : Bool = true,
+      @can_provide_hover : Bool = true,
+      @can_provide_definitions : Bool = true,
+    )
     end
   end
 
@@ -77,7 +104,8 @@ module AmberLSP
   struct ServerInfo
     include JSON::Serializable
 
-    getter name : String = "amber-lsp"
+    @[JSON::Field(key: "name")]
+    getter server_name : String = "amber-lsp"
     getter version : String = AmberLSP::VERSION
 
     def initialize
@@ -152,9 +180,10 @@ module AmberLSP
     include JSON::Serializable
 
     getter uri : String
-    getter diagnostics : Array(Rules::LSPDiagnostic)
+    @[JSON::Field(key: "diagnostics")]
+    getter list_of_diagnostics : Array(Rules::LSPDiagnostic)
 
-    def initialize(@uri : String, @diagnostics : Array(Rules::LSPDiagnostic))
+    def initialize(@uri : String, @list_of_diagnostics : Array(Rules::LSPDiagnostic))
     end
   end
 
@@ -198,8 +227,9 @@ module AmberLSP
     @analyzer : Analyzer? = nil
     @last_coverage_status : String? = nil
     @uris_with_current_diagnostics = Set(String).new
+    @roots_with_lookup_pending_message = Set(String).new
 
-    def initialize
+    def initialize(@lookup_index_service : Lookup::APIIndexService = Lookup::APIIndexService.new)
       @document_store = DocumentStore.new
     end
 
@@ -225,6 +255,12 @@ module AmberLSP
       when "textDocument/didClose"
         handle_did_close(message.params, server)
         nil
+      when "workspace/symbol"
+        handle_workspace_symbol(id, message.params, server)
+      when "textDocument/hover"
+        handle_hover(id, message.params, server)
+      when "textDocument/definition"
+        handle_definition(id, message.params, server)
       when "shutdown"
         handle_shutdown(id)
       when "exit"
@@ -262,6 +298,210 @@ module AmberLSP
       @project_root_path = project_root_path
     end
 
+    private def handle_workspace_symbol(
+      id : Int64 | String | Nil,
+      params : IncomingParams?,
+      server : Server,
+    ) : String?
+      return nil unless id
+
+      query = params.try(&.query) || ""
+      answer, card_collection, index_is_ready = answer_for_lookup(query)
+      log_lookup_index_pending(server) unless index_is_ready
+      list_of_symbols = [] of Lookup::LSPWorkspaceSymbol
+
+      answer.list_of_entries.each do |entry|
+        location = lsp_location(entry.source_path, entry.source_line)
+        notes = card_collection.matching_notes(query)
+        symbol_data = Lookup::LSPWorkspaceSymbolData.new(
+          answer.status,
+          answer.freshness,
+          entry.source_layer,
+          notes,
+        )
+        list_of_symbols << Lookup::LSPWorkspaceSymbol.new(
+          "#{entry.owner}##{entry.name}#{entry.args_string}",
+          6,
+          location,
+          entry.owner,
+          symbol_data,
+        )
+      end
+
+      if type_summary = answer.type_summary
+        kind = case type_summary.kind
+               when "class"  then 5
+               when "module" then 2
+               when "struct" then 23
+               else               1
+               end
+        location = lsp_location(type_summary.location_path, type_summary.location_line)
+        symbol_data = Lookup::LSPWorkspaceSymbolData.new(
+          answer.status,
+          answer.freshness,
+          type_summary.source_layer,
+          card_collection.matching_notes(query),
+        )
+        list_of_symbols << Lookup::LSPWorkspaceSymbol.new(
+          type_summary.name,
+          kind,
+          location,
+          nil,
+          symbol_data,
+        )
+      end
+
+      Lookup::LSPWorkspaceSymbolResponse.new(id, list_of_symbols).to_json
+    end
+
+    private def handle_hover(
+      id : Int64 | String | Nil,
+      params : IncomingParams?,
+      server : Server,
+    ) : String?
+      return nil unless id
+
+      extracted_query = query_at_position(params)
+      return Lookup::LSPHoverResponse.new(id, nil).to_json unless extracted_query
+
+      query = extracted_query[0]
+      answer, card_collection, index_is_ready = answer_for_lookup(query)
+      log_lookup_index_pending(server) unless index_is_ready
+      markdown = hover_markdown(query, answer, card_collection)
+      hover = Lookup::DescribeAPIForHover.new(Lookup::LSPMarkupContent.new(markdown))
+      Lookup::LSPHoverResponse.new(id, hover).to_json
+    end
+
+    private def handle_definition(
+      id : Int64 | String | Nil,
+      params : IncomingParams?,
+      server : Server,
+    ) : String?
+      return nil unless id
+
+      extracted_query = query_at_position(params)
+      return Lookup::LSPDefinitionResponse.new(id, nil).to_json unless extracted_query
+
+      answer, _card_collection, index_is_ready = answer_for_lookup(extracted_query[0])
+      unless index_is_ready
+        log_lookup_index_pending(server)
+        return Lookup::LSPDefinitionResponse.new(id, nil).to_json
+      end
+
+      list_of_locations = answer.list_of_entries.map do |entry|
+        lsp_location(entry.source_path, entry.source_line)
+      end
+      if list_of_locations.empty?
+        if type_summary = answer.type_summary
+          list_of_locations << lsp_location(type_summary.location_path, type_summary.location_line)
+        end
+      end
+
+      locations = list_of_locations.empty? ? nil : list_of_locations
+      Lookup::LSPDefinitionResponse.new(id, locations).to_json
+    end
+
+    private def query_at_position(params : IncomingParams?) : Tuple(String, String)?
+      return nil unless params
+      text_document = params.text_document
+      position = params.position
+      return nil unless text_document && position
+      uri = text_document.uri
+      return nil unless uri
+
+      content = @document_store.get(uri) || File.read(uri_to_path(uri))
+      extracted = Lookup::ExtractLookupQueryAtPosition.new(content, position.line, position.character).perform
+      extracted.try { |result| {result.query, uri} }
+    rescue ex : IO::Error
+      nil
+    end
+
+    private def answer_for_lookup(query : String) : Tuple(Lookup::LookupAnswer, Lookup::APICardCollection, Bool)
+      project_root = @project_root_path || Dir.current
+      cached_layers = @lookup_index_service.layers_for(project_root)
+      card_collection = Lookup::LoadAPICards.new(project_root).perform
+
+      if cached_layers
+        @roots_with_lookup_pending_message.delete(project_root)
+        list_of_index_layers = cached_layers.compact_map(&.layer)
+        resolution = Lookup::ResolveAPIQuery.new(query, list_of_index_layers).perform
+        answer = Lookup::AnswerAPIQuery.new(query, resolution, cached_layers).perform
+        return {answer, card_collection, true}
+      end
+
+      layer_state = Lookup::APIIndexLayerState.new(
+        "project",
+        File.basename(project_root),
+        "",
+        "unavailable",
+        "API index is being built in the background",
+      )
+      answer = Lookup::LookupAnswer.new(
+        query,
+        "unknown",
+        "unavailable",
+        nil,
+        [] of Lookup::APIIndexMethod,
+        [layer_state],
+      )
+      {answer, card_collection, false}
+    end
+
+    private def hover_markdown(
+      query : String,
+      answer : Lookup::LookupAnswer,
+      card_collection : Lookup::APICardCollection,
+    ) : String
+      lines = [] of String
+      answer.list_of_entries.each do |entry|
+        argument_string = entry.args_string.starts_with?('(') ? entry.args_string : "(#{entry.args_string})"
+        return_type = entry.return_type.gsub("::Nil", "Nil")
+        lines << "```crystal"
+        lines << "#{entry.owner}##{entry.name}#{argument_string} : #{return_type}"
+        lines << "```"
+        if doc_line = entry.doc_line
+          lines << doc_line
+        end
+        lines << "Layer: #{entry.source_layer}"
+      end
+
+      if answer.list_of_entries.empty?
+        if type_summary = answer.type_summary
+          lines << "```crystal"
+          lines << "#{type_summary.kind} #{type_summary.name}"
+          lines << "```"
+          lines << "Layer: #{type_summary.source_layer}"
+        else
+          lines << "```crystal"
+          lines << (answer.freshness == "unavailable" ? "API index unavailable" : "No indexed API found for #{query}")
+          lines << "```"
+        end
+      end
+
+      lines << "Status: #{answer.status}"
+      lines << "Freshness: #{answer.freshness}"
+      card_collection.matching_notes(query).each do |note|
+        lines << "Note (#{note.symbol}): #{note.text}"
+      end
+      lines.join("\n\n")
+    end
+
+    private def lsp_location(path : String, line_number : Int32) : Lookup::LSPLocation
+      start_position = Lookup::LSPPosition.new(Math.max(line_number - 1, 0), 0)
+      end_position = Lookup::LSPPosition.new(Math.max(line_number - 1, 0), 0)
+      range = Lookup::LSPRange.new(start_position, end_position)
+      Lookup::LSPLocation.new("file://#{URI.encode_path(path)}", range)
+    end
+
+    private def log_lookup_index_pending(server : Server) : Nil
+      project_root = @project_root_path || Dir.current
+      return if @roots_with_lookup_pending_message.includes?(project_root)
+
+      @roots_with_lookup_pending_message.add(project_root)
+      params = LogMessageParams.new(3, "amber-lsp: API index unavailable while a background build is running")
+      server.write_notification(LogMessageNotification.new(params).to_json)
+    end
+
     private def handle_did_open(params : IncomingParams?, server : Server) : Nil
       return unless params
 
@@ -279,7 +519,7 @@ module AmberLSP
     private def handle_did_change(params : IncomingParams?, server : Server) : Nil
       return unless params
       uri = params.text_document.try(&.uri)
-      text = params.content_changes.try(&.last?).try(&.text)
+      text = params.list_of_content_changes.try(&.last?).try(&.text)
       return unless uri && text
 
       @document_store.update(uri, text)
@@ -294,6 +534,10 @@ module AmberLSP
 
       uri = text_document.uri
       return unless uri
+
+      if project_root = @project_root_path
+        @lookup_index_service.invalidate(project_root)
+      end
 
       text = params.text
       if text

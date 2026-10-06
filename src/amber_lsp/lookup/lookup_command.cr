@@ -4,21 +4,22 @@ require "./answer_api_query"
 require "./build_layered_api_index"
 require "./resolve_api_query"
 require "./verify_api_query"
+require "./extract_lookup_query_at_position"
 
 module AmberLSP::Lookup
   struct LookupCLIOptions
     getter query : String?
     getter at_location : String?
     getter root_path : String
-    getter json : Bool
-    getter verify : Bool
+    getter should_output_json : Bool
+    getter should_verify_api_query : Bool
 
     def initialize(
       @query : String?,
       @at_location : String?,
       @root_path : String,
-      @json : Bool,
-      @verify : Bool,
+      @should_output_json : Bool,
+      @should_verify_api_query : Bool,
     )
     end
   end
@@ -27,7 +28,8 @@ module AmberLSP::Lookup
     include JSON::Serializable
 
     getter query : String
-    getter status : String
+    @[JSON::Field(key: "status")]
+    getter lookup_status : String
     getter freshness : String
     @[JSON::Field(emit_null: true)]
     getter type_summary : APIIndexType?
@@ -50,7 +52,7 @@ module AmberLSP::Lookup
 
     def initialize(
       @query : String,
-      @status : String,
+      @lookup_status : String,
       @freshness : String,
       @type_summary : APIIndexType?,
       @list_of_entries : Array(APIIndexMethod),
@@ -62,51 +64,6 @@ module AmberLSP::Lookup
       @list_of_error_hints : Array(APICardErrorHint) = [] of APICardErrorHint,
       @list_of_api_card_errors : Array(String) = [] of String,
     )
-    end
-  end
-
-  struct LookupAtQuery
-    getter query : String
-    getter token : String
-    getter receiver : String?
-
-    def initialize(@query : String, @token : String, @receiver : String?)
-    end
-  end
-
-  class ExtractLookupQueryAtPosition
-    def initialize(@source : String, @line_number : Int32, @column_number : Int32)
-    end
-
-    def perform : LookupAtQuery?
-      return nil if @line_number < 0 || @column_number < 0
-
-      line = @source.lines[@line_number]?.try(&.rstrip("\r\n"))
-      return nil unless line
-
-      column = Math.min(@column_number, line.bytesize)
-      before_cursor = line.byte_slice(0, column)
-      after_cursor = line.byte_slice(column, line.bytesize - column)
-      left_token = before_cursor.match(/[A-Za-z0-9_!?]+\z/).try(&.[0]) || ""
-      right_token = after_cursor.match(/\A[A-Za-z0-9_!?]+/).try(&.[0]) || ""
-      token = left_token + right_token
-      return nil if token.empty?
-
-      receiver_prefix = before_cursor.byte_slice(0, before_cursor.bytesize - left_token.bytesize)
-      receiver_match = receiver_prefix.match(/(.+)([.#])\s*\z/)
-      return LookupAtQuery.new(token, token, nil) unless receiver_match
-
-      receiver = receiver_match[1].strip
-      separator = receiver_match[2]
-      if constant_receiver?(receiver)
-        LookupAtQuery.new("#{receiver}#{separator}#{token}", token, receiver)
-      else
-        LookupAtQuery.new(token, token, receiver)
-      end
-    end
-
-    private def constant_receiver?(receiver : String) : Bool
-      receiver.matches?(/\A(?:::)?[A-Z][A-Za-z0-9_]*(?:::[A-Z][A-Za-z0-9_]*)*(?:\([A-Za-z0-9_:, ?|&]+\))?\z/)
     end
   end
 
@@ -133,12 +90,12 @@ module AmberLSP::Lookup
       list_of_index_layers = cached_layers.compact_map(&.layer)
       resolution = ResolveAPIQuery.new(query, list_of_index_layers).perform
       answer = AnswerAPIQuery.new(query, resolution, cached_layers).perform
-      probe = options.verify ? VerifyAPIQuery.new(options.root_path, query, resolution, @compiler_command).perform : nil
+      probe = options.should_verify_api_query ? VerifyAPIQuery.new(options.root_path, query, resolution, @compiler_command).perform : nil
       note_list = card_collection.matching_notes(query)
       hint_list = probe.try(&.output).try { |output| card_collection.matching_error_hints(output) } || [] of APICardErrorHint
       cli_answer = make_cli_answer(answer, probe, note_list, hint_list, card_collection.list_of_errors)
 
-      if options.json
+      if options.should_output_json
         @stdout.puts cli_answer.to_json
       else
         print_plain_answer(cli_answer, probe)
@@ -149,15 +106,15 @@ module AmberLSP::Lookup
         return 2
       end
 
-      exit_code_for(cli_answer.status)
+      exit_code_for(cli_answer.lookup_status)
     rescue ex : Exception
       @stderr.puts("amber-lsp lookup failed: #{ex.message || "unknown error"}")
       2
     end
 
     private def parse_options : LookupCLIOptions
-      query = nil.as(String?)
-      at_location = nil.as(String?)
+      query : String? = nil
+      at_location : String? = nil
       root_path = Dir.current
       json = false
       verify = false
@@ -193,9 +150,12 @@ module AmberLSP::Lookup
     end
 
     private def lookup_query(options : LookupCLIOptions) : String
-      return options.query.not_nil! if options.query
+      if query = options.query
+        return query
+      end
 
-      at_location = options.at_location.not_nil!
+      at_location = options.at_location
+      raise ArgumentError.new("lookup requires a query or --at FILE:LINE:COL") unless at_location
       match = at_location.match(/\A(.+):(\d+):(\d+)\z/)
       raise ArgumentError.new("--at requires FILE:LINE:COL") unless match
 
@@ -221,7 +181,7 @@ module AmberLSP::Lookup
       status = answer.status
       list_of_entries = answer.list_of_entries
       verification_status = probe.try(&.status)
-      failure_reason = nil.as(String?)
+      failure_reason : String? = nil
 
       if probe
         case probe.status
@@ -256,7 +216,7 @@ module AmberLSP::Lookup
     end
 
     private def print_plain_answer(answer : LookupCLIAnswer, probe : APIProbeResult?) : Nil
-      @stdout.puts("amber-lsp lookup: #{answer.status} (#{answer.freshness})")
+      @stdout.puts("amber-lsp lookup: #{answer.lookup_status} (#{answer.freshness})")
       if type_summary = answer.type_summary
         @stdout.puts("#{type_summary.name} (#{type_summary.kind})  — #{type_summary.location_path}:#{type_summary.location_line}  [#{type_summary.source_layer}]")
       end

@@ -19,6 +19,22 @@ describe AmberLSP::Lookup::ExtractLookupQueryAtPosition do
     query.not_nil!.receiver.should eq("user")
   end
 
+  it "extracts the receiver suffix when the line has preceding text" do
+    source = "# Hover target: CLIProject::User#id\n"
+    query = AmberLSP::Lookup::ExtractLookupQueryAtPosition.new(source, 0, 33).perform
+
+    query.should_not be_nil
+    query.not_nil!.query.should eq("CLIProject::User#id")
+  end
+
+  it "uses UTF-16 character offsets when the line has non-ASCII text" do
+    source = "😀😀😀😀 FixtureAPI::User#id\n"
+    query = AmberLSP::Lookup::ExtractLookupQueryAtPosition.new(source, 0, 28).perform
+
+    query.should_not be_nil
+    query.not_nil!.query.should eq("FixtureAPI::User#id")
+  end
+
   it "rejects positions without an identifier" do
     query = AmberLSP::Lookup::ExtractLookupQueryAtPosition.new("User.\n", 0, 5).perform
 
