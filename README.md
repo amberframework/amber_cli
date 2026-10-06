@@ -37,13 +37,13 @@ are selected by the installed core catalog, not pinned by this tap.
 
 ### Direct release archive
 
-The published CLI `2.0.6` has `darwin-arm64`, `linux-x86_64`, and
+The CLI `2.0.7` release has `darwin-arm64`, `linux-x86_64`, and
 `linux-arm64` binary archives. A direct archive does not install Minecart or
 the native dependencies, so Homebrew is the beginner path. Windows x86-64 has
 no release archive.
 
 ```bash
-version=v2.0.6
+version=v2.0.7
 platform=darwin-arm64
 asset="amber_cli-${platform}.tar.gz"
 
@@ -200,6 +200,14 @@ See the [LSP setup guide](https://github.com/amberframework/amber/blob/v2.0.0-be
 
 ## AI agent setup
 
+Run these commands in an Amber project to install or refresh the agent hooks
+and check their setup:
+
+```bash
+amber setup:agent
+amber doctor
+```
+
 `amber new` runs `amber setup:agent` automatically. Run it again after
 upgrading Amber CLI to refresh `.amber/agent_setup.json`,
 `.amber/amber-agent-hook`, `.claude/settings.json`, `.codex/hooks.json`, and the
@@ -217,6 +225,16 @@ status, Codex project hook trust, Git ignore rules that would hide hooks from
 worktrees, and API lookup index freshness. Doctor reads the agent trust records
 without changing them. Claude and Codex may need the project and its hooks
 trusted before their project-level hooks can run.
+
+Use `amber-lsp` to look up an API or get a hint for compiler output:
+
+```bash
+amber-lsp lookup 'Dir.mkdir_p'
+crystal-alpha build src/my_app.cr 2>&1 | amber-lsp hint
+```
+
+See the [AI assistant setup guide](docs/guides/ai-assistants.md) for the short
+project setup steps.
 
 The post-edit hook formats and checks only the changed Crystal file with
 `amber-lsp --check`; the stop hook asks

@@ -22,6 +22,8 @@ Thumbs.db
 /docs/**
 !/docs/*.md
 !/docs/.gitkeep
+!/docs/guides/
+!/docs/guides/*.md
 
 # Build artifacts
 /amber
