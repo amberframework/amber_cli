@@ -73,6 +73,24 @@ describe AmberLSP::Lookup::LoadAPICards do
       invalid_pattern_result.list_of_errors.first.should contain(card_path)
     end
   end
+
+  it "substitutes numbered and named captures in matching card hints and examples" do
+    with_capture_card_project do |project|
+      cards = AmberLSP::Lookup::LoadAPICards.new(project).perform
+      matches = cards.matching_error_hint_matches("undefined method 'lookup' for Example::Widget")
+
+      matches.map(&.error_hint.hint).should eq([
+        "Call lookup on Example::Widget.",
+        "Use lookup with the widget.",
+      ])
+      matches.map(&.error_hint.example).should eq([
+        "Example::Widget.lookup(\"widget-1\")",
+        "Example::Widget.lookup(\"widget-2\")",
+      ])
+      matches.map(&.card_library).should eq(["fixture_project", "fixture_project"])
+      matches.map(&.card_version).should eq(["1.5.0", "1.5.0"])
+    end
+  end
 end
 
 private def with_api_card_project(&)
@@ -84,6 +102,15 @@ private def with_api_card_project(&)
     FileUtils.cp_r(File.join(fixture_root, "library", ".amber-lsp"), File.join(project, "lib", "example"))
     FileUtils.cp_r(File.join(fixture_root, "library", "src"), File.join(project, "lib", "example"))
     File.write(File.join(project, "shard.lock"), "shards:\n  example:\n    version: 0.3.5\n")
+    yield project
+  end
+end
+
+private def with_capture_card_project(&)
+  with_tempdir do |project|
+    fixture_root = File.join(Dir.current, "spec", "fixtures", "api_lookup", "capture_cards")
+    File.write(File.join(project, "shard.yml"), "name: fixture_project\nversion: 1.5.0\n")
+    FileUtils.cp_r(File.join(fixture_root, ".amber-lsp"), project)
     yield project
   end
 end

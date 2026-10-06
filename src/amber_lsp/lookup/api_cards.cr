@@ -20,6 +20,9 @@ module AmberLSP::Lookup
     getter pattern : String
     getter hint : String
     getter example : String
+
+    def initialize(@pattern : String, @hint : String, @example : String)
+    end
   end
 
   struct APICard
@@ -93,11 +96,29 @@ module AmberLSP::Lookup
 
     def matching_error_hint_matches(error_text : String) : Array(APICardErrorHintMatch)
       @list_of_cards.flat_map do |loaded_card|
-        loaded_card.card.error_hints.select do |hint|
-          Regex.new(hint.pattern).matches?(error_text)
-        end.map do |hint|
-          APICardErrorHintMatch.new(loaded_card.card.library, loaded_card.resolved_version, hint)
+        loaded_card.card.error_hints.compact_map do |hint|
+          match = Regex.new(hint.pattern).match(error_text)
+          next unless match
+
+          interpolated_hint = APICardErrorHint.new(
+            hint.pattern,
+            substitute_captures(hint.hint, match),
+            substitute_captures(hint.example, match),
+          )
+          APICardErrorHintMatch.new(loaded_card.card.library, loaded_card.resolved_version, interpolated_hint)
         end
+      end
+    end
+
+    private def substitute_captures(template : String, match : Regex::MatchData) : String
+      template.gsub(/\{([^{}]+)\}/) do |placeholder|
+        capture_name = placeholder.byte_slice(1, placeholder.bytesize - 2)
+        capture = if capture_number = capture_name.to_i?
+                    match[capture_number]?
+                  else
+                    match[capture_name]?
+                  end
+        capture || placeholder
       end
     end
   end

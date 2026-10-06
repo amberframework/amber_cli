@@ -25,6 +25,27 @@ describe AmberLSP::Lookup::RunHintCommand do
     end
   end
 
+  it "prints interpolated numbered and named captures with the card version" do
+    with_capture_hint_cli_project do |project|
+      input = IO::Memory.new("undefined method 'lookup' for Example::Widget\n")
+      output = IO::Memory.new
+      code = AmberLSP::Lookup::RunHintCommand.new(
+        ["--root", project],
+        input,
+        output,
+        IO::Memory.new,
+      ).perform
+
+      code.should eq(0)
+      output.to_s.lines.should eq([
+        "hint: Call lookup on Example::Widget. [fixture_project@1.5.0]",
+        "  right: Example::Widget.lookup(\"widget-1\")",
+        "hint: Use lookup with the widget. [fixture_project@1.5.0]",
+        "  right: Example::Widget.lookup(\"widget-2\")",
+      ])
+    end
+  end
+
   it "exits successfully without output when no card hint matches" do
     with_hint_cli_project do |project|
       input = IO::Memory.new("undefined method 'unlisted'\n")
@@ -73,6 +94,15 @@ private def with_hint_cli_project(&)
       File.join(fixture_root, "library", ".amber-lsp"),
       File.join(project, "lib", "example"),
     )
+    yield project
+  end
+end
+
+private def with_capture_hint_cli_project(&)
+  with_tempdir do |project|
+    fixture_root = File.join(Dir.current, "spec", "fixtures", "api_lookup", "capture_cards")
+    File.write(File.join(project, "shard.yml"), "name: fixture_project\nversion: 1.5.0\n")
+    FileUtils.cp_r(File.join(fixture_root, ".amber-lsp"), project)
     yield project
   end
 end
