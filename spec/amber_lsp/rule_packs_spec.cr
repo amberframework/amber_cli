@@ -144,6 +144,7 @@ describe "AmberLSP Grant tenancy rule pack v2" do
       File.write(pack_path, "pack: [\n")
       file_path = File.join(root, "src", "controllers", "invoices_controller.cr")
       content = "Invoice.unscoped.all\n"
+      Dir.mkdir_p(File.dirname(file_path))
       File.write(file_path, content)
 
       coverage = AmberLSP::AnalyzeFileWithCoverage.new(file_path, content).perform
@@ -158,6 +159,35 @@ describe "AmberLSP Grant tenancy rule pack v2" do
       exit_code.should eq(2)
       output.to_s.should contain("amber-lsp: failed")
       output.to_s.should contain(pack_path)
+    end
+  end
+
+  it "fails coverage when a row-tenant source file has a syntax error" do
+    with_tempdir do |root|
+      install_tenancy_fixture_app(root, "row_app")
+      File.write(
+        File.join(root, "shard.yml"),
+        "name: malformed_model_app\nversion: 0.1.0\ndependencies:\n  grant:\n    github: amberframework/grant\n",
+      )
+      model_file_path = File.join(root, "src", "models", "invoice.cr")
+      model_content = "class Invoice < Grant::Base\n  multitenant :account_id\n  column account_id : Int64\n"
+      File.write(model_file_path, model_content)
+      controller_file_path = File.join(root, "src", "controllers", "invoices_controller.cr")
+      controller_content = "Invoice.unscoped.all\n"
+      Dir.mkdir_p(File.dirname(controller_file_path))
+      File.write(controller_file_path, controller_content)
+
+      coverage = AmberLSP::AnalyzeFileWithCoverage.new(controller_file_path, controller_content).perform
+      coverage.should be_a(AmberLSP::Coverage::Failed)
+      if failed = coverage.as?(AmberLSP::Coverage::Failed)
+        failed.error.should contain("#{model_file_path}:4:")
+      end
+
+      output = IO::Memory.new
+      exit_code = AmberLSP::CheckFileForDiagnostics.new(controller_file_path, output).perform
+      exit_code.should eq(2)
+      output.to_s.should contain("amber-lsp: failed")
+      output.to_s.should contain("#{model_file_path}:4:")
     end
   end
 
@@ -585,15 +615,27 @@ describe "AmberLSP Grant tenancy rule pack v2" do
     end
   end
 
-  it "skips malformed Crystal files without crashing or inventing another mode" do
+  it "fails coverage for malformed project Crystal files" do
     with_tempdir do |root|
       install_tenancy_fixture_app(root, "row_app")
+      File.write(
+        File.join(root, "shard.yml"),
+        "name: malformed_source_app\nversion: 0.1.0\ndependencies:\n  grant:\n    github: amberframework/grant\n",
+      )
       Dir.mkdir_p(File.join(root, "config"))
-      File.write(File.join(root, "config", "broken.cr"), "Grant::SchemaTenant.with(\"broken\") do\n")
+      broken_file_path = File.join(root, "config", "broken.cr")
+      File.write(broken_file_path, "Grant::SchemaTenant.with(\"broken\") do\n")
+      file_path = File.join(root, "src", "jobs", "clean_job.cr")
+      content = "Invoice.all\n"
+      Dir.mkdir_p(File.dirname(file_path))
+      File.write(file_path, content)
 
-      diagnostics = analyze_tenancy_fixture_source(root, "src/jobs/clean_job.cr", "Invoice.all\n")
+      coverage = AmberLSP::AnalyzeFileWithCoverage.new(file_path, content).perform
 
-      diagnostics.should be_empty
+      coverage.should be_a(AmberLSP::Coverage::Failed)
+      if failed = coverage.as?(AmberLSP::Coverage::Failed)
+        failed.error.should contain(broken_file_path)
+      end
     end
   end
 end

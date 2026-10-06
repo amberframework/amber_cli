@@ -142,7 +142,7 @@ module AmberLSP::LibraryRulePacks
     end
 
     private def collect_project_declarations_from(file_path : String, content : String) : Nil
-      collector = GrantTenancy::CollectProjectGrantTenancyDeclarations.for_source(content)
+      collector = GrantTenancy::CollectProjectGrantTenancyDeclarations.for_source(content, file_path)
       @uses_row_tenancy ||= collector.uses_row_tenancy?
       @uses_schema_tenancy ||= collector.uses_schema_tenancy?
       @list_of_model_declarations_by_file[file_path] = collector.list_of_model_declarations

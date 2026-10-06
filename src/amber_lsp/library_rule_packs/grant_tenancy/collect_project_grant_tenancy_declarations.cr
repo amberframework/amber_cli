@@ -1,6 +1,10 @@
 require "compiler/crystal/syntax"
 
 module AmberLSP::LibraryRulePacks::GrantTenancy
+  # :nodoc:
+  class ProjectSourceParseError < Exception
+  end
+
   class CollectProjectGrantTenancyDeclarations < Crystal::Visitor
     getter list_of_model_declarations : Array(GrantTenantModelDeclaration)
     getter? uses_row_tenancy : Bool
@@ -19,12 +23,14 @@ module AmberLSP::LibraryRulePacks::GrantTenancy
       @uses_schema_tenancy = false
     end
 
-    def self.for_source(content : String) : CollectProjectGrantTenancyDeclarations
+    def self.for_source(content : String, source_path : String) : CollectProjectGrantTenancyDeclarations
       collector = new
       collector.accept(Crystal::Parser.new(content).parse)
       collector
-    rescue Crystal::SyntaxException
-      new
+    rescue ex : Crystal::SyntaxException
+      raise ProjectSourceParseError.new(
+        "Crystal syntax error in #{source_path}:#{ex.line_number}: #{ex.message || "invalid Crystal source"}",
+      )
     end
 
     def visit(node : Crystal::ASTNode) : Bool
