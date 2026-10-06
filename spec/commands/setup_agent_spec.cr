@@ -124,13 +124,13 @@ describe "amber setup:agent" do
       File.read("AGENTS.md").scan(/amber-agent-loop:start/).size.should eq(1)
       first_instructions.should contain("# Existing Claude instructions")
       first_instructions.should contain("crystal-alpha spec --affected")
-      first_instructions.should contain("amber-lsp lookup 'Type.method'")
+      first_instructions.should contain("Before writing code that calls Grant, Amber, asset_pipeline, or Crystal standard library methods, list each method you will call and run `amber-lsp lookup 'Type.method'` (class method) or `amber-lsp lookup 'Type#method'` (instance method) for each one, adding `--verify` when the answer is unknown. Use exactly the signatures and return types it reports, and follow any card note it prints.")
       first_instructions.should contain("run `amber setup:agent` before editing")
       first_script.should contain("build --no-codegen 'src/custom_entry.cr'")
       setup_manifest = AmberCLI::Agent::AgentSetupManifest.from_json(File.read(".amber/agent_setup.json"))
       setup_manifest.amber_cli_version.should eq(AmberCli::VERSION)
       setup_manifest.minimum_amber_lsp_version.should eq("1.0.0")
-      setup_manifest.generated_hook_version.should eq("4")
+      setup_manifest.generated_hook_version.should eq("5")
       File.file?(".amber/claude-marketplace/amber-lsp/.lsp.json").should be_true
       File.file?(".lsp.json").should be_false
       File.info(".amber/amber-agent-hook").permissions.to_i.&(0o111).should_not eq(0)
@@ -308,7 +308,7 @@ describe "amber setup:agent" do
       Dir.mkdir_p("src")
       File.write("shard.yml", "name: my_app\n")
       File.write("src/my_app.cr", "puts :ok\n")
-      older_instructions = "# Keep this\n\n<!-- amber-agent-loop:start -->\nUse `crystal spec --affected` when available.\n<!-- amber-agent-loop:end -->\n"
+      older_instructions = "# Keep this\n\n<!-- amber-agent-loop:start -->\n## Agent loop\n\nUse `crystal spec --affected` when available.\nBefore using a library API you are not sure of, run\n`amber-lsp lookup 'Type.method'` or use the LSP tool's workspaceSymbol/hover.\nThe SessionStart hook reports whether setup is complete.\n<!-- amber-agent-loop:end -->\n"
       File.write("CLAUDE.md", older_instructions)
       File.write("AGENTS.md", older_instructions)
 
@@ -318,6 +318,8 @@ describe "amber setup:agent" do
       first_instructions.should contain("# Keep this")
       first_instructions.should contain("Use `crystal-alpha spec --affected`")
       first_instructions.should_not contain("Use `crystal spec --affected`")
+      first_instructions.should contain("Before writing code that calls Grant, Amber, asset_pipeline, or Crystal standard library methods, list each method you will call and run `amber-lsp lookup 'Type.method'` (class method) or `amber-lsp lookup 'Type#method'` (instance method) for each one, adding `--verify` when the answer is unknown. Use exactly the signatures and return types it reports, and follow any card note it prints.")
+      first_instructions.should_not contain("Before using a library API you are not sure of")
       File.read("AGENTS.md").should eq(first_instructions)
 
       command.execute

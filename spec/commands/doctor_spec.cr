@@ -1,15 +1,33 @@
 require "../amber_cli_spec"
 require "../../src/amber_cli/commands/check_amber_agent_setup_command"
 require "../../src/amber_cli/agent/install_claude_amber_lsp_plugin"
+require "../../src/amber_cli/agent/agent_setup_manifest"
+require "../../src/amber_cli/agent/agent_setup_guidance"
 
 module DoctorCommandSpecHelper
   def self.create_agent_settings(project_root : String) : String
     Dir.mkdir_p(File.join(project_root, ".claude"))
     Dir.mkdir_p(File.join(project_root, ".codex"))
+    Dir.mkdir_p(File.join(project_root, ".amber"))
     claude_settings = AmberCLI::Agent::MergeAgentHooksIntoSettings.new("", true).perform
     codex_settings = AmberCLI::Agent::MergeAgentHooksIntoSettings.new("", false).perform
     File.write(File.join(project_root, ".claude/settings.json"), claude_settings)
     File.write(File.join(project_root, ".codex/hooks.json"), codex_settings)
+    setup_manifest = AmberCLI::Agent::AgentSetupManifest.new(
+      "2.0.7",
+      "1.0.0",
+      AmberCLI::Agent::AgentSetupGuidance::GENERATED_HOOK_VERSION,
+    )
+    File.write(File.join(project_root, ".amber/agent_setup.json"), setup_manifest.to_pretty_json + "\n")
+    File.write(File.join(project_root, ".amber/amber-agent-hook"), AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION + "\n")
+    agent_loop_instructions = [
+      AmberCLI::Agent::AgentSetupGuidance::DOCUMENT_START,
+      "## Agent loop",
+      AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION,
+      AmberCLI::Agent::AgentSetupGuidance::DOCUMENT_END,
+    ].join("\n") + "\n"
+    File.write(File.join(project_root, "CLAUDE.md"), agent_loop_instructions)
+    File.write(File.join(project_root, "AGENTS.md"), agent_loop_instructions)
     codex_settings
   end
 
@@ -81,6 +99,25 @@ describe "amber doctor" do
     end
   end
 
+  it "reports old generated lookup instructions as outdated" do
+    SpecHelper.within_temp_directory do |project_root|
+      DoctorCommandSpecHelper.create_agent_settings(project_root)
+      Dir.mkdir_p(File.join(project_root, ".amber"))
+      old_guidance = "Before using a library API you are not sure of, run `amber-lsp lookup 'Type.method'`."
+      File.write(File.join(project_root, ".amber/agent_setup.json"), <<-JSON)
+      {"amber_cli_version":"2.0.7","minimum_amber_lsp_version":"1.0.0","generated_hook_version":"4"}
+      JSON
+      File.write(File.join(project_root, ".amber/amber-agent-hook"), "#!/bin/sh\n#{old_guidance}\n")
+      File.write(File.join(project_root, "CLAUDE.md"), "<!-- amber-agent-loop:start -->\n#{old_guidance}\n<!-- amber-agent-loop:end -->\n")
+      File.write(File.join(project_root, "AGENTS.md"), "<!-- amber-agent-loop:start -->\n#{old_guidance}\n<!-- amber-agent-loop:end -->\n")
+
+      report = AmberCLI::Commands::CheckAmberAgentSetupCommand.new("doctor", project_root, nil, false).perform
+
+      report.exit_code.should eq(1)
+      report.to_s.should contain("[FAIL] Generated agent instructions are out of date; run `amber setup:agent`.")
+    end
+  end
+
   it "reports a ready project with exit status 0 when hooks, trust, plugins, and the API index pass" do
     SpecHelper.within_temp_directory do |project_root|
       home_directory = File.join(project_root, "home")
@@ -100,7 +137,7 @@ describe "amber doctor" do
       DoctorCommandSpecHelper.write_executable(File.join(tools_directory, "codex"), "#!/bin/sh\nexit 0\n")
       DoctorCommandSpecHelper.write_executable(
         File.join(project_root, ".amber/amber-agent-hook"),
-        "#!/bin/sh\nprintf '%s\\n' 'Amber agent setup is ready.'\nexit 0\n",
+        "#!/bin/sh\n# #{AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION}\nprintf '%s\\n' 'Amber agent setup is ready.'\nexit 0\n",
       )
       lsp_path = File.join(tools_directory, "amber-lsp")
       DoctorCommandSpecHelper.write_executable(
@@ -166,7 +203,7 @@ describe "amber doctor" do
       DoctorCommandSpecHelper.write_executable(File.join(tools_directory, "codex"), "#!/bin/sh\nexit 0\n")
       DoctorCommandSpecHelper.write_executable(
         File.join(project_root, ".amber/amber-agent-hook"),
-        "#!/bin/sh\nprintf '%s\\n' 'Amber agent setup is ready.'\nexit 0\n",
+        "#!/bin/sh\n# #{AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION}\nprintf '%s\\n' 'Amber agent setup is ready.'\nexit 0\n",
       )
       lsp_path = File.join(tools_directory, "amber-lsp")
       DoctorCommandSpecHelper.write_executable(

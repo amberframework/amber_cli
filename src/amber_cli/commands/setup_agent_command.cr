@@ -1,6 +1,7 @@
 require "yaml"
 require "../core/base_command"
 require "../agent/agent_setup_manifest"
+require "../agent/agent_setup_guidance"
 require "../agent/hook_settings"
 require "../agent/resolve_compiler_for_agent_loop"
 require "../agent/find_agent_hook_ignore_rules"
@@ -12,9 +13,9 @@ module AmberCLI::Commands
   class SetupAgentCommand < AmberCLI::Core::BaseCommand
     AGENT_HOOK_SCRIPT         = {{ read_file("#{__DIR__}/../templates/agent/amber-agent-hook") }}
     MINIMUM_AMBER_LSP_VERSION = AmberCLI::Agent::MINIMUM_AMBER_LSP_VERSION
-    GENERATED_HOOK_VERSION    = "4"
-    DOCUMENT_START            = "<!-- amber-agent-loop:start -->"
-    DOCUMENT_END              = "<!-- amber-agent-loop:end -->"
+    GENERATED_HOOK_VERSION    = AmberCLI::Agent::AgentSetupGuidance::GENERATED_HOOK_VERSION
+    DOCUMENT_START            = AmberCLI::Agent::AgentSetupGuidance::DOCUMENT_START
+    DOCUMENT_END              = AmberCLI::Agent::AgentSetupGuidance::DOCUMENT_END
 
     def help_description : String
       "Set up the Claude Code and Codex agent loop in an Amber V2 project"
@@ -106,8 +107,16 @@ module AmberCLI::Commands
         if marker_start && marker_end && marker_start < marker_end
           section = content[marker_start...marker_end]
           updated_section = section.sub("Use `crystal spec --affected`", "Use `crystal-alpha spec --affected`")
-          unless updated_section.includes?("amber-lsp lookup 'Type.method'")
-            updated_section += "\nBefore using a library API you are not sure of, run `amber-lsp lookup 'Type.method'` or use the LSP tool's workspaceSymbol/hover."
+          updated_section = updated_section.gsub(
+            "Before using a library API you are not sure of, run\n`amber-lsp lookup 'Type.method'` or use the LSP tool's workspaceSymbol/hover.",
+            "",
+          )
+          updated_section = updated_section.gsub(
+            "Before using a library API you are not sure of, run `amber-lsp lookup 'Type.method'` or use the LSP tool's workspaceSymbol/hover.",
+            "",
+          )
+          unless updated_section.includes?(AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION)
+            updated_section += "\n#{AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION}"
           end
           unless updated_section.includes?("stop and tell the user to run `amber setup:agent`")
             updated_section += "\nThe SessionStart hook reports whether setup is complete. When setup is missing, stop and tell the user to run `amber setup:agent` before editing Crystal files."
@@ -129,8 +138,7 @@ module AmberCLI::Commands
       Use `crystal-alpha spec --affected` when available. Format Crystal files with
       `crystal-alpha tool format`. The installed hooks hold the watcher during
       edits, check each changed file, and build when the agent stops.
-      Before using a library API you are not sure of, run
-      `amber-lsp lookup 'Type.method'` or use the LSP tool's workspaceSymbol/hover.
+      #{AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION}
       The SessionStart hook reports whether setup is complete. When setup is
       missing, stop and tell the user to run `amber setup:agent` before editing
       Crystal files.

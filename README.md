@@ -226,6 +226,8 @@ worktrees, and API lookup index freshness. Doctor reads the agent trust records
 without changing them. Claude and Codex may need the project and its hooks
 trusted before their project-level hooks can run.
 
+Before writing code that calls Grant, Amber, asset_pipeline, or Crystal standard library methods, list each method you will call and run `amber-lsp lookup 'Type.method'` (class method) or `amber-lsp lookup 'Type#method'` (instance method) for each one, adding `--verify` when the answer is unknown. Use exactly the signatures and return types it reports, and follow any card note it prints.
+
 Use `amber-lsp` to look up an API or get a hint for compiler output:
 
 ```bash

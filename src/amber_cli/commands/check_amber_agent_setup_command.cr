@@ -1,6 +1,8 @@
 require "json"
 require "../core/base_command"
 require "../agent/hook_settings"
+require "../agent/agent_setup_manifest"
+require "../agent/agent_setup_guidance"
 require "../agent/find_agent_hook_ignore_rules"
 
 module AmberCLI::Commands
@@ -109,6 +111,7 @@ module AmberCLI::Commands
       list_of_checks = [] of DoctorCheck
       list_of_checks << check_project_hooks(".claude/settings.json", true)
       list_of_checks << check_project_hooks(".codex/hooks.json", false)
+      list_of_checks << check_generated_agent_instructions
       list_of_checks.concat(build_agent_readiness_checks)
       list_of_checks.concat(build_claude_trust_checks)
       list_of_checks.concat(build_claude_plugin_checks)
@@ -172,6 +175,43 @@ module AmberCLI::Commands
       else
         {events.list_of_stop_hook_groups, nil}
       end
+    end
+
+    private def check_generated_agent_instructions : DoctorCheck
+      setup_manifest_path = File.join(@project_root, ".amber/agent_setup.json")
+      hook_path = File.join(@project_root, ".amber/amber-agent-hook")
+      required_instruction = AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION
+      has_current_manifest = false
+      if File.file?(setup_manifest_path)
+        setup_manifest = AmberCLI::Agent::AgentSetupManifest.from_json(File.read(setup_manifest_path))
+        has_current_manifest = setup_manifest.generated_hook_version == AmberCLI::Agent::AgentSetupGuidance::GENERATED_HOOK_VERSION
+      end
+
+      has_current_hook = File.file?(hook_path) && File.read(hook_path).includes?(required_instruction)
+      has_current_agent_loop_instructions = ["CLAUDE.md", "AGENTS.md"].all? do |path|
+        agent_loop_instructions_include_guidance?(File.join(@project_root, path), required_instruction)
+      end
+
+      if has_current_manifest && has_current_hook && has_current_agent_loop_instructions
+        DoctorCheck.new("PASS", "Generated agent instructions are current.")
+      else
+        DoctorCheck.new("FAIL", "Generated agent instructions are out of date; run `amber setup:agent`.")
+      end
+    rescue ex : JSON::ParseException
+      DoctorCheck.new("FAIL", "Could not parse .amber/agent_setup.json: #{ex.message}; run `amber setup:agent`.")
+    rescue ex : IO::Error
+      DoctorCheck.new("FAIL", "Could not read generated agent instructions: #{ex.message}; run `amber setup:agent`.")
+    end
+
+    private def agent_loop_instructions_include_guidance?(path : String, required_instruction : String) : Bool
+      return false unless File.file?(path)
+
+      content = File.read(path)
+      marker_start = content.index(AmberCLI::Agent::AgentSetupGuidance::DOCUMENT_START)
+      marker_end = content.index(AmberCLI::Agent::AgentSetupGuidance::DOCUMENT_END)
+      return false unless marker_start && marker_end && marker_start < marker_end
+
+      content[marker_start...marker_end].includes?(required_instruction)
     end
 
     private def build_agent_readiness_checks : Array(DoctorCheck)

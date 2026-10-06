@@ -19,6 +19,8 @@ the agent writes it, and the post-edit hook formats and analyzes that file.
 If setup is incomplete, run `amber setup:agent` again and follow the readiness
 message.
 
+Before writing code that calls Grant, Amber, asset_pipeline, or Crystal standard library methods, list each method you will call and run `amber-lsp lookup 'Type.method'` (class method) or `amber-lsp lookup 'Type#method'` (instance method) for each one, adding `--verify` when the answer is unknown. Use exactly the signatures and return types it reports, and follow any card note it prints.
+
 Use API lookup and compiler hints from the project root:
 
 ```bash

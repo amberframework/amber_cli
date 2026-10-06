@@ -16,7 +16,7 @@ module AgentHookSpecHelper
     File.write(".amber/agent_setup.json", AmberCLI::Agent::AgentSetupManifest.new(
       AmberCli::VERSION,
       "1.0.0",
-      "4",
+      AmberCLI::Agent::AgentSetupGuidance::GENERATED_HOOK_VERSION,
     ).to_pretty_json + "\n")
     File.write(".amber/claude-marketplace/.claude-plugin/marketplace.json", <<-JSON)
     {
@@ -150,7 +150,7 @@ describe "amber-agent-hook readiness and preflight" do
       session[0].should eq(0)
       session[1].should contain("Amber agent setup is OK.")
       session[1].should contain("amber-lsp version: 1.0.0")
-      session[1].should contain("Before using a library API you are not sure of, run `amber-lsp lookup 'Type.method'` (or the LSP tool's workspaceSymbol/hover).")
+      session[1].should contain("Before writing code that calls Grant, Amber, asset_pipeline, or Crystal standard library methods, list each method you will call and run `amber-lsp lookup 'Type.method'` (class method) or `amber-lsp lookup 'Type#method'` (instance method) for each one, adding `--verify` when the answer is unknown. Use exactly the signatures and return types it reports, and follow any card note it prints.")
     end
   end
 
@@ -339,7 +339,11 @@ describe "amber-agent-hook readiness and preflight" do
       first_check = AgentHookSpecHelper.run_hook(fixture, "check")
       first_check[0].should eq(0)
       first_calls = File.read(fixture.lsp_log).lines.size
-      setup_manifest = AmberCLI::Agent::AgentSetupManifest.new(AmberCli::VERSION, "1.0.0", "4")
+      setup_manifest = AmberCLI::Agent::AgentSetupManifest.new(
+        AmberCli::VERSION,
+        "1.0.0",
+        AmberCLI::Agent::AgentSetupGuidance::GENERATED_HOOK_VERSION,
+      )
       File.write(".amber/agent_setup.json", setup_manifest.to_json + "\n ")
 
       second_check = AgentHookSpecHelper.run_hook(fixture, "check")
