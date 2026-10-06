@@ -93,19 +93,35 @@ module AmberLSP::Lookup
           nil,
           "unavailable",
           "#{library_name} is declared in shard.yml but is missing from shard.lock",
+          "library",
+          library_name,
         )
       end
 
       locked_shards.to_a.sort_by(&.first).each do |library_name, locked_shard|
         library_root = File.join(@root_path, "lib", library_name)
         unless File.directory?(library_root)
-          list_of_layers << CachedAPIIndexLayer.new(nil, "unavailable", "Locked shard #{library_name} is not installed under lib/")
+          list_of_layers << CachedAPIIndexLayer.new(
+            nil,
+            "unavailable",
+            "Locked shard #{library_name} is not installed under lib/",
+            "library",
+            library_name,
+            locked_shard.version,
+          )
           next
         end
 
         entrypoint = find_library_entrypoint(library_root, library_name)
         unless entrypoint
-          list_of_layers << CachedAPIIndexLayer.new(nil, "unavailable", "Locked shard #{library_name} has no Crystal entrypoint under lib/#{library_name}/src")
+          list_of_layers << CachedAPIIndexLayer.new(
+            nil,
+            "unavailable",
+            "Locked shard #{library_name} has no Crystal entrypoint under lib/#{library_name}/src",
+            "library",
+            library_name,
+            locked_shard.version,
+          )
           next
         end
 
@@ -226,7 +242,7 @@ module AmberLSP::Lookup
       rescue ex : APIIndexBuildError | JSON::ParseException
         return cached_layer if cached_layer.layer
 
-        CachedAPIIndexLayer.new(nil, "unavailable", ex.message)
+        CachedAPIIndexLayer.new(nil, "unavailable", ex.message, layer_kind, layer_name, layer_key)
       end
     end
 
@@ -265,7 +281,7 @@ module AmberLSP::Lookup
       rescue ex : APIIndexBuildError | JSON::ParseException | IO::Error
         return cached_layer if cached_layer.layer
 
-        CachedAPIIndexLayer.new(nil, "unavailable", ex.message)
+        CachedAPIIndexLayer.new(nil, "unavailable", ex.message, "stdlib", "crystal", layer_key)
       end
     end
 

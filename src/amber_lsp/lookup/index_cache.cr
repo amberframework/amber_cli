@@ -76,8 +76,27 @@ module AmberLSP::Lookup
     getter layer : APIIndexLayer?
     getter freshness : String
     getter failure_reason : String?
+    getter layer_kind : String
+    getter layer_name : String
+    getter layer_key : String
 
-    def initialize(@layer : APIIndexLayer?, @freshness : String, @failure_reason : String? = nil)
+    def initialize(
+      @layer : APIIndexLayer?,
+      @freshness : String,
+      @failure_reason : String? = nil,
+      layer_kind : String? = nil,
+      layer_name : String? = nil,
+      layer_key : String? = nil,
+    )
+      if index_layer = @layer
+        @layer_kind = layer_kind || index_layer.layer_kind
+        @layer_name = layer_name || index_layer.layer_name
+        @layer_key = layer_key || index_layer.layer_key
+      else
+        @layer_kind = layer_kind || ""
+        @layer_name = layer_name || ""
+        @layer_key = layer_key || ""
+      end
     end
   end
 
@@ -122,16 +141,16 @@ module AmberLSP::Lookup
       end
 
       latest_path = File.join(directory_path, "latest.json")
-      return CachedAPIIndexLayer.new(nil, "unavailable") unless File.file?(latest_path)
+      return CachedAPIIndexLayer.new(nil, "unavailable", nil, layer_kind, layer_name, expected_key) unless File.file?(latest_path)
 
       pointer = APIIndexCachePointer.from_json(File.read(latest_path))
       stale_path = File.join(directory_path, "#{pointer.key}.json")
       stale_layer = load_matching_layer(stale_path, layer_kind, layer_name, pointer.key)
-      return CachedAPIIndexLayer.new(nil, "unavailable") unless stale_layer
+      return CachedAPIIndexLayer.new(nil, "unavailable", nil, layer_kind, layer_name, expected_key) unless stale_layer
 
       CachedAPIIndexLayer.new(stale_layer, "stale")
     rescue ex : JSON::ParseException | IO::Error
-      CachedAPIIndexLayer.new(nil, "unavailable", ex.message)
+      CachedAPIIndexLayer.new(nil, "unavailable", ex.message, layer_kind, layer_name, expected_key)
     end
 
     private def load_matching_layer(

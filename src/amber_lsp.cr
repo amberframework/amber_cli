@@ -43,6 +43,7 @@ require "./amber_lsp/server"
 require "./amber_lsp/check_file_for_diagnostics"
 require "./amber_lsp/lookup/build_layered_api_index"
 require "./amber_lsp/lookup/resolve_api_query"
+require "./amber_lsp/lookup/answer_api_query"
 
 if ARGV.includes?("--version")
   STDOUT.puts AmberLSP.version_line
