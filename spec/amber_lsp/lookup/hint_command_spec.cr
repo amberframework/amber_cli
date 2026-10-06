@@ -89,7 +89,7 @@ describe AmberLSP::Lookup::RunHintCommand do
 
       code.should eq(0)
       output.to_s.lines.should eq([
-        "hint: Crystal String has no `to_sym`; keep values as String, or call `to_s` when converting a Symbol to String. [crystal@1.21.0]",
+        "hint: Crystal String has no `to_sym`; keep values as String, or call `to_s` when converting a Symbol to String. [crystal@#{installed_crystal_version}]",
         "  right: name.to_s",
       ])
     end
@@ -124,4 +124,11 @@ private def with_capture_hint_cli_project(&)
     FileUtils.cp_r(File.join(fixture_root, ".amber-lsp"), project)
     yield project
   end
+end
+
+# The version the installed compiler reports; cards resolve against it.
+private def installed_crystal_version : String
+  output = IO::Memory.new
+  Process.run(AmberLSP::Lookup.default_compiler_command, ["--version"], output: output)
+  output.to_s[/Crystal\s+(\d+\.\d+\.\d+)/, 1]
 end

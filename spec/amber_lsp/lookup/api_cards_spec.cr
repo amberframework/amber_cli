@@ -119,7 +119,7 @@ describe AmberLSP::Lookup::LoadAPICards do
       loaded_card.should_not be_nil
       if loaded = loaded_card
         loaded.source_path.should eq(File.realpath(card_path))
-        loaded.resolved_version.should eq("1.21.0")
+        loaded.resolved_version.should eq(installed_crystal_version)
         loaded.origin.should eq(AmberLSP::Lookup::APICardOrigin::Bundled)
       else
         fail("expected the installed Crystal API card")
@@ -230,4 +230,11 @@ private def write_test_card(project : String, library : String, pattern : String
   api_path = File.join(project, ".amber-lsp", "api")
   Dir.mkdir_p(api_path)
   File.write(File.join(api_path, "#{library}.yml"), card_yaml(library, pattern, hint))
+end
+
+# The version the installed compiler reports; cards resolve against it.
+private def installed_crystal_version : String
+  output = IO::Memory.new
+  Process.run(AmberLSP::Lookup.default_compiler_command, ["--version"], output: output)
+  output.to_s[/Crystal\s+(\d+\.\d+\.\d+)/, 1]
 end
