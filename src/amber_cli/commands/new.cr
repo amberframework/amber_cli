@@ -1,6 +1,8 @@
 require "../core/base_command"
 require "../generators/native_app"
 require "../static_assets"
+require "./setup_agent"
+require "./doctor"
 
 # The `new` command creates a new Amber V2 application with a complete directory
 # structure, configuration files, and a working home page.
@@ -15,6 +17,7 @@ require "../static_assets"
 # - `-t, --template` - Template language (ECR is the only V2 engine)
 # - `--type` - Application type: web (default) or native (cross-platform desktop/mobile)
 # - `--no-deps` - Skip dependency installation
+# - `--skip-agent-setup` - Skip Claude Code and Codex hooks
 #
 # ## Examples
 # ```
@@ -41,6 +44,7 @@ module AmberCLI::Commands
     getter app_type : String = "web"
     getter assume_yes : Bool = false
     getter no_deps : Bool = false
+    getter skip_agent_setup : Bool = false
     getter name : String = ""
 
     # :nodoc:
@@ -88,6 +92,11 @@ module AmberCLI::Commands
       option_parser.on("--no-deps", "Don't install dependencies") do
         @parsed_options["no_deps"] = true
         @no_deps = true
+      end
+
+      option_parser.on("--skip-agent-setup", "Skip Claude Code and Codex agent setup") do
+        @parsed_options["skip_agent_setup"] = true
+        @skip_agent_setup = true
       end
 
       option_parser.separator ""
@@ -167,6 +176,7 @@ module AmberCLI::Commands
       info "Test suite:"
       info "  ./mobile/run_all_tests.sh          # L1 + L2 tests"
       info "  ./mobile/run_all_tests.sh --e2e    # Full E2E tests"
+      setup_project_agent_loop(full_path_name)
     end
 
     private def execute_web(full_path_name : String, project_name : String)
@@ -197,8 +207,26 @@ module AmberCLI::Commands
       info "  amber generate scaffold Pet name:string:required species:string:required"
       info "  amber database migrate"
       info "  amber watch"
-      info "  Tip: run amber setup:agent to install Claude Code and Codex hooks."
       info "  # Choose -d pg or -d mysql when you need a server database."
+      setup_project_agent_loop(full_path_name)
+    end
+
+    private def setup_project_agent_loop(project_path : String) : Nil
+      previous_directory = Dir.current
+      Dir.cd(project_path)
+      begin
+        if skip_agent_setup
+          info "Skipped Claude Code and Codex setup (--skip-agent-setup)."
+        else
+          AmberCLI::Commands::SetupAgentCommand.new("setup:agent").execute
+        end
+
+        info ""
+        info "Amber doctor summary:"
+        puts AmberCLI::Commands::DoctorCommand.new("doctor").perform
+      ensure
+        Dir.cd(previous_directory)
+      end
     end
 
     private def install_dependencies(path : String)
