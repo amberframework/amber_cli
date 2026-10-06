@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
-$minecartCommit = "4fea47ce6561ea0612cf1e0cf6955d782ef27929"
-$minecartTree = "e0a0214c14d71f1031d83b760d426b09509b5d9d"
+$minecartCommit = "091e8e2da15a0a4885a40b174d5a561da0201c1b"
+$minecartTree = "2d00f70352d6ff70b29b1037bc85a316a6a13117"
 $installRoot = Join-Path $env:RUNNER_TEMP "amber-pinned-minecart"
 
 New-Item -ItemType Directory -Force $installRoot | Out-Null

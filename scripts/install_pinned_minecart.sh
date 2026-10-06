@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # The source commit is verified by its Git tree before it can run the web smoke.
-minecart_commit=4fea47ce6561ea0612cf1e0cf6955d782ef27929
-minecart_tree=e0a0214c14d71f1031d83b760d426b09509b5d9d
+minecart_commit=091e8e2da15a0a4885a40b174d5a561da0201c1b
+minecart_tree=2d00f70352d6ff70b29b1037bc85a316a6a13117
 minecart_repository="${MINECART_SOURCE_REPOSITORY:-https://github.com/crimson-knight/shards.git}"
 minecart_source_ref="${MINECART_SOURCE_REF:-refs/tags/v2025.11.25.7}"
 install_root="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/amber-pinned-minecart"
