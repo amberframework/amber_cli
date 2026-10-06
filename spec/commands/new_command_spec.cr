@@ -1,5 +1,5 @@
 require "../amber_cli_spec"
-require "../../src/amber_cli/commands/new"
+require "../../src/amber_cli/commands/new_command"
 
 describe AmberCLI::Commands::NewCommand do
   describe ".find_shards_executable" do
@@ -92,7 +92,19 @@ describe AmberCLI::Commands::NewCommand do
       command.option_parser.parse(args)
 
       command.app_type.should eq("native")
-      command.no_deps.should be_true
+      command.should_skip_dependency_installation.should be_true
+    end
+
+    it "accepts --skip-agent-setup" do
+      command = AmberCLI::Commands::NewCommand.new("new")
+      args = ["my_app", "--skip-agent-setup"]
+
+      command.option_parser.unknown_args do |unknown_args, _|
+        command.remaining_arguments.concat(unknown_args)
+      end
+      command.option_parser.parse(args)
+
+      command.should_skip_agent_setup.should be_true
     end
   end
 
@@ -106,6 +118,10 @@ describe AmberCLI::Commands::NewCommand do
 
         File.exists?(File.join(destination, "src/beta_smoke.cr")).should be_true
         Dir.exists?(File.join(destination, "bin")).should be_true
+        File.file?(File.join(destination, ".amber/agent_setup.json")).should be_true
+        File.file?(File.join(destination, ".amber/amber-agent-hook")).should be_true
+        File.file?(File.join(destination, ".claude/settings.json")).should be_true
+        File.file?(File.join(destination, ".codex/hooks.json")).should be_true
 
         shard = File.read(File.join(destination, "shard.yml"))
         shard.should contain("github: amberframework/amber")
@@ -223,6 +239,19 @@ describe AmberCLI::Commands::NewCommand do
         readme.should contain("amber assets build")
         readme.should contain("app/assets/stylesheets/")
         readme.should contain("public/assets/manifest.json")
+      end
+    end
+
+    it "leaves agent setup for a later command when --skip-agent-setup is passed" do
+      SpecHelper.within_temp_directory do |temp_dir|
+        destination = File.join(temp_dir, "skip_agent_app")
+        command = AmberCLI::Commands::NewCommand.new("new")
+
+        command.parse_and_execute([destination, "--type=web", "--no-deps", "--skip-agent-setup"])
+
+        File.exists?(File.join(destination, "src/skip_agent_app.cr")).should be_true
+        File.file?(File.join(destination, ".amber/agent_setup.json")).should be_false
+        File.file?(File.join(destination, ".codex/hooks.json")).should be_false
       end
     end
   end
