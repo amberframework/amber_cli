@@ -82,6 +82,10 @@ describe "amber setup:agent" do
       first_instructions.should contain("# Existing Claude instructions")
       first_instructions.should contain("crystal-alpha spec --affected")
       first_script.should contain("build --no-codegen 'src/custom_entry.cr'")
+      setup_manifest = AmberCLI::Agent::AgentSetupManifest.from_json(File.read(".amber/agent_setup.json"))
+      setup_manifest.amber_cli_version.should eq(AmberCli::VERSION)
+      setup_manifest.minimum_amber_lsp_version.should eq("1.0.0")
+      setup_manifest.generated_hook_version.should eq("2")
       File.file?(".lsp.json").should be_true
       File.info("bin/amber-agent-hook").permissions.to_i.&(0o111).should_not eq(0)
       command.list_of_info_messages.count("Updated: bin/amber-agent-hook").should eq(1)

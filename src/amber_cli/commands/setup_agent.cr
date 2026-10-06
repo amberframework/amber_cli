@@ -1,9 +1,25 @@
 require "json"
 require "yaml"
 require "../core/base_command"
+require "../../version"
 require "./setup_lsp"
 
 module AmberCLI::Agent
+  class AgentSetupManifest
+    include JSON::Serializable
+
+    property amber_cli_version : String
+    property minimum_amber_lsp_version : String
+    property generated_hook_version : String
+
+    def initialize(
+      @amber_cli_version : String,
+      @minimum_amber_lsp_version : String,
+      @generated_hook_version : String,
+    )
+    end
+  end
+
   class HookHandler
     include JSON::Serializable
     include JSON::Serializable::Unmapped
@@ -84,6 +100,8 @@ module AmberCLI::Commands
   # Installs the optional Claude Code and Codex feedback loop into an Amber V2 app.
   class SetupAgentCommand < AmberCLI::Core::BaseCommand
     AGENT_HOOK_SCRIPT = {{ read_file("#{__DIR__}/../templates/agent/amber-agent-hook") }}
+    MINIMUM_AMBER_LSP_VERSION = "1.0.0"
+    GENERATED_HOOK_VERSION       = "2"
     DOCUMENT_START    = "<!-- amber-agent-loop:start -->"
     DOCUMENT_END      = "<!-- amber-agent-loop:end -->"
 
@@ -101,6 +119,7 @@ module AmberCLI::Commands
         write_merged_hooks(path)
       end
       write_hook_script(main_file)
+      write_setup_manifest
       ["CLAUDE.md", "AGENTS.md"].each do |path|
         append_agent_loop_instructions(path)
       end
@@ -141,13 +160,23 @@ module AmberCLI::Commands
 
     private def write_hook_script(main_file : String) : Nil
       path = "bin/amber-agent-hook"
-      content = AGENT_HOOK_SCRIPT.sub("__AMBER_MAIN__", main_file)
+      content = AGENT_HOOK_SCRIPT.gsub("__AMBER_MAIN__", main_file)
       Dir.mkdir_p("bin")
       if !File.file?(path) || File.read(path) != content
         File.write(path, content)
         info "Updated: #{path}"
       end
       File.chmod(path, 0o755)
+    end
+
+    private def write_setup_manifest : Nil
+      manifest = AmberCLI::Agent::AgentSetupManifest.new(
+        AmberCli::VERSION,
+        MINIMUM_AMBER_LSP_VERSION,
+        GENERATED_HOOK_VERSION,
+      )
+      Dir.mkdir_p(".amber")
+      File.write(".amber/agent_setup.json", manifest.to_pretty_json + "\n")
     end
 
     private def append_agent_loop_instructions(path : String) : Nil
