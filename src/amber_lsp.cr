@@ -45,10 +45,13 @@ require "./amber_lsp/lookup/build_layered_api_index"
 require "./amber_lsp/lookup/resolve_api_query"
 require "./amber_lsp/lookup/answer_api_query"
 require "./amber_lsp/lookup/verify_api_query"
+require "./amber_lsp/lookup/lookup_command"
 
 if ARGV.includes?("--version")
   STDOUT.puts AmberLSP.version_line
   exit 0
+elsif ARGV.first? == "lookup"
+  exit AmberLSP::Lookup::RunLookupCommand.new(ARGV[1..].to_a).perform
 elsif ARGV[0]? == "--check"
   file_path = ARGV[1]?
   unless file_path
