@@ -28,6 +28,7 @@ require "./amber_cli/commands/pipelines"
 require "./amber_cli/commands/generate"
 require "./amber_cli/commands/setup_lsp"
 require "./amber_cli/commands/setup_agent"
+require "./amber_cli/commands/doctor"
 
 backend = Log::IOBackend.new
 backend.formatter = Log::Formatter.new do |entry, io|
@@ -80,6 +81,7 @@ module AmberCLI
       pipelines       Show application pipelines and plugs
       setup:lsp (lsp) Set up Amber LSP for Claude Code integration
       setup:agent (agent) Set up Claude Code and Codex feedback hooks
+      doctor          Check Amber agent setup and trust
 
     Options:
       --version, -v   Show version number
