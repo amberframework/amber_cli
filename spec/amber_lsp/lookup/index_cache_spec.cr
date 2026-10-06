@@ -119,4 +119,65 @@ describe "AmberLSP::Lookup::APIIndexCache#write_layer and #load_layer" do
       other_project.failure_reason.should be_nil
     end
   end
+
+  it "stores library source paths relative to the shard and rebases them for the querying project" do
+    with_tempdir do |root|
+      cache_root = File.join(root, "shared_cache")
+      source_project = File.join(root, "source_project")
+      querying_project = File.join(root, "querying_project")
+      source_library = File.join(source_project, "lib", "grant")
+      querying_library = File.join(querying_project, "lib", "grant")
+      source_path = File.join(source_library, "src", "grant", "columns.cr")
+
+      method_entry = AmberLSP::Lookup::APIIndexMethod.new(
+        "Grant::Column",
+        "composite_primary_key?",
+        "instance",
+        "",
+        "Bool",
+        nil,
+        source_path,
+        904,
+        "grant",
+        false,
+        false,
+      )
+      type_entry = AmberLSP::Lookup::APIIndexType.new(
+        "Grant::Column",
+        "class",
+        false,
+        [] of String,
+        [] of String,
+        [] of String,
+        source_path,
+        1,
+        "grant",
+        [method_entry],
+        [] of AmberLSP::Lookup::APIIndexMethod,
+        [] of AmberLSP::Lookup::APIIndexMethod,
+      )
+      layer = AmberLSP::Lookup::APIIndexLayer.new(
+        "library",
+        "grant",
+        "grant-key-v1",
+        source_library,
+        [] of String,
+        [type_entry],
+      )
+
+      source_cache = AmberLSP::Lookup::APIIndexCache.new(cache_root, source_project)
+      stored_path = source_cache.write_layer(layer)
+      stored_layer = AmberLSP::Lookup::APIIndexLayer.from_json(File.read(stored_path))
+      querying_cache = AmberLSP::Lookup::APIIndexCache.new(cache_root, querying_project)
+      loaded = querying_cache.load_layer("library", "grant", "grant-key-v1").layer ||
+               raise ArgumentError.new("Expected the cached Grant layer to load for the querying project")
+
+      stored_layer.root_path.should eq(".")
+      stored_layer.list_of_types.first.location_path.should eq("src/grant/columns.cr")
+      stored_layer.list_of_types.first.list_of_instance_methods.first.source_path.should eq("src/grant/columns.cr")
+      loaded.root_path.should eq(querying_library)
+      loaded.list_of_types.first.location_path.should eq(File.join(querying_library, "src", "grant", "columns.cr"))
+      loaded.list_of_types.first.list_of_instance_methods.first.source_path.should eq(File.join(querying_library, "src", "grant", "columns.cr"))
+    end
+  end
 end
