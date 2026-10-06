@@ -25,7 +25,16 @@
             "def": {"name": "id", "return_type": "Int64 | ::Nil"}
           }
         ],
-        "class_methods": [],
+        "class_methods": [
+          {
+            "name": "count",
+            "abstract": false,
+            "args_string": "() : Int32",
+            "doc": "Counts users.",
+            "location": {"filename": "src/models/user.cr", "line_number": 20, "url": null},
+            "def": {"name": "count", "return_type": "Int32"}
+          }
+        ],
         "macros": [
           {
             "name": "has_token",
@@ -36,6 +45,50 @@
             "def": {"name": "has_token"}
           }
         ]
+      },
+      {
+        "kind": "class",
+        "name": "Team",
+        "full_name": "FixtureAPI::Team",
+        "abstract": false,
+        "locations": [{"filename": "src/models/team.cr", "line_number": 3}],
+        "ancestors": [{"kind": "class", "name": "Base", "full_name": "Grant::Base"}],
+        "instance_methods": [],
+        "class_methods": [],
+        "macros": []
+      },
+      {
+        "kind": "class",
+        "name": "Base",
+        "full_name": "Grant::Base",
+        "abstract": true,
+        "locations": [{"filename": "lib/grant/src/grant/base.cr", "line_number": 10}],
+        "ancestors": [],
+        "extended_modules": [
+          {"kind": "module", "name": "QueryMethods", "full_name": "FixtureAPI::QueryMethods"},
+          {"kind": "module", "name": "Builder", "full_name": "Grant::Query::Builder"}
+        ],
+        "instance_methods": [
+          {
+            "name": "created_at",
+            "abstract": false,
+            "args_string": "() : Time",
+            "doc": "Returns the creation time.",
+            "location": {"filename": "lib/grant/src/grant/base.cr", "line_number": 44, "url": null},
+            "def": {"name": "created_at", "return_type": "Time"}
+          }
+        ],
+        "class_methods": [
+          {
+            "name": "count",
+            "abstract": false,
+            "args_string": "() : Int64",
+            "doc": "Counts all rows.",
+            "location": {"filename": "lib/grant/src/grant/base.cr", "line_number": 65, "url": null},
+            "def": {"name": "count", "return_type": "Int64"}
+          }
+        ],
+        "macros": []
       },
       {
         "kind": "module",
@@ -59,6 +112,23 @@
             "doc": "Finds matching records by a map.",
             "location": {"filename": "src/query_methods.cr", "line_number": 18, "url": null},
             "def": {"name": "where", "return_type": "Query"}
+          }
+        ]
+      },
+      {
+        "kind": "module",
+        "name": "Builder",
+        "full_name": "Grant::Query::Builder(Model)",
+        "abstract": false,
+        "locations": [{"filename": "lib/grant/src/grant/query/builder.cr", "line_number": 1}],
+        "instance_methods": [
+          {
+            "name": "build",
+            "abstract": false,
+            "args_string": "(condition : String) : Query",
+            "doc": "Builds a query.",
+            "location": {"filename": "lib/grant/src/grant/query/builder.cr", "line_number": 27, "url": null},
+            "def": {"name": "build", "return_type": "Query"}
           }
         ]
       }
