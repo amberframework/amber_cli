@@ -179,6 +179,44 @@ describe "amber-agent-hook readiness and preflight" do
     end
   end
 
+  it "formats a plain Crystal project's edited file without reporting the declined rule check" do
+    SpecHelper.within_temp_directory do |project_root|
+      fixture = AgentHookSpecHelper.create_ready_project(
+        project_root,
+        coverage: "amber-lsp: declined project is not an Amber V2 stack project",
+        coverage_exit: "2",
+      )
+      compiler_path = File.join(project_root, "fake-tools", "crystal-alpha")
+      File.write(compiler_path, "#!/bin/sh\nexit 0\n")
+      File.chmod(compiler_path, 0o755)
+      payload = {"tool_name" => "Edit", "tool_input" => {"file_path" => File.join(project_root, "src/app.cr")}}.to_json
+
+      post = AgentHookSpecHelper.run_hook(fixture, "post", payload)
+
+      post[0].should eq(0)
+      post[2].should eq("")
+    end
+  end
+
+  it "reports a covered project's post-edit findings" do
+    SpecHelper.within_temp_directory do |project_root|
+      fixture = AgentHookSpecHelper.create_ready_project(
+        project_root,
+        coverage: "src/app.cr:1:1 error: unscoped query",
+        coverage_exit: "1",
+      )
+      compiler_path = File.join(project_root, "fake-tools", "crystal-alpha")
+      File.write(compiler_path, "#!/bin/sh\nexit 0\n")
+      File.chmod(compiler_path, 0o755)
+      payload = {"tool_name" => "Edit", "tool_input" => {"file_path" => File.join(project_root, "src/app.cr")}}.to_json
+
+      post = AgentHookSpecHelper.run_hook(fixture, "post", payload)
+
+      post[0].should eq(2)
+      post[2].should contain("error: unscoped query")
+    end
+  end
+
   it "still fails when amber-lsp reports failed coverage" do
     SpecHelper.within_temp_directory do |project_root|
       fixture = AgentHookSpecHelper.create_ready_project(

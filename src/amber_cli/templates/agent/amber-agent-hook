@@ -710,6 +710,8 @@ AMBER_LOOKUP_GUIDANCE
       [ -z "$format_output" ] || printf '%s\n' "$format_output"
       diagnostics=$("$lsp" --check "$edited_file" 2>&1)
       diagnostic_status=$?
+      # A plain Crystal project has no Amber rules to check; formatting is its post-edit step.
+      [ "$diagnostics" = 'amber-lsp: declined project is not an Amber V2 stack project' ] && continue
       if [ "$diagnostic_status" -ne 0 ]; then
         [ -z "$diagnostics" ] || printf '%s\n' "$diagnostics" >&2
         exit 2
