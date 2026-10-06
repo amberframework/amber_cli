@@ -88,8 +88,13 @@ module AmberLSP::Lookup
       list_of_layers = [] of CachedAPIIndexLayer
       project_name = manifest.name.empty? ? File.basename(@root_path) : manifest.name
       project_flags = docs_flags_for(project_name, list_of_docs_flags)
-      project_key = CalculateProjectLayerKey.new(@root_path, project_flags, identity.version).perform
-      project_entrypoint = find_project_entrypoint(manifest)
+      project_entrypoints = project_docs_entrypoints(manifest, project_name, card_entries)
+      project_key = CalculateProjectLayerKey.new(
+        @root_path,
+        project_flags,
+        identity.version,
+        project_entrypoints,
+      ).perform
 
       list_of_layers << build_or_load_layer(
         cache,
@@ -99,7 +104,7 @@ module AmberLSP::Lookup
         project_key,
         @root_path,
         project_flags,
-        [project_entrypoint],
+        project_entrypoints,
         @root_path,
         {} of String => String,
       )
@@ -218,6 +223,22 @@ module AmberLSP::Lookup
       raise APIIndexBuildError.new("No Crystal entrypoint found under #{@root_path}/src") unless first_source
 
       first_source.sub(@root_path + "/", "")
+    end
+
+    private def project_docs_entrypoints(
+      manifest : ProjectShardManifest,
+      project_name : String,
+      docs_entries_by_library : Hash(String, Array(String)),
+    ) : Array(String)
+      has_target_main = manifest.targets.values.any? { |target| !target.main.empty? }
+      has_source_files = !Dir.glob(File.join(@root_path, "src", "**", "*.cr")).empty?
+      return [find_project_entrypoint(manifest)] if has_target_main || !has_source_files
+
+      ResolveAPIIndexDocsEntries.new(
+        @root_path,
+        project_name,
+        docs_entries_by_library[project_name]?,
+      ).perform
     end
 
     private def docs_flags_for(library_name : String, list_of_docs_flags : Hash(String, Array(String))) : Array(String)

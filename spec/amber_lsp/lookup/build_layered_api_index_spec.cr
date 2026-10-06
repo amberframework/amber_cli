@@ -124,4 +124,69 @@ describe "AmberLSP::Lookup::BuildLayeredAPIIndex#perform" do
       explicit_entries.should eq(["src/tiny.cr", "src/ui.cr"])
     end
   end
+
+  it "indexes all top-level source entries in a project library without a targets main" do
+    with_tempdir do |project_root|
+      cache_root = File.join(project_root, "cache")
+      source_root = File.join(project_root, "src")
+      Dir.mkdir_p(source_root)
+      File.write(File.join(project_root, "shard.yml"), "name: fixture_library\nversion: 1.0.0\n")
+      File.write(
+        File.join(source_root, "fixture_library.cr"),
+        "module FixtureLibrary\n  class Client\n    def ping : Bool\n      true\n    end\n  end\nend\n",
+      )
+      File.write(
+        File.join(source_root, "ui.cr"),
+        "module FixtureLibrary\n  module UI\n    class Label\n      def text=(new_text : String) : String\n        new_text\n      end\n    end\n  end\nend\n",
+      )
+      File.write(File.join(source_root, "components.cr"), "module FixtureLibrary\n  class FrameworkRegistry\n  end\nend\n")
+
+      list_of_layers = AmberLSP::Lookup::BuildLayeredAPIIndex.new(project_root, cache_root).perform
+      project_layer = list_of_layers.find { |cached| cached.layer_kind == "project" } || raise "Expected a project API layer"
+      project_layer.freshness.should eq("fresh")
+      project_api_layer = project_layer.layer || raise "Expected project docs to produce an API layer"
+      project_types = project_api_layer.list_of_types
+      project_types.any? { |type| type.name == "FixtureLibrary::UI::Label" }.should be_true
+      project_types.any? { |type| type.name == "FixtureLibrary::FrameworkRegistry" }.should be_true
+    end
+  end
+
+  it "uses the project API card docs entries for a project library and keys that selection" do
+    with_tempdir do |project_root|
+      cache_root = File.join(project_root, "cache")
+      source_root = File.join(project_root, "src")
+      card_root = File.join(project_root, ".amber-lsp", "api")
+      Dir.mkdir_p(source_root)
+      Dir.mkdir_p(card_root)
+      File.write(File.join(project_root, "shard.yml"), "name: fixture_library\nversion: 1.0.0\n")
+      File.write(File.join(source_root, "fixture_library.cr"), "module FixtureLibrary\n  class Client\n  end\nend\n")
+      File.write(File.join(source_root, "ui.cr"), "module FixtureLibrary\n  class UIComponent\n  end\nend\n")
+      File.write(File.join(source_root, "components.cr"), "module FixtureLibrary\n  class FrameworkRegistry\n  end\nend\n")
+      card_path = File.join(card_root, "fixture_library.yml")
+      File.write(
+        card_path,
+        "card_version: 1\nlibrary: fixture_library\napplies_to: 1.0.0\ndocs_entries:\n  - src/ui.cr\n  - src/fixture_library.cr\n",
+      )
+
+      first_layers = AmberLSP::Lookup::BuildLayeredAPIIndex.new(project_root, cache_root).perform
+      first_project_layer = first_layers.find { |cached| cached.layer_kind == "project" } || raise "Expected a project API layer"
+      first_project_layer.freshness.should eq("fresh")
+      first_api_layer = first_project_layer.layer || raise "Expected project docs to produce an API layer"
+      first_types = first_api_layer.list_of_types
+      first_types.any? { |type| type.name == "FixtureLibrary::UIComponent" }.should be_true
+      first_types.any? { |type| type.name == "FixtureLibrary::FrameworkRegistry" }.should be_false
+
+      File.write(
+        card_path,
+        "card_version: 1\nlibrary: fixture_library\napplies_to: 1.0.0\ndocs_entries:\n  - src/fixture_library.cr\n",
+      )
+      second_layers = AmberLSP::Lookup::BuildLayeredAPIIndex.new(project_root, cache_root).perform
+      second_project_layer = second_layers.find { |cached| cached.layer_kind == "project" } || raise "Expected a project API layer"
+      second_project_layer.freshness.should eq("fresh")
+      second_project_layer.layer_key.should_not eq(first_project_layer.layer_key)
+      second_api_layer = second_project_layer.layer || raise "Expected updated project docs to produce an API layer"
+      second_types = second_api_layer.list_of_types
+      second_types.any? { |type| type.name == "FixtureLibrary::UIComponent" }.should be_false
+    end
+  end
 end
