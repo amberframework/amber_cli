@@ -62,6 +62,20 @@ describe AmberLSP::Lookup::RunLookupCommand do
     end
   end
 
+  it "formats class methods, instance methods, and extended class methods by method kind" do
+    with_lookup_cli_project do |project|
+      cache_root = lookup_cli_cache_root
+      class_result = run_lookup_cli(["Dir.mkdir_p", "--root", project], cache_root)
+      instance_result = run_lookup_cli(["CLIProject::User#id", "--root", project], cache_root)
+      extended_result = run_lookup_cli(["CLIProject::User.find", "--root", project], cache_root)
+
+      class_result[1].should contain("Dir.mkdir_p(path : Path | String, mode : Int32 = 511) : Nil")
+      class_result[1].should_not contain("Dir#mkdir_p")
+      instance_result[1].should contain("CLIProject::User#id() : Int64 | Nil")
+      extended_result[1].should contain("CLIProject::Querying::ClassMethods.find() : String (class method via extend)")
+    end
+  end
+
   it "uses exit code 5 for a compiler-verified absent method" do
     with_lookup_cli_project do |project|
       result = run_lookup_cli(
@@ -150,7 +164,17 @@ private def with_lookup_cli_project(&)
     YAML
     File.write(source_path, <<-CRYSTAL)
       module CLIProject
+        module Querying
+          module ClassMethods
+            def find : String
+              "found"
+            end
+          end
+        end
+
         class Parent
+          extend Querying::ClassMethods
+
           def inherited_api
           end
         end

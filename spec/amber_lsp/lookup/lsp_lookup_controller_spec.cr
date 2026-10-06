@@ -38,12 +38,50 @@ describe AmberLSP::Controller do
       workspace_symbol["name"].as_s.should eq("FixtureAPI::User#id()")
       workspace_symbol["data"]["freshness"].as_s.should eq("fresh")
 
+      extension_workspace_response = controller.handle(
+        lsp_lookup_request(6, "workspace/symbol", {"query" => "FixtureAPI::Team.where"}),
+        server,
+      )
+      extension_workspace_json = extension_workspace_response || raise "Expected extended method symbol response"
+      extension_workspace = AmberLSP::Lookup::LSPWorkspaceSymbolResponse.from_json(extension_workspace_json)
+      extension_workspace_symbol = extension_workspace.list_of_workspace_symbols.first? ||
+                                   raise "Expected an extended method workspace symbol"
+      extension_workspace_symbol.symbol_name.should eq(
+        "FixtureAPI::QueryMethods.where(field : String) (class method via extend)",
+      )
+
       hover_value = hover_json["result"]["contents"]["value"].as_s
       hover_value.should contain("FixtureAPI::User#id() : Int64 | Nil")
       hover_value.should contain("The user's primary key.")
       hover_value.should contain("Layer: fixture_project")
       hover_value.should contain("Freshness: fresh")
       hover_value.should contain("The ID getter is generated from the persisted table column.")
+
+      class_hover_response = controller.handle(
+        lsp_lookup_request(4, "textDocument/hover", {
+          "textDocument" => {"uri" => uri},
+          "position"     => {"line" => 1, "character" => 21},
+        }),
+        server,
+      )
+      class_hover_json = class_hover_response || raise "Expected class method hover response"
+      class_hover = AmberLSP::Lookup::LSPHoverResponse.from_json(class_hover_json)
+      class_hover_result = class_hover.result || raise "Expected class method hover contents"
+      class_hover_value = class_hover_result.contents.markdown_value
+      class_hover_value.should contain("FixtureAPI::User.count() : Int32")
+
+      extension_hover_response = controller.handle(
+        lsp_lookup_request(5, "textDocument/hover", {
+          "textDocument" => {"uri" => uri},
+          "position"     => {"line" => 2, "character" => 21},
+        }),
+        server,
+      )
+      extension_hover_json = extension_hover_response || raise "Expected extended method hover response"
+      extension_hover = AmberLSP::Lookup::LSPHoverResponse.from_json(extension_hover_json)
+      extension_hover_result = extension_hover.result || raise "Expected extended method hover contents"
+      extension_hover_value = extension_hover_result.contents.markdown_value
+      extension_hover_value.should contain("FixtureAPI::QueryMethods.where(field : String) : Query (class method via extend)")
 
       definition_json["result"].as_a.first["uri"].as_s.should eq("file://#{File.join(project, "src", "models", "user.cr")}")
       definition_json["result"].as_a.first["range"]["start"]["line"].as_i.should eq(11)
@@ -120,7 +158,10 @@ private def with_lsp_lookup_project(&)
     Dir.mkdir_p(source_root)
     Dir.mkdir_p(api_card_root)
     File.write(File.join(project, "shard.yml"), "name: fixture_project\nversion: 1.5.0\n")
-    File.write(File.join(source_root, "user.cr"), "FixtureAPI::User#id\n")
+    File.write(
+      File.join(source_root, "user.cr"),
+      "FixtureAPI::User#id\nFixtureAPI::User.count\nFixtureAPI::Team.where\n",
+    )
     card_fixture = File.join(Dir.current, "spec", "fixtures", "api_lookup", "cards", "project", ".amber-lsp")
     FileUtils.cp_r(card_fixture, project)
 

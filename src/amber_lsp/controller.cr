@@ -320,7 +320,7 @@ module AmberLSP
           notes,
         )
         list_of_symbols << Lookup::LSPWorkspaceSymbol.new(
-          "#{entry.owner}##{entry.name}#{entry.args_string}",
+          entry.lookup_symbol_name,
           6,
           location,
           entry.owner,
@@ -454,10 +454,8 @@ module AmberLSP
     ) : String
       lines = [] of String
       answer.list_of_entries.each do |entry|
-        argument_string = entry.args_string.starts_with?('(') ? entry.args_string : "(#{entry.args_string})"
-        return_type = entry.return_type.gsub("::Nil", "Nil")
         lines << "```crystal"
-        lines << "#{entry.owner}##{entry.name}#{argument_string} : #{return_type}"
+        lines << entry.lookup_signature
         lines << "```"
         if doc_line = entry.doc_line
           lines << doc_line

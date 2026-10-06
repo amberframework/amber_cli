@@ -29,8 +29,10 @@ describe "AmberLSP::Lookup::ResolveAPIQuery#perform" do
     direct_result.resolution_kind.should eq("class_method")
     direct_result.list_of_methods.size.should eq(2)
     direct_result.list_of_methods.all? { |method| method.owner == "FixtureAPI::QueryMethods" }.should be_true
+    direct_result.list_of_methods.all? { |method| method.method_kind == "extended_class" }.should be_true
     ancestor_result.list_of_methods.size.should eq(2)
     ancestor_result.list_of_methods.all? { |method| method.owner == "FixtureAPI::QueryMethods" }.should be_true
+    ancestor_result.list_of_methods.all? { |method| method.method_kind == "extended_class" }.should be_true
   end
 
   it "matches generic extension owners by their base name" do

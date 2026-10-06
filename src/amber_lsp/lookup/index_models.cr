@@ -127,6 +127,47 @@ module AmberLSP::Lookup
       @macro : Bool,
     )
     end
+
+    def as_extended_class_method : APIIndexMethod
+      APIIndexMethod.new(
+        owner,
+        name,
+        "extended_class",
+        args_string,
+        return_type,
+        doc_line,
+        source_path,
+        source_line,
+        source_layer,
+        abstract?,
+        macro?,
+      )
+    end
+
+    def lookup_reference : String
+      separator = method_kind == "instance" ? "#" : "."
+      "#{owner}#{separator}#{name}"
+    end
+
+    def lookup_label : String
+      "#{lookup_reference}#{lookup_argument_list}"
+    end
+
+    def lookup_symbol_name : String
+      "#{lookup_label}#{extension_annotation}"
+    end
+
+    def lookup_signature : String
+      "#{lookup_label} : #{return_type.gsub("::Nil", "Nil")}#{extension_annotation}"
+    end
+
+    private def lookup_argument_list : String
+      args_string.starts_with?('(') ? args_string : "(#{args_string})"
+    end
+
+    private def extension_annotation : String
+      method_kind == "extended_class" ? " (class method via extend)" : ""
+    end
   end
 
   # :nodoc:

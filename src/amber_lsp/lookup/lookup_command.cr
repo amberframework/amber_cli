@@ -222,9 +222,7 @@ module AmberLSP::Lookup
       end
 
       answer.list_of_entries.each do |entry|
-        argument_string = entry.args_string.starts_with?('(') ? entry.args_string : "(#{entry.args_string})"
-        return_type = entry.return_type.gsub("::Nil", "Nil")
-        @stdout.puts("#{entry.owner}##{entry.name}#{argument_string} : #{return_type}  — #{entry.source_path}:#{entry.source_line}  [#{entry.source_layer}]")
+        @stdout.puts("#{entry.lookup_signature}  — #{entry.source_path}:#{entry.source_line}  [#{entry.source_layer}]")
         @stdout.puts("  #{entry.doc_line}") if entry.doc_line
       end
 

@@ -107,7 +107,7 @@ module AmberLSP::Lookup
 
           visited_module_names.add(module_name)
           types_named(module_name).each do |module_type|
-            methods.concat(methods_named([module_type], method_name, "instance"))
+            methods.concat(methods_named([module_type], method_name, "instance").map(&.as_extended_class_method))
           end
         end
       end
