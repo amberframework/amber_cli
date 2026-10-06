@@ -32,8 +32,8 @@ case "${OS}" in
     BUILD_LSP="crystal-alpha build src/amber_lsp.cr -o amber-lsp --release"
     CHECKSUM_CMD="shasum -a 256"
     if [ "${ARCH}" != "arm64" ]; then
-      echo "⚠️  Warning: Building for ARM64 on ${ARCH} architecture"
-      echo "   This will create a native build for your current architecture"
+      echo "Intel macOS is not a release target; build darwin-arm64 on Apple Silicon" >&2
+      exit 1
     fi
     ;;
   "linux")
@@ -77,11 +77,23 @@ test -x amber-lsp
 
 # Create archive
 echo "📦 Creating archive..."
-tar -czf "${OUTPUT_DIR}/amber_cli-${TARGET}.tar.gz" amber amber-lsp
-git archive --format=tar --prefix="amber_cli-${VERSION}/" HEAD | gzip -n -9 > "${OUTPUT_DIR}/amber_cli-source-${VERSION}.tar.gz"
+git archive --format=tar.gz --prefix="amber_cli-${VERSION}/" HEAD > "${OUTPUT_DIR}/amber_cli-source-${VERSION}.tar.gz"
 
 # Calculate checksum
 echo "🔢 Calculating checksum..."
+if command -v sha256sum >/dev/null 2>&1; then
+  sha256sum amber amber-lsp > "${OUTPUT_DIR}/checksums.txt"
+else
+  shasum -a 256 amber amber-lsp > "${OUTPUT_DIR}/checksums.txt"
+fi
+tar -czf "${OUTPUT_DIR}/amber_cli-${TARGET}.tar.gz" amber amber-lsp -C "${OUTPUT_DIR}" checksums.txt
+mkdir -p "${OUTPUT_DIR}/verify"
+tar -xzf "${OUTPUT_DIR}/amber_cli-${TARGET}.tar.gz" -C "${OUTPUT_DIR}/verify"
+if command -v sha256sum >/dev/null 2>&1; then
+  (cd "${OUTPUT_DIR}/verify" && sha256sum --check checksums.txt)
+else
+  (cd "${OUTPUT_DIR}/verify" && shasum -a 256 -c checksums.txt)
+fi
 cd "${OUTPUT_DIR}"
 if command -v sha256sum >/dev/null 2>&1; then
   sha256sum "amber_cli-${TARGET}.tar.gz" > "amber_cli-${TARGET}.tar.gz.sha256"
@@ -95,6 +107,7 @@ SHA256=$(cut -d' ' -f1 < "amber_cli-${TARGET}.tar.gz.sha256")
 echo ""
 echo "🎉 Build complete!"
 echo "📁 Output: ${OUTPUT_DIR}/amber_cli-${TARGET}.tar.gz"
+echo "🔒 Commit: $(git -C .. rev-parse HEAD)"
 echo "🔑 SHA256: ${SHA256}"
 echo "🔑 Source SHA256: $(cut -d' ' -f1 < "amber_cli-source-${VERSION}.tar.gz.sha256")"
 echo ""
