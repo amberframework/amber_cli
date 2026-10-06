@@ -1,0 +1,17 @@
+{
+  "repository_name": "unknown-library-location-fixture",
+  "program": {
+    "kind": "module",
+    "full_name": "",
+    "types": [
+      {
+        "kind": "class",
+        "name": "PrivateType",
+        "full_name": "Untracked::PrivateType",
+        "locations": [
+          {"filename": "/fixture_app/untracked/private.cr", "line_number": 1}
+        ]
+      }
+    ]
+  }
+}

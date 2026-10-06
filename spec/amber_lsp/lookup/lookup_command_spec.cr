@@ -120,9 +120,18 @@ describe AmberLSP::Lookup::RunLookupCommand do
       json["entries"].as_a.first["name"].as_s.should eq("id")
       json["entries"].as_a.first["declared_return_type"].as_s.should eq("Int64 | ::Nil")
       json["entries"].as_a.first["resolved_return_type"].as_s.should eq("Int64 | Nil")
+      json["entries"].as_a.first["verified_return_type"].as_s.should eq("Int64 | Nil")
+      json["verified_return_type"].as_s.should eq("Int64 | Nil")
       json["verification_status"].as_s.should eq("present")
       json["verification_elapsed_milliseconds"].as_i.should be >= 0
       json["card_notes"].as_a.size.should eq(1)
+
+      text_result = run_lookup_cli(
+        ["CLIProject::User#id", "--root", project, "--verify"],
+        lookup_cli_cache_root,
+      )
+      text_result[0].should eq(0)
+      text_result[1].should contain("verified type: Int64 | Nil")
     end
   end
 

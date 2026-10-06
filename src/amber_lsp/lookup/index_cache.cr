@@ -5,6 +5,8 @@ require "random/secure"
 require "./index_models"
 
 module AmberLSP::Lookup
+  API_INDEX_CACHE_SCHEMA_VERSION = "api-index-cache-v6"
+
   class APIIndexBuildError < Exception
   end
 
@@ -20,7 +22,7 @@ module AmberLSP::Lookup
     def perform : String
       root_path = File.expand_path(@root_path)
       list_of_index_paths = source_paths(root_path)
-      key_material = ["project", "docs-entries-v1", "resolved-return-types-v2", @compiler_version, @docs_flags.sort.join("\0")]
+      key_material = ["project", API_INDEX_CACHE_SCHEMA_VERSION, "docs-entries-v1", "resolved-return-types-v2", @compiler_version, @docs_flags.sort.join("\0")]
       key_material.concat(@docs_entries)
 
       list_of_index_paths.each do |path|
@@ -60,6 +62,7 @@ module AmberLSP::Lookup
     def perform : String
       key_material = [
         "library",
+        API_INDEX_CACHE_SCHEMA_VERSION,
         "docs-workspace-multi-entry-v2",
         "resolved-return-types-v2",
         @library_name,
@@ -77,7 +80,7 @@ module AmberLSP::Lookup
     end
 
     def perform : String
-      key_material = ["stdlib", "resolved-return-types-v2", @compiler_version, @docs_flags.sort.join("\0")]
+      key_material = ["stdlib", API_INDEX_CACHE_SCHEMA_VERSION, "resolved-return-types-v2", @compiler_version, @docs_flags.sort.join("\0")]
       Digest::SHA256.hexdigest(key_material.join("\0"))
     end
   end
@@ -153,7 +156,8 @@ module AmberLSP::Lookup
       Dir.mkdir_p(directory_path)
 
       layer_path = File.join(directory_path, "#{layer.layer_key}.json")
-      write_atomically(layer_path, layer.to_json)
+      cached_layer = layer.layer_kind == "library" ? portable_library_layer(layer) : layer
+      write_atomically(layer_path, cached_layer.to_json)
 
       failure_path = failure_marker_path(layer.layer_kind, layer.layer_name, layer.layer_key)
       File.delete(failure_path) if File.file?(failure_path)
@@ -255,9 +259,118 @@ module AmberLSP::Lookup
       return nil unless layer.layer_name == expected_name
       return nil unless layer.layer_key == expected_key
 
-      layer
+      layer.layer_kind == "library" ? resolve_library_layer_paths(layer) : layer
     rescue ex : JSON::ParseException | IO::Error
       nil
+    end
+
+    private def portable_library_layer(layer : APIIndexLayer) : APIIndexLayer
+      library_root = File.expand_path(layer.root_path)
+      list_of_types = layer.list_of_types.map do |type|
+        APIIndexType.new(
+          type.name,
+          type.kind,
+          type.abstract?,
+          type.list_of_ancestor_names,
+          type.list_of_included_module_names,
+          type.list_of_extended_module_names,
+          portable_library_source_path(type.location_path, library_root),
+          type.location_line,
+          type.source_layer,
+          type.list_of_instance_methods.map { |method| method_with_source_path(method, portable_library_source_path(method.source_path, library_root)) },
+          type.list_of_class_methods.map { |method| method_with_source_path(method, portable_library_source_path(method.source_path, library_root)) },
+          type.list_of_macros.map { |method| method_with_source_path(method, portable_library_source_path(method.source_path, library_root)) },
+        )
+      end
+      list_of_entry_failures = layer.list_of_entry_failures.map do |failure|
+        APIIndexEntryFailure.new(
+          portable_library_source_path(failure.entry_path, library_root),
+          failure.error,
+        )
+      end
+
+      APIIndexLayer.new(
+        layer.layer_kind,
+        layer.layer_name,
+        layer.layer_key,
+        ".",
+        layer.docs_flags,
+        list_of_types,
+        list_of_entry_failures,
+      )
+    end
+
+    private def resolve_library_layer_paths(layer : APIIndexLayer) : APIIndexLayer
+      library_root = File.expand_path(File.join(@project_root_path, "lib", layer.layer_name))
+      list_of_types = layer.list_of_types.map do |type|
+        APIIndexType.new(
+          type.name,
+          type.kind,
+          type.abstract?,
+          type.list_of_ancestor_names,
+          type.list_of_included_module_names,
+          type.list_of_extended_module_names,
+          resolve_library_source_path(type.location_path, library_root),
+          type.location_line,
+          type.source_layer,
+          type.list_of_instance_methods.map { |method| method_with_source_path(method, resolve_library_source_path(method.source_path, library_root)) },
+          type.list_of_class_methods.map { |method| method_with_source_path(method, resolve_library_source_path(method.source_path, library_root)) },
+          type.list_of_macros.map { |method| method_with_source_path(method, resolve_library_source_path(method.source_path, library_root)) },
+        )
+      end
+      list_of_entry_failures = layer.list_of_entry_failures.map do |failure|
+        APIIndexEntryFailure.new(
+          resolve_library_source_path(failure.entry_path, library_root),
+          failure.error,
+        )
+      end
+
+      APIIndexLayer.new(
+        layer.layer_kind,
+        layer.layer_name,
+        layer.layer_key,
+        library_root,
+        layer.docs_flags,
+        list_of_types,
+        list_of_entry_failures,
+      )
+    end
+
+    private def method_with_source_path(method : APIIndexMethod, source_path : String) : APIIndexMethod
+      APIIndexMethod.new(
+        method.owner,
+        method.name,
+        method.method_kind,
+        method.args_string,
+        method.declared_return_type,
+        method.doc_line,
+        source_path,
+        method.source_line,
+        method.source_layer,
+        method.abstract?,
+        method.macro?,
+        method.resolved_return_type,
+        method.verified_return_type,
+        method.verification_skip_reason,
+      )
+    end
+
+    private def portable_library_source_path(path : String, library_root : String) : String
+      return path if path.empty?
+      return path unless path.starts_with?("/")
+
+      expanded_path = File.expand_path(path)
+      root_prefix = "#{library_root}/"
+      return expanded_path[root_prefix.bytesize..] if expanded_path.starts_with?(root_prefix)
+      return "." if expanded_path == library_root
+
+      raise APIIndexBuildError.new("Library index path is outside #{library_root}: #{path}")
+    end
+
+    private def resolve_library_source_path(path : String, library_root : String) : String
+      return path if path.empty? || path.starts_with?("/")
+
+      File.expand_path(path, library_root)
     end
 
     private def layer_directory(layer_kind : String, layer_name : String) : String

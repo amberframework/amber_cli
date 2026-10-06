@@ -1,11 +1,66 @@
 require "./parse_api_type_name"
 
 module AmberLSP::Lookup
+  class APITypeParameterBindings
+    def initialize(@type_template_name : String, @instantiated_type_name : String)
+    end
+
+    def perform : Hash(String, String)
+      template_type = ParseAPITypeName.new(@type_template_name).perform
+      instantiated_type = ParseAPITypeName.new(@instantiated_type_name).perform
+      return {} of String => String unless template_type.base_name == instantiated_type.base_name
+      return {} of String => String unless template_type.list_of_type_arguments.size == instantiated_type.list_of_type_arguments.size
+
+      bindings = {} of String => String
+      template_type.list_of_type_arguments.each_with_index do |parameter_name, index|
+        argument = instantiated_type.list_of_type_arguments[index]?
+        bindings[parameter_name] = argument if argument
+      end
+      bindings
+    end
+
+    def substitute(type_expression : String) : String
+      bindings = perform
+      return type_expression if bindings.empty?
+
+      output = String::Builder.new
+      current_token = String::Builder.new
+      type_expression.each_char do |character|
+        if type_token_character?(character)
+          current_token << character
+        else
+          append_substituted_token(output, current_token, bindings)
+          current_token = String::Builder.new
+          output << character
+        end
+      end
+      append_substituted_token(output, current_token, bindings)
+      output.to_s
+    end
+
+    private def type_token_character?(character : Char) : Bool
+      (character >= 'A' && character <= 'Z') ||
+        (character >= 'a' && character <= 'z') ||
+        (character >= '0' && character <= '9') ||
+        character == '_' || character == ':'
+    end
+
+    private def append_substituted_token(
+      output : String::Builder,
+      current_token : String::Builder,
+      bindings : Hash(String, String),
+    ) : Nil
+      token = current_token.to_s
+      output << (bindings[token]? || token)
+    end
+  end
+
   class ResolveAPIIndexReturnType
     def initialize(
       @declared_return_type : String,
       @receiver_type : String?,
       @owner_type_name : String? = nil,
+      @additional_type_parameter_bindings : Hash(String, String) = {} of String => String,
     )
     end
 
@@ -27,23 +82,14 @@ module AmberLSP::Lookup
     private def substitute_owner_type_parameters(return_type : String) : String
       owner_type_name = @owner_type_name
       receiver_type = @receiver_type
-      return return_type unless owner_type_name && receiver_type
-
-      owner_type = ParseAPITypeName.new(owner_type_name).perform
-      receiver = ParseAPITypeName.new(receiver_type).perform
-      return return_type unless normalize_type_base(owner_type.base_name) == normalize_type_base(receiver.base_name)
-      return return_type unless owner_type.list_of_type_arguments.size == receiver.list_of_type_arguments.size
-
-      bindings = {} of String => String
-      owner_type.list_of_type_arguments.each_with_index do |parameter_name, index|
-        argument = receiver.list_of_type_arguments[index]?
-        bindings[parameter_name] = argument if argument
+      bindings = @additional_type_parameter_bindings.dup
+      if owner_type_name && receiver_type
+        owner_bindings = APITypeParameterBindings.new(owner_type_name, receiver_type).perform
+        bindings.merge!(owner_bindings)
       end
-      substitute_type_tokens(return_type, bindings)
-    end
+      return return_type if bindings.empty?
 
-    private def normalize_type_base(name : String) : String
-      name.sub(/\A::/, "")
+      substitute_type_tokens(return_type, bindings)
     end
 
     private def substitute_type_tokens(return_type : String, bindings : Hash(String, String)) : String

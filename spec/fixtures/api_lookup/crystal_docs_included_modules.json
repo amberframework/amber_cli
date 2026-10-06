@@ -1,0 +1,45 @@
+{
+  "repository_name": "fixture_included_modules",
+  "program": {
+    "kind": "module",
+    "name": "Grant",
+    "full_name": "Grant",
+    "types": [
+      {
+        "kind": "class",
+        "name": "Collection",
+        "full_name": "Grant::Collection(T)",
+        "locations": [{"filename": "lib/grant/src/grant/collection.cr", "line_number": 1}],
+        "included_modules": [{"kind": "module", "name": "Enumerable", "full_name": "Enumerable(T)"}]
+      },
+      {
+        "kind": "class",
+        "name": "AncestorCollection",
+        "full_name": "Grant::AncestorCollection(T)",
+        "locations": [{"filename": "lib/grant/src/grant/ancestor_collection.cr", "line_number": 1}],
+        "ancestors": [{"kind": "class", "name": "Collection", "full_name": "Grant::Collection(T)"}]
+      },
+      {
+        "kind": "class",
+        "name": "AssociationCollection",
+        "full_name": "Grant::AssociationCollection(Owner, Target)",
+        "locations": [{"filename": "lib/grant/src/grant/association_collection.cr", "line_number": 1}],
+        "included_modules": [{"kind": "module", "name": "Enumerable", "full_name": "Enumerable(Target)"}]
+      },
+      {
+        "kind": "module",
+        "name": "Enumerable",
+        "full_name": "Enumerable(T)",
+        "locations": [{"filename": "lib/crystal/enumerable.cr", "line_number": 1}],
+        "instance_methods": [
+          {
+            "name": "to_a",
+            "args_string": "() : Array(T)",
+            "location": {"filename": "lib/crystal/enumerable.cr", "line_number": 5},
+            "def": {"name": "to_a", "return_type": "Array(T)"}
+          }
+        ]
+      }
+    ]
+  }
+}

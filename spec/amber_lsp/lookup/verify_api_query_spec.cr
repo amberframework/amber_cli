@@ -44,6 +44,83 @@ describe AmberLSP::Lookup::VerifyAPIQuery do
     end
   end
 
+  it "reports the compiler return type for an indexed overload with an unknown docs type" do
+    with_probe_project do |project|
+      entry = probe_method("ProbeAPI::Child", "select", "class", "()", "unknown")
+      resolution = AmberLSP::Lookup::APIResolution.new(
+        "ProbeAPI::Child.select",
+        "class_method",
+        nil,
+        [entry],
+      )
+
+      result = AmberLSP::Lookup::VerifyAPIQuery.new(project, resolution.query, resolution).perform
+
+      result.status.should eq("present")
+      result.output.should contain("verified type: String")
+    end
+  end
+
+  it "reports a reason when an overload cannot be type checked because it has a splat" do
+    with_probe_project do |project|
+      entry = probe_method("ProbeAPI::Child", "choices", "class", "(*fields : String)", "unknown")
+      resolution = AmberLSP::Lookup::APIResolution.new(
+        "ProbeAPI::Child.choices",
+        "class_method",
+        nil,
+        [entry],
+      )
+
+      result = AmberLSP::Lookup::VerifyAPIQuery.new(project, resolution.query, resolution).perform
+
+      result.output.should contain("type check skipped: splat parameters are unsupported")
+      result.status.should eq("present")
+    end
+  end
+
+  it "builds a typed call from declared parameter types" do
+    with_probe_project do |project|
+      entry = probe_method("ProbeAPI::Child", "convert", "instance", "(value : String)", "unknown")
+      resolution = AmberLSP::Lookup::APIResolution.new(
+        "ProbeAPI::Child#convert",
+        "instance_method",
+        nil,
+        [entry],
+      )
+
+      result = AmberLSP::Lookup::VerifyAPIQuery.new(project, resolution.query, resolution).perform
+
+      result.status.should eq("present")
+      result.verified_return_type.should eq("String")
+      result.list_of_verified_entries.first.verified_return_type.should eq("String")
+    end
+  end
+
+  it "skips block and untyped parameters with a reason" do
+    with_probe_project do |project|
+      untyped_entry = probe_method("ProbeAPI::Child", "untyped_parameter", "class", "(value)", "unknown")
+      untyped_resolution = AmberLSP::Lookup::APIResolution.new(
+        "ProbeAPI::Child.untyped_parameter",
+        "class_method",
+        nil,
+        [untyped_entry],
+      )
+      block_entry = probe_method("ProbeAPI::Child", "transform", "class", "(&block : String -> Bool)", "unknown")
+      block_resolution = AmberLSP::Lookup::APIResolution.new(
+        "ProbeAPI::Child.transform",
+        "class_method",
+        nil,
+        [block_entry],
+      )
+
+      untyped_result = AmberLSP::Lookup::VerifyAPIQuery.new(project, untyped_resolution.query, untyped_resolution).perform
+      block_result = AmberLSP::Lookup::VerifyAPIQuery.new(project, block_resolution.query, block_resolution).perform
+
+      untyped_result.output.should contain("type check skipped: parameters without declared types are unsupported")
+      block_result.output.should contain("type check skipped: block parameters are unsupported")
+    end
+  end
+
   it "returns unavailable when the query cannot be represented safely" do
     with_probe_project do |project|
       result = verify_query(project, "ProbeAPI::Child#safe_name; puts 1")
@@ -58,13 +135,19 @@ private def verify_query(project : String, query : String) : AmberLSP::Lookup::A
   AmberLSP::Lookup::VerifyAPIQuery.new(project, query, resolution).perform
 end
 
-private def probe_method(owner : String, name : String) : AmberLSP::Lookup::APIIndexMethod
+private def probe_method(
+  owner : String,
+  name : String,
+  method_kind : String = "instance",
+  args_string : String = "",
+  declared_return_type : String = "",
+) : AmberLSP::Lookup::APIIndexMethod
   AmberLSP::Lookup::APIIndexMethod.new(
     owner,
     name,
-    "instance",
-    "",
-    "",
+    method_kind,
+    args_string,
+    declared_return_type,
     nil,
     "src/probe_api.cr",
     1,
@@ -106,6 +189,26 @@ private def with_probe_project(&)
 
         class Child < Parent
           extend ClassExtensions
+
+          def self.select : String
+            "selected"
+          end
+
+          def self.choices(*fields : String) : Array(String)
+            fields.to_a
+          end
+
+          def self.untyped_parameter(value)
+            value.to_s
+          end
+
+          def self.transform(&block : String -> Bool) : String
+            block.call("value") ? "yes" : "no"
+          end
+
+          def convert(value : String) : String
+            value
+          end
         end
 
         class FirstCandidate

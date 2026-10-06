@@ -42,6 +42,8 @@ module AmberLSP::Lookup
     @[JSON::Field(emit_null: true)]
     getter verification_elapsed_milliseconds : Int64?
     @[JSON::Field(emit_null: true)]
+    getter verified_return_type : String?
+    @[JSON::Field(emit_null: true)]
     getter failure_reason : String?
     @[JSON::Field(key: "card_notes")]
     getter list_of_card_notes : Array(APICardNote)
@@ -59,6 +61,7 @@ module AmberLSP::Lookup
       @list_of_layers : Array(APIIndexLayerState),
       @verification_status : String?,
       @verification_elapsed_milliseconds : Int64?,
+      @verified_return_type : String?,
       @failure_reason : String?,
       @list_of_card_notes : Array(APICardNote) = [] of APICardNote,
       @list_of_error_hints : Array(APICardErrorHint) = [] of APICardErrorHint,
@@ -197,6 +200,7 @@ module AmberLSP::Lookup
         when "unavailable"
           failure_reason = probe.output
         end
+        list_of_entries = probe.list_of_verified_entries unless probe.list_of_verified_entries.empty?
       end
 
       LookupCLIAnswer.new(
@@ -208,6 +212,7 @@ module AmberLSP::Lookup
         answer.list_of_layers,
         verification_status,
         probe.try(&.elapsed_milliseconds),
+        probe.try(&.verified_return_type),
         failure_reason,
         list_of_card_notes,
         list_of_error_hints,
@@ -224,6 +229,8 @@ module AmberLSP::Lookup
       answer.list_of_entries.each do |entry|
         @stdout.puts("#{entry.lookup_signature}  — #{entry.source_path}:#{entry.source_line}  [#{entry.source_layer}]")
         @stdout.puts("  #{entry.doc_line}") if entry.doc_line
+        @stdout.puts("  verified type: #{entry.verified_return_type}") if entry.verified_return_type
+        @stdout.puts("  type check skipped: #{entry.verification_skip_reason}") if entry.verification_skip_reason
       end
 
       answer.list_of_card_notes.each do |note|
