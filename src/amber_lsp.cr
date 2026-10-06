@@ -41,6 +41,7 @@ require "./amber_lsp/analyze_file_with_coverage"
 require "./amber_lsp/controller"
 require "./amber_lsp/server"
 require "./amber_lsp/check_file_for_diagnostics"
+require "./amber_lsp/lookup/build_layered_api_index"
 
 if ARGV.includes?("--version")
   STDOUT.puts AmberLSP.version_line

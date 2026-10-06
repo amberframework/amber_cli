@@ -1,0 +1,67 @@
+{
+  "repository_name": "fixture_api",
+  "program": {
+    "kind": "module",
+    "name": "FixtureAPI",
+    "full_name": "FixtureAPI",
+    "abstract": false,
+    "types": [
+      {
+        "kind": "class",
+        "name": "User",
+        "full_name": "FixtureAPI::User",
+        "abstract": false,
+        "locations": [{"filename": "src/models/user.cr", "line_number": 3}],
+        "ancestors": [{"kind": "class", "name": "Base", "full_name": "Grant::Base"}],
+        "included_modules": [{"kind": "module", "name": "Timestamped", "full_name": "FixtureAPI::Timestamped"}],
+        "extended_modules": [{"kind": "module", "name": "QueryMethods", "full_name": "FixtureAPI::QueryMethods"}],
+        "instance_methods": [
+          {
+            "name": "id",
+            "abstract": false,
+            "args_string": "() : Int64 | ::Nil",
+            "doc": "The user's primary key.\nAdditional details.",
+            "location": {"filename": "src/models/user.cr", "line_number": 12, "url": null},
+            "def": {"name": "id", "return_type": "Int64 | ::Nil"}
+          }
+        ],
+        "class_methods": [],
+        "macros": [
+          {
+            "name": "has_token",
+            "abstract": false,
+            "args_string": "(name)",
+            "doc": "Adds a token column.",
+            "location": {"filename": "src/models/user.cr", "line_number": 8, "url": null},
+            "def": {"name": "has_token"}
+          }
+        ]
+      },
+      {
+        "kind": "module",
+        "name": "QueryMethods",
+        "full_name": "FixtureAPI::QueryMethods",
+        "abstract": false,
+        "locations": [{"filename": "src/query_methods.cr", "line_number": 1}],
+        "instance_methods": [
+          {
+            "name": "where",
+            "abstract": false,
+            "args_string": "(field : String) : Query",
+            "doc": "Finds matching records.\nReturns a lazy query.",
+            "location": {"filename": "src/query_methods.cr", "line_number": 9, "url": null},
+            "def": {"name": "where", "return_type": "Query"}
+          },
+          {
+            "name": "where",
+            "abstract": true,
+            "args_string": "(fields : Hash(String, Int64)) : Query",
+            "doc": "Finds matching records by a map.",
+            "location": {"filename": "src/query_methods.cr", "line_number": 18, "url": null},
+            "def": {"name": "where", "return_type": "Query"}
+          }
+        ]
+      }
+    ]
+  }
+}
