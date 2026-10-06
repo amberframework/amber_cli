@@ -162,7 +162,7 @@ describe AmberLSP::Rules::Controllers::ActionReturnRule do
           render("index.ecr")
         end
 
-        private def helper_method
+        private def get_current_user
           "helper"
         end
       end
@@ -182,7 +182,7 @@ describe AmberLSP::Rules::Controllers::ActionReturnRule do
 
         private
 
-        def helper_method
+        def logged_in?
           "helper"
         end
       end
@@ -191,6 +191,86 @@ describe AmberLSP::Rules::Controllers::ActionReturnRule do
       rule = AmberLSP::Rules::Controllers::ActionReturnRule.new
       diagnostics = rule.check("src/controllers/home_controller.cr", content)
       diagnostics.should be_empty
+    end
+
+    it "skips methods after protected keyword" do
+      content = <<-CRYSTAL
+      class HomeController < ApplicationController
+        def index
+          render("index.ecr")
+        end
+
+        protected
+
+        def establish_session
+          "helper"
+        end
+      end
+      CRYSTAL
+
+      rule = AmberLSP::Rules::Controllers::ActionReturnRule.new
+      diagnostics = rule.check("src/controllers/home_controller.cr", content)
+      diagnostics.should be_empty
+    end
+
+    it "skips methods declared with protected def" do
+      content = <<-CRYSTAL
+      class HomeController < ApplicationController
+        def index
+          render("index.ecr")
+        end
+
+        protected def begin_mfa_challenge
+          "helper"
+        end
+      end
+      CRYSTAL
+
+      rule = AmberLSP::Rules::Controllers::ActionReturnRule.new
+      diagnostics = rule.check("src/controllers/home_controller.cr", content)
+      diagnostics.should be_empty
+    end
+
+    it "treats methods after public keyword as actions" do
+      content = <<-CRYSTAL
+      class HomeController < ApplicationController
+        protected
+
+        public
+
+        def index
+          @users = User.all
+        end
+      end
+      CRYSTAL
+
+      rule = AmberLSP::Rules::Controllers::ActionReturnRule.new
+      diagnostics = rule.check("src/controllers/home_controller.cr", content)
+      diagnostics.size.should eq(1)
+      diagnostics[0].message.should contain("index")
+    end
+
+    it "resets visibility when the next controller class starts" do
+      content = <<-CRYSTAL
+      class AuthController < ApplicationController
+        private
+
+        def session_helper
+          "helper"
+        end
+      end
+
+      class UsersController < ApplicationController
+        def index
+          @users = User.all
+        end
+      end
+      CRYSTAL
+
+      rule = AmberLSP::Rules::Controllers::ActionReturnRule.new
+      diagnostics = rule.check("src/controllers/users_controller.cr", content)
+      diagnostics.size.should eq(1)
+      diagnostics[0].message.should contain("index")
     end
 
     it "skips files not in controllers/ directory" do
