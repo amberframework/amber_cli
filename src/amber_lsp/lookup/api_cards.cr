@@ -42,6 +42,16 @@ module AmberLSP::Lookup
     end
   end
 
+  # :nodoc:
+  struct APICardErrorHintMatch
+    getter card_library : String
+    getter card_version : String
+    getter error_hint : APICardErrorHint
+
+    def initialize(@card_library : String, @card_version : String, @error_hint : APICardErrorHint)
+    end
+  end
+
   struct APICardCollection
     getter list_of_cards : Array(LoadedAPICard)
     getter list_of_errors : Array(String)
@@ -67,9 +77,15 @@ module AmberLSP::Lookup
     end
 
     def matching_error_hints(error_text : String) : Array(APICardErrorHint)
+      matching_error_hint_matches(error_text).map(&.error_hint)
+    end
+
+    def matching_error_hint_matches(error_text : String) : Array(APICardErrorHintMatch)
       @list_of_cards.flat_map do |loaded_card|
         loaded_card.card.error_hints.select do |hint|
           Regex.new(hint.pattern).matches?(error_text)
+        end.map do |hint|
+          APICardErrorHintMatch.new(loaded_card.card.library, loaded_card.resolved_version, hint)
         end
       end
     end
