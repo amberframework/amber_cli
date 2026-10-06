@@ -54,7 +54,8 @@ module AmberLSP::Lookup
         location_line,
         @layer_name,
         normalize_methods(docs_type, docs_type.instance_methods, "instance", false),
-        normalize_methods(docs_type, docs_type.class_methods, "class", false),
+        normalize_methods(docs_type, docs_type.class_methods, "class", false) +
+        normalize_methods(docs_type, docs_type.constructors, "class", false, docs_type.full_name),
         normalize_methods(docs_type, docs_type.macros, "macro", true),
       )
     end
@@ -64,6 +65,7 @@ module AmberLSP::Lookup
       docs_methods : Array(CrystalDocsMethod),
       method_kind : String,
       is_macro : Bool,
+      return_type_override : String? = nil,
     ) : Array(APIIndexMethod)
       docs_methods.compact_map do |docs_method|
         location = docs_method.location
@@ -71,7 +73,7 @@ module AmberLSP::Lookup
 
         doc_line = first_doc_line(docs_method.doc)
         definition = docs_method.definition
-        return_type = definition ? definition.return_type : nil
+        return_type = return_type_override || (definition ? definition.return_type : nil)
         declared_return_type = if return_type && !return_type.strip.empty?
                                  return_type
                                else

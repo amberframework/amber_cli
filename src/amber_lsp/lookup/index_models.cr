@@ -66,6 +66,7 @@ module AmberLSP::Lookup
     getter instance_methods : Array(CrystalDocsMethod) = [] of CrystalDocsMethod
     @[JSON::Field(key: "class_methods")]
     getter class_methods : Array(CrystalDocsMethod) = [] of CrystalDocsMethod
+    getter constructors : Array(CrystalDocsMethod) = [] of CrystalDocsMethod
     getter macros : Array(CrystalDocsMethod) = [] of CrystalDocsMethod
     getter types : Array(CrystalDocsType) = [] of CrystalDocsType
 
@@ -80,6 +81,7 @@ module AmberLSP::Lookup
       @extended_modules : Array(CrystalDocsTypeReference) = [] of CrystalDocsTypeReference,
       @instance_methods : Array(CrystalDocsMethod) = [] of CrystalDocsMethod,
       @class_methods : Array(CrystalDocsMethod) = [] of CrystalDocsMethod,
+      @constructors : Array(CrystalDocsMethod) = [] of CrystalDocsMethod,
       @macros : Array(CrystalDocsMethod) = [] of CrystalDocsMethod,
       @types : Array(CrystalDocsType) = [] of CrystalDocsType,
     )

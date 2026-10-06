@@ -46,5 +46,13 @@ describe "AmberLSP::Lookup::NormalizeCrystalDocs#perform" do
     where_overloads = query_methods.not_nil!.list_of_instance_methods.select { |method| method.name == "where" }
     where_overloads.size.should eq(2)
     where_overloads.map(&.abstract?).should eq([false, true])
+
+    constructors = user.list_of_class_methods.select { |method| method.name == "new" }
+    constructors.size.should eq(1)
+    constructors.first.args_string.should eq("(name : String)")
+    constructors.first.declared_return_type.should eq("FixtureAPI::User")
+    constructors.first.resolved_return_type.should eq("FixtureAPI::User")
+    constructors.first.source_path.should eq("/project/src/models/user.cr")
+    constructors.first.source_line.should eq(5)
   end
 end

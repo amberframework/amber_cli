@@ -35,6 +35,15 @@
             "def": {"name": "count", "return_type": "Int32"}
           }
         ],
+        "constructors": [
+          {
+            "name": "new",
+            "abstract": false,
+            "args_string": "(name : String)",
+            "location": {"filename": "src/models/user.cr", "line_number": 5},
+            "def": {"name": "new"}
+          }
+        ],
         "macros": [
           {
             "name": "has_token",
