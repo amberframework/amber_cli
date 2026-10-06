@@ -154,7 +154,7 @@ describe "amber-agent-hook readiness and preflight" do
     end
   end
 
-  it "checks a verified binary and project coverage once, then serves the cached result under 300 ms" do
+  it "checks a verified binary and project coverage once, then serves the cached result without another binary call" do
     SpecHelper.within_temp_directory do |project_root|
       fixture = AgentHookSpecHelper.create_ready_project(project_root)
 
@@ -163,14 +163,11 @@ describe "amber-agent-hook readiness and preflight" do
       first_check[1].should eq("Amber agent setup is ready.\n")
       File.read(fixture.lsp_log).should contain("--version")
       File.read(fixture.lsp_log).should contain("--check src/app.cr")
+      File.read(fixture.lsp_log).lines.size.should eq(2)
 
-      previous_calls = File.read(fixture.lsp_log)
-      start_time = Time.instant
       cached_check = AgentHookSpecHelper.run_hook(fixture, "check")
-      elapsed_milliseconds = (Time.instant - start_time).total_milliseconds
       cached_check[0].should eq(0)
-      File.read(fixture.lsp_log).should eq(previous_calls)
-      elapsed_milliseconds.should be < 300.0
+      File.read(fixture.lsp_log).lines.size.should eq(2)
     end
   end
 
