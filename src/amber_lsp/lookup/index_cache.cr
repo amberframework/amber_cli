@@ -5,7 +5,7 @@ require "random/secure"
 require "./index_models"
 
 module AmberLSP::Lookup
-  API_INDEX_CACHE_SCHEMA_VERSION = "api-index-cache-v5"
+  API_INDEX_CACHE_SCHEMA_VERSION = "api-index-cache-v6"
 
   class APIIndexBuildError < Exception
   end

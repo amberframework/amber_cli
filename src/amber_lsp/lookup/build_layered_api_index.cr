@@ -268,7 +268,11 @@ module AmberLSP::Lookup
         source_path_mappings = {} of String => String
 
         if layer_kind == "library"
-          workspace = create_library_docs_workspace(File.join(source_root, "src"), list_of_entrypoints)
+          workspace = create_library_docs_workspace(
+            File.join(source_root, "src"),
+            list_of_entrypoints,
+            crystal_source_root(identity),
+          )
           workspace_root = workspace.root_path
           docs_working_directory = workspace.root_path
           list_of_docs_entrypoints = workspace.list_of_entrypoints
@@ -411,7 +415,11 @@ module AmberLSP::Lookup
       ).perform
     end
 
-    private def create_library_docs_workspace(source_root : String, list_of_entrypoints : Array(String)) : CrystalDocsWorkspace
+    private def create_library_docs_workspace(
+      source_root : String,
+      list_of_entrypoints : Array(String),
+      standard_library_source_root : String,
+    ) : CrystalDocsWorkspace
       source_path = File.expand_path(source_root)
       library_root = File.dirname(source_path)
       workspace_root = ""
@@ -435,6 +443,8 @@ module AmberLSP::Lookup
           File.join(workspace_root, "src") => source_path,
           File.join(workspace_root, "lib") => project_lib_path,
         }
+        # The self-mapping makes the stdlib source root available to library ownership checks.
+        source_path_mappings[standard_library_source_root] = standard_library_source_root
 
         CrystalDocsWorkspace.new(
           workspace_root,
