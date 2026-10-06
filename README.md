@@ -46,11 +46,13 @@ curl -fLO "https://github.com/amberframework/amber_cli/releases/download/${versi
 shasum -a 256 -c "${asset}.sha256"
 tar -xzf "${asset}"
 install -m 0755 amber amber-lsp /usr/local/bin/
+install -d -m 0755 /usr/local/share/amber_cli/api
+install -m 0644 share/amber_cli/api/crystal.yml /usr/local/share/amber_cli/api/
 amber --version
 ```
 
-On Linux, use `sha256sum -c` for the checksum. Prefix only the `install`
-command with `sudo` if `/usr/local/bin` is not writable.
+On Linux, use `sha256sum -c` for the checksum. Prefix the `install` commands
+with `sudo` if `/usr/local` is not writable.
 
 ## Create and verify a web app
 

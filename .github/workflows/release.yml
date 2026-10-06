@@ -103,8 +103,11 @@ jobs:
 
     - name: Create archive
       run: |
-        mkdir -p dist
-        tar -czf dist/amber_cli-${{ matrix.target }}.tar.gz amber amber-lsp
+        mkdir -p dist/package/share/amber_cli/api
+        cp amber amber-lsp dist/package/
+        cp src/amber_lsp/cards/crystal.yml dist/package/share/amber_cli/api/crystal.yml
+        tar -czf dist/amber_cli-${{ matrix.target }}.tar.gz -C dist/package amber amber-lsp share
+        tar -tzf dist/amber_cli-${{ matrix.target }}.tar.gz | grep -F 'share/amber_cli/api/crystal.yml'
         
     - name: Calculate checksum
       id: checksum

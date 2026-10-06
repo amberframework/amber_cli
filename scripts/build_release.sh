@@ -21,8 +21,8 @@ ARCH=$(uname -m)
 case "${OS}" in
   "darwin")
     TARGET="darwin-arm64"
-    BUILD_CLI="crystal build src/amber_cli.cr -o amber --release"
-    BUILD_LSP="crystal build src/amber_lsp.cr -o amber-lsp --release"
+    BUILD_CLI="crystal-alpha build src/amber_cli.cr -o amber --release"
+    BUILD_LSP="crystal-alpha build src/amber_lsp.cr -o amber-lsp --release"
     CHECKSUM_CMD="shasum -a 256"
     if [ "${ARCH}" != "arm64" ]; then
       echo "⚠️  Warning: Building for ARM64 on ${ARCH} architecture"
@@ -38,8 +38,8 @@ case "${OS}" in
         exit 1
         ;;
     esac
-    BUILD_CLI="crystal build src/amber_cli.cr -o amber --release --static"
-    BUILD_LSP="crystal build src/amber_lsp.cr -o amber-lsp --release --static"
+    BUILD_CLI="crystal-alpha build src/amber_cli.cr -o amber --release --static"
+    BUILD_LSP="crystal-alpha build src/amber_lsp.cr -o amber-lsp --release --static"
     CHECKSUM_CMD="sha256sum"
     ;;
   *)
@@ -53,9 +53,9 @@ echo "🎯 Building for target: ${TARGET}"
 # Install dependencies
 echo "📦 Installing dependencies..."
 if [ -f shard.lock ]; then
-  shards install --production
+  shards-alpha install --production
 else
-  shards install
+  shards-alpha install
 fi
 
 # Build binaries
@@ -74,7 +74,12 @@ test -x amber-lsp
 
 # Create archive
 echo "📦 Creating archive..."
-tar -czf "${OUTPUT_DIR}/amber_cli-${TARGET}.tar.gz" amber amber-lsp
+PACKAGE_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/amber-cli-package.XXXXXX")"
+trap 'rm -rf "${PACKAGE_ROOT}"' EXIT
+mkdir -p "${PACKAGE_ROOT}/share/amber_cli/api"
+cp amber amber-lsp "${PACKAGE_ROOT}/"
+cp src/amber_lsp/cards/crystal.yml "${PACKAGE_ROOT}/share/amber_cli/api/crystal.yml"
+tar -czf "${OUTPUT_DIR}/amber_cli-${TARGET}.tar.gz" -C "${PACKAGE_ROOT}" amber amber-lsp share
 
 # Calculate checksum
 echo "🔢 Calculating checksum..."

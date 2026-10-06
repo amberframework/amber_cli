@@ -16,10 +16,11 @@ describe AmberLSP::Lookup::LoadAPICards do
       cards = AmberLSP::Lookup::LoadAPICards.new(project).perform
 
       cards.list_of_errors.should be_empty
-      cards.list_of_cards.map(&.card.library).should eq(["fixture_project", "example"])
+      cards.list_of_cards.map(&.card.library).should eq(["fixture_project", "example", "crystal"])
       cards.docs_flags_by_library.should eq({
         "fixture_project" => ["fixture_project_docs"],
         "example"         => ["example_docs"],
+        "crystal"         => [] of String,
       })
       cards.docs_entries_by_library.should eq({
         "example" => ["src/example.cr", "src/ui.cr"],
