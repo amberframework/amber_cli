@@ -7,7 +7,6 @@ record AgentHookFixture, project_root : String, hook_path : String, lsp_path : S
 module AgentHookSpecHelper
   def self.create_ready_project(project_root : String, version : String = "1.0.0", coverage : String = "amber-lsp: covered no diagnostics", coverage_exit : String = "0") : AgentHookFixture
     Dir.mkdir_p("src")
-    Dir.mkdir_p("bin")
     Dir.mkdir_p(".amber/claude-marketplace/.claude-plugin")
     Dir.mkdir_p(".amber/claude-marketplace/amber-lsp/.claude-plugin")
     Dir.mkdir_p(".claude")
@@ -53,7 +52,7 @@ module AgentHookSpecHelper
     JSON
 
     script = AmberCLI::Commands::SetupAgentCommand::AGENT_HOOK_SCRIPT.gsub("__AMBER_MAIN__", "src/app.cr")
-    hook_path = File.join(project_root, "bin/amber-agent-hook")
+    hook_path = File.join(project_root, ".amber/amber-agent-hook")
     File.write(hook_path, script)
     File.chmod(hook_path, 0o755)
 
@@ -112,6 +111,19 @@ module AgentHookSpecHelper
 end
 
 describe "amber-agent-hook readiness and preflight" do
+  it "prints the installed version and API lookup guidance at SessionStart" do
+    SpecHelper.within_temp_directory do |project_root|
+      fixture = AgentHookSpecHelper.create_ready_project(project_root)
+
+      session = AgentHookSpecHelper.run_hook(fixture, "session")
+
+      session[0].should eq(0)
+      session[1].should contain("Amber agent setup is OK.")
+      session[1].should contain("amber-lsp version: 1.0.0")
+      session[1].should contain("Before using a library API you are not sure of, run `amber-lsp lookup 'Type.method'` (or the LSP tool's workspaceSymbol/hover).")
+    end
+  end
+
   it "checks a verified binary and project coverage once, then serves the cached result under 300 ms" do
     SpecHelper.within_temp_directory do |project_root|
       fixture = AgentHookSpecHelper.create_ready_project(project_root)

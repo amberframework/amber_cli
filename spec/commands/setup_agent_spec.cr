@@ -3,9 +3,14 @@ require "../../src/amber_cli/commands/setup_agent"
 
 class RecordSetupAgentMessages < AmberCLI::Commands::SetupAgentCommand
   getter list_of_info_messages : Array(String) = [] of String
+  getter list_of_warning_messages : Array(String) = [] of String
 
   protected def info(message : String)
     @list_of_info_messages << message
+  end
+
+  protected def warning(message : String)
+    @list_of_warning_messages << message
   end
 end
 
@@ -47,9 +52,18 @@ describe "amber setup:agent" do
     first.should contain("bin/start-hook")
     first.should contain(%("extra": "stay"))
     first.should contain(%("timeout": 42))
-    ["pre", "post", "stop"].each do |event|
-      first.scan(/bin\/amber-agent-hook #{event}/).size.should eq(1)
+    ["session", "pre", "post", "stop"].each do |event|
+      first.scan(/\.amber\/amber-agent-hook #{event}/).size.should eq(1)
     end
+    first.should contain(%("Edit|Write|Bash"))
+  end
+
+  it "uses Codex tool names in its pre-edit matcher" do
+    settings = AmberCLI::Agent::MergeAgentHooksIntoSettings.new("", false).perform
+
+    settings.should contain(%("apply_patch|Bash"))
+    settings.should contain(".amber/amber-agent-hook session")
+    settings.should contain(".amber/amber-agent-hook pre")
   end
 
   it "installs the loop into a project without changing existing instructions twice" do
@@ -69,26 +83,63 @@ describe "amber setup:agent" do
       first_claude = File.read(".claude/settings.json")
       first_codex = File.read(".codex/hooks.json")
       first_instructions = File.read("CLAUDE.md")
-      first_script = File.read("bin/amber-agent-hook")
+      first_script = File.read(".amber/amber-agent-hook")
       command.execute
 
       File.read(".claude/settings.json").should eq(first_claude)
       File.read(".codex/hooks.json").should eq(first_codex)
       first_claude.should contain(%("allow": [))
+      first_claude.should contain(".amber/amber-agent-hook session")
       first_codex.should contain("keep this")
-      first_codex.should contain(%("SessionStart": []))
+      first_codex.should contain(".amber/amber-agent-hook session")
+      first_codex.should contain(%("apply_patch|Bash"))
       File.read("CLAUDE.md").should eq(first_instructions)
       File.read("AGENTS.md").scan(/amber-agent-loop:start/).size.should eq(1)
       first_instructions.should contain("# Existing Claude instructions")
       first_instructions.should contain("crystal-alpha spec --affected")
+      first_instructions.should contain("amber-lsp lookup 'Type.method'")
+      first_instructions.should contain("run `amber setup:agent` before editing")
       first_script.should contain("build --no-codegen 'src/custom_entry.cr'")
       setup_manifest = AmberCLI::Agent::AgentSetupManifest.from_json(File.read(".amber/agent_setup.json"))
       setup_manifest.amber_cli_version.should eq(AmberCli::VERSION)
       setup_manifest.minimum_amber_lsp_version.should eq("1.0.0")
-      setup_manifest.generated_hook_version.should eq("2")
-      File.file?(".lsp.json").should be_true
-      File.info("bin/amber-agent-hook").permissions.to_i.&(0o111).should_not eq(0)
-      command.list_of_info_messages.count("Updated: bin/amber-agent-hook").should eq(1)
+      setup_manifest.generated_hook_version.should eq("3")
+      File.file?(".amber/claude-marketplace/amber-lsp/.lsp.json").should be_true
+      File.file?(".lsp.json").should be_false
+      File.info(".amber/amber-agent-hook").permissions.to_i.&(0o111).should_not eq(0)
+      command.list_of_info_messages.count("Updated: .amber/amber-agent-hook").should eq(1)
+    end
+  end
+
+  it "reports ignore rules that keep tracked hook settings out of worktrees" do
+    SpecHelper.within_temp_directory do
+      File.write("shard.yml", "name: my_app\n")
+      Dir.mkdir_p("src")
+      File.write("src/my_app.cr", "puts :ok\n")
+      Dir.mkdir_p(".git/info")
+      File.write(".gitignore", "/.claude/\n")
+      File.write(".git/info/exclude", ".codex/\n")
+
+      command = RecordSetupAgentMessages.new("setup:agent")
+      command.execute
+
+      command.list_of_warning_messages.size.should eq(2)
+      command.list_of_warning_messages.should contain("Git ignore rule .git/info/exclude:1:.codex/ matches .codex/hooks.json; agent worktrees will run without those hooks.")
+      command.list_of_warning_messages.should contain("Git ignore rule .gitignore:1:/.claude/ matches .claude/settings.json; agent worktrees will run without those hooks.")
+    end
+  end
+
+  it "honors a later ignore negation for hook settings" do
+    SpecHelper.within_temp_directory do
+      File.write("shard.yml", "name: my_app\n")
+      Dir.mkdir_p("src")
+      File.write("src/my_app.cr", "puts :ok\n")
+      File.write(".gitignore", "/.claude/\n!/.claude/\n")
+
+      command = RecordSetupAgentMessages.new("setup:agent")
+      command.execute
+
+      command.list_of_warning_messages.should_not contain("Git ignore rule .gitignore:1:/.claude/")
     end
   end
 
@@ -111,7 +162,7 @@ describe "amber setup:agent" do
       File.chmod(lsp, 0o755)
       File.write(".lsp.json", {"amber" => {"command" => lsp}}.to_pretty_json + "\n")
       path = "#{tools}:/usr/bin:/bin"
-      hook = File.join(project, "bin/amber-agent-hook")
+      hook = File.join(project, ".amber/amber-agent-hook")
 
       run_hook = ->(event : String, payload : String, watch_exit : String, fallback_exit : String) do
         output = IO::Memory.new
@@ -196,7 +247,7 @@ describe "amber setup:agent" do
 
       AmberCLI::Commands::SetupAgentCommand.new("setup:agent").execute
 
-      File.read("bin/amber-agent-hook").should contain("build --no-codegen 'src/fallback_app.cr'")
+      File.read(".amber/amber-agent-hook").should contain("build --no-codegen 'src/fallback_app.cr'")
     end
   end
 
@@ -235,7 +286,7 @@ describe "amber setup:agent" do
       log = File.join(project, "calls.log")
       File.write(compiler, "#!/bin/sh\nprintf 'compiler %s\\n' \"$*\" >> \"$TEST_COMMAND_LOG\"\ncase \"$1\" in\n  watch) echo 'Usage: crystal watch [options] [programfile]'; exit 1 ;;\n  build) exit 0 ;;\nesac\n")
       File.chmod(compiler, 0o755)
-      hook = File.join(project, "bin/amber-agent-hook")
+      hook = File.join(project, ".amber/amber-agent-hook")
       environment = {"PATH" => "#{tools}:/usr/bin:/bin", "TEST_COMMAND_LOG" => log}
 
       pre_output = IO::Memory.new
@@ -272,7 +323,7 @@ describe "amber setup:agent" do
       log = File.join(project, "calls.log")
       File.write(compiler, "#!/bin/sh\nprintf 'compiler %s\\n' \"$*\" >> \"$TEST_COMMAND_LOG\"\nif [ \"${TEST_FORMAT_EXIT:-0}\" -ne 0 ]; then\n  echo 'format failed'\n  exit \"$TEST_FORMAT_EXIT\"\nfi\n")
       File.chmod(compiler, 0o755)
-      hook = File.join(project, "bin/amber-agent-hook")
+      hook = File.join(project, ".amber/amber-agent-hook")
       payload = {"tool_input" => {"file_path" => "src/my_app.cr"}}.to_json
       File.write("src/other.cr", "puts :other\n")
       patch = "*** Begin Patch\n*** Update File: src/my_app.cr\n*** Update File: src/other.cr\n*** End Patch"
@@ -286,6 +337,7 @@ describe "amber setup:agent" do
       File.read(log).scan(/compiler tool format /).size.should eq(2)
 
       project_lsp = File.join(project, "bin/amber-lsp")
+      Dir.mkdir_p("bin")
       File.write(project_lsp, "#!/bin/sh\nprintf 'project-lsp %s\\n' \"$*\" >> \"$TEST_COMMAND_LOG\"\n")
       File.chmod(project_lsp, 0o755)
       errors = IO::Memory.new
