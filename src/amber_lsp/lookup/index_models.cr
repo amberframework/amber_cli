@@ -2,6 +2,9 @@ require "json"
 
 module AmberLSP::Lookup
   # :nodoc:
+  UNKNOWN_API_RETURN_TYPE = "unknown"
+
+  # :nodoc:
   struct CrystalDocsLocation
     include JSON::Serializable
 

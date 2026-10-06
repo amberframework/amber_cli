@@ -63,6 +63,12 @@
             "args_string": "(enabled : Bool) : self",
             "location": {"filename": "lib/grant/src/grant/query/locking.cr", "line_number": 40},
             "def": {"name": "lock", "return_type": "self"}
+          },
+          {
+            "name": "untyped",
+            "args_string": "()",
+            "location": {"filename": "lib/grant/src/grant/query/builder.cr", "line_number": 50},
+            "def": {"name": "untyped", "return_type": ""}
           }
         ]
       },

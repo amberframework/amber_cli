@@ -102,6 +102,15 @@ describe "AmberLSP::Lookup::ResolveAPIQuery#perform" do
     ])
   end
 
+  it "keeps a blank documentation return type unknown" do
+    result = resolve_return_type_fixture_query("Grant::Query::Builder(Post)#untyped")
+    entry = result.list_of_methods.first
+
+    entry.declared_return_type.should eq("unknown")
+    entry.resolved_return_type.should eq("unknown")
+    entry.lookup_signature.should contain(": unknown")
+  end
+
   it "returns a type summary for a type-only query, including a generic base-name match" do
     result = resolve_fixture_query("FixtureAPI::Team")
     generic_result = resolve_fixture_query("Grant::Query::Builder")

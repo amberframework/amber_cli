@@ -10,7 +10,7 @@ module AmberLSP::Lookup
     end
 
     def perform : String
-      return "unknown" if @declared_return_type == "unknown"
+      return UNKNOWN_API_RETURN_TYPE if @declared_return_type == UNKNOWN_API_RETURN_TYPE
 
       resolved_type = @declared_return_type
       if receiver_type = @receiver_type

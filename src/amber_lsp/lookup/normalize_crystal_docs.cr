@@ -72,13 +72,18 @@ module AmberLSP::Lookup
         doc_line = first_doc_line(docs_method.doc)
         definition = docs_method.definition
         return_type = definition ? definition.return_type : nil
+        declared_return_type = if return_type && !return_type.strip.empty?
+                                 return_type
+                               else
+                                 UNKNOWN_API_RETURN_TYPE
+                               end
 
         APIIndexMethod.new(
           docs_type.full_name,
           docs_method.name,
           method_kind,
           method_arguments(docs_method.args_string),
-          return_type || "unknown",
+          declared_return_type,
           doc_line,
           source_path(location.filename),
           location.line_number,

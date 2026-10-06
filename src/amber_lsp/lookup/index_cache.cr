@@ -20,7 +20,7 @@ module AmberLSP::Lookup
     def perform : String
       root_path = File.expand_path(@root_path)
       list_of_index_paths = source_paths(root_path)
-      key_material = ["project", "docs-entries-v1", "resolved-return-types-v1", @compiler_version, @docs_flags.sort.join("\0")]
+      key_material = ["project", "docs-entries-v1", "resolved-return-types-v2", @compiler_version, @docs_flags.sort.join("\0")]
       key_material.concat(@docs_entries)
 
       list_of_index_paths.each do |path|
@@ -61,7 +61,7 @@ module AmberLSP::Lookup
       key_material = [
         "library",
         "docs-workspace-multi-entry-v2",
-        "resolved-return-types-v1",
+        "resolved-return-types-v2",
         @library_name,
         @locked_version_or_commit,
         @docs_flags.sort.join("\0"),
@@ -77,7 +77,7 @@ module AmberLSP::Lookup
     end
 
     def perform : String
-      key_material = ["stdlib", "resolved-return-types-v1", @compiler_version, @docs_flags.sort.join("\0")]
+      key_material = ["stdlib", "resolved-return-types-v2", @compiler_version, @docs_flags.sort.join("\0")]
       Digest::SHA256.hexdigest(key_material.join("\0"))
     end
   end
