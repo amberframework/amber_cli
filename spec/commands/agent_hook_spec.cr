@@ -16,7 +16,7 @@ module AgentHookSpecHelper
     File.write(".amber/agent_setup.json", AmberCLI::Agent::AgentSetupManifest.new(
       AmberCli::VERSION,
       "1.0.0",
-      "3",
+      "4",
     ).to_pretty_json + "\n")
     File.write(".amber/claude-marketplace/.claude-plugin/marketplace.json", <<-JSON)
     {
@@ -50,6 +50,10 @@ module AgentHookSpecHelper
       "enabledPlugins": {"amber-lsp@amber": true}
     }
     JSON
+    claude_settings = AmberCLI::Agent::MergeAgentHooksIntoSettings.new(File.read(".claude/settings.json"), true).perform
+    File.write(".claude/settings.json", claude_settings)
+    codex_settings = AmberCLI::Agent::MergeAgentHooksIntoSettings.new("", false).perform
+    File.write(".codex/hooks.json", codex_settings)
 
     script = AmberCLI::Commands::SetupAgentCommand::AGENT_HOOK_SCRIPT.gsub("__AMBER_MAIN__", "src/app.cr")
     hook_path = File.join(project_root, ".amber/amber-agent-hook")
@@ -92,6 +96,32 @@ module AgentHookSpecHelper
   def self.write_sidecar(binary_path : String) : Nil
     checksum = Digest::SHA256.hexdigest(File.read(binary_path))
     File.write("#{binary_path}.sha256", "#{checksum}  #{binary_path}\n")
+  end
+
+  def self.write_legacy_agent_hooks : Nil
+    events = AmberCLI::Agent::HookEvents.new
+    events.session_start = [legacy_hook_group("session", nil)]
+    events.pre_tool_use = [legacy_hook_group("pre", AmberCLI::Agent::MergeAgentHooksIntoSettings::CLAUDE_PRE_MATCHER)]
+    events.post_tool_use = [legacy_hook_group("post", AmberCLI::Agent::MergeAgentHooksIntoSettings::POST_MATCHER)]
+    events.stop = [legacy_hook_group("stop", nil)]
+
+    claude = AmberCLI::Agent::HookSettings.from_json(File.read(".claude/settings.json"))
+    claude.hooks = events
+    File.write(".claude/settings.json", claude.to_pretty_json + "\n")
+
+    codex_events = AmberCLI::Agent::HookEvents.new
+    codex_events.session_start = [legacy_hook_group("session", nil)]
+    codex_events.pre_tool_use = [legacy_hook_group("pre", AmberCLI::Agent::MergeAgentHooksIntoSettings::CODEX_PRE_MATCHER)]
+    codex_events.post_tool_use = [legacy_hook_group("post", AmberCLI::Agent::MergeAgentHooksIntoSettings::POST_MATCHER)]
+    codex_events.stop = [legacy_hook_group("stop", nil)]
+    codex = AmberCLI::Agent::HookSettings.new
+    codex.hooks = codex_events
+    File.write(".codex/hooks.json", codex.to_pretty_json + "\n")
+  end
+
+  private def self.legacy_hook_group(mode : String, matcher : String?) : AmberCLI::Agent::HookGroup
+    hook = AmberCLI::Agent::HookHandler.new("command", ".amber/amber-agent-hook #{mode}")
+    AmberCLI::Agent::HookGroup.new(matcher, [hook])
   end
 
   def self.run_hook(fixture : AgentHookFixture, mode : String, payload : String = "{}", environment_overrides : Hash(String, String) = {} of String => String) : Tuple(Int32, String, String)
@@ -173,6 +203,18 @@ describe "amber-agent-hook readiness and preflight" do
       check[0].should eq(2)
       check[1].lines.size.should eq(1)
       check[1].should contain("The amber-lsp binary was not found at /nonexistent or on PATH.")
+    end
+  end
+
+  it "reports cwd-relative generated hook commands as outdated during readiness" do
+    SpecHelper.within_temp_directory do |project_root|
+      fixture = AgentHookSpecHelper.create_ready_project(project_root)
+      AgentHookSpecHelper.write_legacy_agent_hooks
+
+      check = AgentHookSpecHelper.run_hook(fixture, "check")
+
+      check[0].should eq(2)
+      check[1].should contain("The generated agent hook commands are out of date; run `amber setup:agent`.")
     end
   end
 
@@ -297,7 +339,7 @@ describe "amber-agent-hook readiness and preflight" do
       first_check = AgentHookSpecHelper.run_hook(fixture, "check")
       first_check[0].should eq(0)
       first_calls = File.read(fixture.lsp_log).lines.size
-      setup_manifest = AmberCLI::Agent::AgentSetupManifest.new(AmberCli::VERSION, "1.0.0", "3")
+      setup_manifest = AmberCLI::Agent::AgentSetupManifest.new(AmberCli::VERSION, "1.0.0", "4")
       File.write(".amber/agent_setup.json", setup_manifest.to_json + "\n ")
 
       second_check = AgentHookSpecHelper.run_hook(fixture, "check")

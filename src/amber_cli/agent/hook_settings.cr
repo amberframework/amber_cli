@@ -82,9 +82,19 @@ module AmberCLI::Agent
 
   # When an agent loop is installed, retain unrelated hook groups and settings.
   class MergeAgentHooksIntoSettings
-    CLAUDE_PRE_MATCHER = "Edit|Write|Bash"
-    CODEX_PRE_MATCHER  = "apply_patch|Bash"
-    POST_MATCHER       = "Edit|Write|MultiEdit|NotebookEdit"
+    CLAUDE_PRE_MATCHER    = "Edit|Write|Bash"
+    CODEX_PRE_MATCHER     = "apply_patch|Bash"
+    POST_MATCHER          = "Edit|Write|MultiEdit|NotebookEdit"
+    CLAUDE_COMMAND_PREFIX = %("$CLAUDE_PROJECT_DIR"/.amber/amber-agent-hook )
+    CODEX_COMMAND_PREFIX  = %(sh -c 'root=$(git rev-parse --show-toplevel 2>/dev/null) && exec "$root/.amber/amber-agent-hook" )
+
+    def self.generated_command_for(mode : String, is_claude_settings : Bool) : String
+      if is_claude_settings
+        "#{CLAUDE_COMMAND_PREFIX}#{mode}"
+      else
+        "#{CODEX_COMMAND_PREFIX}#{mode}'"
+      end
+    end
 
     def initialize(@existing_json : String, @is_claude_settings : Bool = true)
     end
@@ -93,21 +103,27 @@ module AmberCLI::Agent
       settings = @existing_json.empty? ? HookSettings.new : HookSettings.from_json(@existing_json)
       hooks = settings.hooks || HookEvents.new
       pre_matcher = @is_claude_settings ? CLAUDE_PRE_MATCHER : CODEX_PRE_MATCHER
-      remove_stale_pre_hook(hooks.pre_tool_use, pre_matcher, ".amber/amber-agent-hook pre")
-      add_hook(hooks.session_start, nil, ".amber/amber-agent-hook session")
-      add_hook(hooks.pre_tool_use, pre_matcher, ".amber/amber-agent-hook pre")
-      add_hook(hooks.post_tool_use, POST_MATCHER, ".amber/amber-agent-hook post")
-      add_hook(hooks.stop, nil, ".amber/amber-agent-hook stop")
+      remove_stale_generated_hooks(hooks)
+      add_hook(hooks.session_start, nil, self.class.generated_command_for("session", @is_claude_settings))
+      add_hook(hooks.pre_tool_use, pre_matcher, self.class.generated_command_for("pre", @is_claude_settings))
+      add_hook(hooks.post_tool_use, POST_MATCHER, self.class.generated_command_for("post", @is_claude_settings))
+      add_hook(hooks.stop, nil, self.class.generated_command_for("stop", @is_claude_settings))
       settings.hooks = hooks
       settings.to_pretty_json + "\n"
     end
 
-    private def remove_stale_pre_hook(groups : Array(HookGroup), matcher : String, command : String) : Nil
-      groups.each do |group|
-        next if group.matcher == matcher
-
-        group.hooks = group.hooks.reject do |handler|
-          handler.type == "command" && handler.command == command
+    private def remove_stale_generated_hooks(events : HookEvents) : Nil
+      {
+        {"session", events.session_start},
+        {"pre", events.pre_tool_use},
+        {"post", events.post_tool_use},
+        {"stop", events.stop},
+      }.each do |mode, groups|
+        legacy_command = ".amber/amber-agent-hook #{mode}"
+        groups.each do |group|
+          group.hooks = group.hooks.reject do |handler|
+            handler.type == "command" && handler.command == legacy_command
+          end
         end
       end
     end

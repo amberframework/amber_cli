@@ -58,12 +58,23 @@ describe "amber setup:agent" do
     first.should contain(%("Edit|Write|Bash"))
   end
 
+  it "anchors every generated command to the project root for its agent" do
+    claude = AmberCLI::Agent::MergeAgentHooksIntoSettings.new("", true).perform
+    codex = AmberCLI::Agent::MergeAgentHooksIntoSettings.new("", false).perform
+
+    %w[session pre post stop].each do |mode|
+      claude.should contain("\\\"$CLAUDE_PROJECT_DIR\\\"/.amber/amber-agent-hook #{mode}")
+      codex.should contain("sh -c 'root=$(git rev-parse --show-toplevel 2>/dev/null) && exec \\\"$root/.amber/amber-agent-hook\\\" #{mode}'")
+    end
+  end
+
   it "uses Codex tool names in its pre-edit matcher" do
     settings = AmberCLI::Agent::MergeAgentHooksIntoSettings.new("", false).perform
 
     settings.should contain(%("apply_patch|Bash"))
-    settings.should contain(".amber/amber-agent-hook session")
-    settings.should contain(".amber/amber-agent-hook pre")
+    settings.should contain("git rev-parse --show-toplevel")
+    settings.should contain(".amber/amber-agent-hook\\\" session")
+    settings.should contain(".amber/amber-agent-hook\\\" pre")
   end
 
   it "installs the loop into a project without changing existing instructions twice" do
@@ -91,7 +102,7 @@ describe "amber setup:agent" do
       first_claude.should contain(%("allow": [))
       first_claude.should contain(".amber/amber-agent-hook session")
       first_codex.should contain("keep this")
-      first_codex.should contain(".amber/amber-agent-hook session")
+      first_codex.should contain("git rev-parse --show-toplevel")
       first_codex.should contain(%("apply_patch|Bash"))
       File.read("CLAUDE.md").should eq(first_instructions)
       File.read("AGENTS.md").scan(/amber-agent-loop:start/).size.should eq(1)
@@ -103,7 +114,7 @@ describe "amber setup:agent" do
       setup_manifest = AmberCLI::Agent::AgentSetupManifest.from_json(File.read(".amber/agent_setup.json"))
       setup_manifest.amber_cli_version.should eq(AmberCli::VERSION)
       setup_manifest.minimum_amber_lsp_version.should eq("1.0.0")
-      setup_manifest.generated_hook_version.should eq("3")
+      setup_manifest.generated_hook_version.should eq("4")
       File.file?(".amber/claude-marketplace/amber-lsp/.lsp.json").should be_true
       File.file?(".lsp.json").should be_false
       File.info(".amber/amber-agent-hook").permissions.to_i.&(0o111).should_not eq(0)

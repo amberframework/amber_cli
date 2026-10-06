@@ -130,12 +130,19 @@ module AmberCLI::Commands
       missing_modes = [] of String
       AGENT_HOOK_MODES.each do |mode|
         event_groups, matcher = hook_event_groups(events, mode, is_claude_settings)
+        expected_command = AmberCLI::Agent::MergeAgentHooksIntoSettings.generated_command_for(mode, is_claude_settings)
+        legacy_command = ".amber/amber-agent-hook #{mode}"
         found = event_groups.any? do |group|
           group.matcher == matcher && group.hooks.any? do |handler|
-            handler.type == "command" && handler.command == ".amber/amber-agent-hook #{mode}"
+            handler.type == "command" && handler.command == expected_command
           end
         end
-        missing_modes << mode unless found
+        has_legacy_command = event_groups.any? do |group|
+          group.hooks.any? do |handler|
+            handler.type == "command" && handler.command == legacy_command
+          end
+        end
+        missing_modes << mode unless found && !has_legacy_command
       end
 
       if missing_modes.empty?
@@ -316,6 +323,7 @@ module AmberCLI::Commands
       return [] of String unless events
 
       keys = [] of String
+      hook_command_prefix = AmberCLI::Agent::MergeAgentHooksIntoSettings::CODEX_COMMAND_PREFIX
       [
         {"session_start", events.session_start},
         {"pre_tool_use", events.pre_tool_use},
@@ -325,7 +333,7 @@ module AmberCLI::Commands
         groups.each_with_index do |group, group_index|
           group.hooks.each_with_index do |handler, handler_index|
             next unless handler.type == "command"
-            next unless handler.command.try(&.starts_with?(".amber/amber-agent-hook "))
+            next unless handler.command.try(&.starts_with?(hook_command_prefix))
 
             keys << "#{settings_path}:#{event_name}:#{group_index}:#{handler_index}"
           end

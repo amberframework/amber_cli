@@ -13,6 +13,27 @@ module DoctorCommandSpecHelper
     codex_settings
   end
 
+  def self.create_legacy_agent_settings(project_root : String) : Nil
+    [
+      {".claude/settings.json", AmberCLI::Agent::MergeAgentHooksIntoSettings::CLAUDE_PRE_MATCHER},
+      {".codex/hooks.json", AmberCLI::Agent::MergeAgentHooksIntoSettings::CODEX_PRE_MATCHER},
+    ].each do |settings_path, pre_matcher|
+      events = AmberCLI::Agent::HookEvents.new
+      events.session_start = [legacy_hook_group("session", nil)]
+      events.pre_tool_use = [legacy_hook_group("pre", pre_matcher)]
+      events.post_tool_use = [legacy_hook_group("post", AmberCLI::Agent::MergeAgentHooksIntoSettings::POST_MATCHER)]
+      events.stop = [legacy_hook_group("stop", nil)]
+      settings = AmberCLI::Agent::HookSettings.new
+      settings.hooks = events
+      File.write(File.join(project_root, settings_path), settings.to_pretty_json + "\n")
+    end
+  end
+
+  private def self.legacy_hook_group(mode : String, matcher : String?) : AmberCLI::Agent::HookGroup
+    hook = AmberCLI::Agent::HookHandler.new("command", ".amber/amber-agent-hook #{mode}")
+    AmberCLI::Agent::HookGroup.new(matcher, [hook])
+  end
+
   def self.write_executable(path : String, content : String) : Nil
     Dir.mkdir_p(File.dirname(path))
     File.write(path, content)
@@ -41,6 +62,22 @@ describe "amber doctor" do
       output.should contain("[FAIL] Claude project hooks are missing from .claude/settings.json; run `amber setup:agent`.")
       output.should contain("[FAIL] Codex project hooks are missing from .codex/hooks.json; run `amber setup:agent`.")
       output.should contain("[SKIP] API lookup status check skipped by the doctor test harness.")
+    end
+  end
+
+  it "reports cwd-relative generated commands as outdated for Claude and Codex" do
+    SpecHelper.within_temp_directory do |project_root|
+      Dir.mkdir_p(File.join(project_root, ".claude"))
+      Dir.mkdir_p(File.join(project_root, ".codex"))
+      DoctorCommandSpecHelper.create_legacy_agent_settings(project_root)
+
+      report = AmberCLI::Commands::DoctorCommand.new("doctor", project_root, nil, false).perform
+      output = report.to_s
+
+      report.exit_code.should eq(1)
+      output.should contain("[FAIL] Claude project hooks are missing or out of date")
+      output.should contain("[FAIL] Codex project hooks are missing or out of date")
+      output.should contain("run `amber setup:agent`.")
     end
   end
 
@@ -97,7 +134,7 @@ describe "amber doctor" do
         DoctorCommandSpecHelper.restore_environment("PATH", previous_path)
         DoctorCommandSpecHelper.restore_environment("AMBER_LSP_BIN", previous_lsp)
       end
-      codex_settings.should contain(".amber/amber-agent-hook session")
+      codex_settings.should contain("git rev-parse --show-toplevel")
     end
   end
 
@@ -158,7 +195,7 @@ describe "amber doctor" do
         DoctorCommandSpecHelper.restore_environment("PATH", previous_path)
         DoctorCommandSpecHelper.restore_environment("AMBER_LSP_BIN", previous_lsp)
       end
-      codex_settings.should contain(".amber/amber-agent-hook session")
+      codex_settings.should contain("git rev-parse --show-toplevel")
     end
   end
 end

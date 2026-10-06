@@ -29,7 +29,7 @@ module AmberCLI::Commands
   class SetupAgentCommand < AmberCLI::Core::BaseCommand
     AGENT_HOOK_SCRIPT         = {{ read_file("#{__DIR__}/../templates/agent/amber-agent-hook") }}
     MINIMUM_AMBER_LSP_VERSION = AmberCLI::Agent::MINIMUM_AMBER_LSP_VERSION
-    GENERATED_HOOK_VERSION    = "3"
+    GENERATED_HOOK_VERSION    = "4"
     DOCUMENT_START            = "<!-- amber-agent-loop:start -->"
     DOCUMENT_END              = "<!-- amber-agent-loop:end -->"
 

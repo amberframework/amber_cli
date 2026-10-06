@@ -4,7 +4,7 @@ set -u
 project_root=$(CDPATH='' cd "$(dirname "$0")/.." && pwd -P) || exit 2
 cd "$project_root" || exit 2
 
-HOOK_VERSION=3
+HOOK_VERSION=4
 DEFAULT_MINIMUM_AMBER_LSP_VERSION=1.0.0
 MAIN_FILE='__AMBER_MAIN__'
 
@@ -164,6 +164,51 @@ json_string_value() {
   ' "$json_file"
 }
 
+generated_hook_commands_are_current() {
+  awk -v platform="$1" '
+    function string_value(    character, escaped, result) {
+      result = ""; escaped = 0
+      while (position <= length(document)) {
+        character = substr(document, position++, 1)
+        if (escaped) {
+          if (character == "n") result = result "\n"
+          else if (character == "r") result = result "\r"
+          else if (character == "t") result = result "\t"
+          else result = result character
+          escaped = 0; continue
+        }
+        if (character == "\\") { escaped = 1; continue }
+        if (character == "\"") return result
+        result = result character
+      }
+      return ""
+    }
+    function expected_command(mode) {
+      if (platform == "claude") return "\"$CLAUDE_PROJECT_DIR\"/.amber/amber-agent-hook " mode
+      return "sh -c '\''root=$(git rev-parse --show-toplevel 2>/dev/null) && exec \"$root/.amber/amber-agent-hook\" " mode "'\''"
+    }
+    { document = document $0 "\n" }
+    END {
+      position = 1
+      while (position <= length(document)) {
+        if (substr(document, position++, 1) != "\"") continue
+        key = string_value()
+        while (substr(document, position, 1) ~ /[[:space:]]/) position++
+        if (substr(document, position++, 1) != ":") continue
+        while (substr(document, position, 1) ~ /[[:space:]]/) position++
+        if (substr(document, position++, 1) != "\"") continue
+        value = string_value()
+        if (key == "command") commands[value] = 1
+      }
+      split("session pre post stop", modes, " ")
+      for (mode_index in modes) {
+        mode = modes[mode_index]
+        if (!commands[expected_command(mode)] || commands[".amber/amber-agent-hook " mode]) exit 1
+      }
+    }
+  ' "$2"
+}
+
 add_check_failure() {
   if [ -n "$CHECK_FAILURES" ]; then
     CHECK_FAILURES="${CHECK_FAILURES}
@@ -292,11 +337,17 @@ setup_cache_key() {
     .amber/claude-marketplace/amber-lsp/.claude-plugin/plugin.json \
     .amber/claude-marketplace/amber-lsp/.lsp.json \
     .claude/settings.json \
+    .codex/hooks.json \
     "$MAIN_FILE" \
     shard.yml
   do
     if [ -f "$dependent_file" ]; then
       dependent_mtime=$(file_mtime "$dependent_file" 2>/dev/null || printf unknown)
+      case "$dependent_file" in
+        .claude/settings.json|.codex/hooks.json)
+          dependent_mtime="$dependent_mtime:$(cksum < "$dependent_file" 2>/dev/null || printf unknown)"
+          ;;
+      esac
       dependent_mtimes="${dependent_mtimes}${dependent_mtimes:+,}${dependent_file}:${dependent_mtime}"
     else
       dependent_mtimes="${dependent_mtimes}${dependent_mtimes:+,}${dependent_file}:missing"
@@ -348,6 +399,12 @@ ${cached_failure}"
     fi
   else
     add_check_failure "The project agent setup metadata is missing; run \`amber setup:agent\`."
+  fi
+
+  if [ ! -f .claude/settings.json ] || [ ! -f .codex/hooks.json ] || \
+    ! generated_hook_commands_are_current claude .claude/settings.json || \
+    ! generated_hook_commands_are_current codex .codex/hooks.json; then
+    add_check_failure "The generated agent hook commands are out of date; run \`amber setup:agent\`."
   fi
 
   binary_is_verified=0
