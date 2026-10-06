@@ -4,6 +4,10 @@ set -u
 project_root=$(CDPATH='' cd "$(dirname "$0")/.." && pwd -P) || exit 2
 cd "$project_root" || exit 2
 
+HOOK_VERSION=3
+DEFAULT_MINIMUM_AMBER_LSP_VERSION=1.0.0
+MAIN_FILE='__AMBER_MAIN__'
+
 compiler_is_stock=0
 if [ -n "${CRYSTAL_ALPHA:-}" ]; then
   compiler=$CRYSTAL_ALPHA
@@ -16,20 +20,36 @@ elif command -v crystal >/dev/null 2>&1; then
   compiler_is_stock=1
   echo 'amber-agent-hook: fast rebuilds need crystal-alpha; using stock crystal' >&2
 else
-  echo 'amber-agent-hook: no Crystal compiler found' >&2
-  exit 2
+  compiler=''
 fi
 
 watch_coordination_is_available() {
   [ "$compiler_is_stock" -eq 0 ] || return 1
+  [ -n "$compiler" ] || return 1
   "$compiler" watch status >/dev/null 2>&1
   watch_status=$?
   [ "$watch_status" -eq 0 ] || [ "$watch_status" -eq 2 ]
 }
 
+resolve_lsp() {
+  if [ -n "${AMBER_LSP_BIN:-}" ]; then
+    case "$AMBER_LSP_BIN" in
+      */*) [ -x "$AMBER_LSP_BIN" ] && { printf '%s\n' "$AMBER_LSP_BIN"; return 0; } ;;
+      *) command -v "$AMBER_LSP_BIN" 2>/dev/null && return 0 ;;
+    esac
+    return 1
+  fi
+
+  command -v amber-lsp 2>/dev/null
+}
+
 find_lsp() {
-  configured_lsp=''
-  if [ -f .lsp.json ]; then
+  if [ -n "${AMBER_LSP_BIN:-}" ]; then
+    resolve_lsp && return 0
+    return 1
+  fi
+  for lsp_config in .lsp.json .amber/claude-marketplace/amber-lsp/.lsp.json; do
+    [ -f "$lsp_config" ] || continue
     configured_lsp=$(awk '
       function string_value(    character, escaped, result) {
         result = ""; escaped = 0
@@ -60,10 +80,7 @@ find_lsp() {
           if (key == "command") { print value; exit }
         }
       }
-    ' .lsp.json)
-  fi
-
-  if [ -n "$configured_lsp" ]; then
+    ' "$lsp_config")
     if [ -x "$configured_lsp" ]; then
       printf '%s\n' "$configured_lsp"
       return 0
@@ -71,26 +88,456 @@ find_lsp() {
     case "$configured_lsp" in
       amber-lsp) ;;
       *)
-        if command -v "$configured_lsp" >/dev/null 2>&1; then
+        if [ -n "$configured_lsp" ] && command -v "$configured_lsp" >/dev/null 2>&1; then
           printf '%s\n' "$configured_lsp"
           return 0
         fi
         ;;
     esac
-  fi
+  done
   if [ -x bin/amber-lsp ]; then
     printf '%s\n' bin/amber-lsp
     return 0
   fi
   if command -v amber-lsp >/dev/null 2>&1; then
-    printf '%s\n' amber-lsp
+    command -v amber-lsp
     return 0
   fi
   return 1
 }
 
+file_mtime() {
+  mtime=$(stat -f '%m' "$1" 2>/dev/null || :)
+  case "$mtime" in
+    ''|*[!0-9]*) stat -c '%Y' "$1" 2>/dev/null ;;
+    *) printf '%s\n' "$mtime" ;;
+  esac
+}
+
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" 2>/dev/null | awk '{print $1}'
+    return
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" 2>/dev/null | awk '{print $1}'
+    return
+  fi
+  return 1
+}
+
+json_string_value() {
+  wanted_key=$1
+  json_file=$2
+  awk -v wanted_key="$wanted_key" '
+    function string_value(    character, escaped, result) {
+      result = ""; escaped = 0
+      while (position <= length(document)) {
+        character = substr(document, position++, 1)
+        if (escaped) {
+          if (character == "n") result = result "\n"
+          else if (character == "r") result = result "\r"
+          else if (character == "t") result = result "\t"
+          else result = result character
+          escaped = 0; continue
+        }
+        if (character == "\\") { escaped = 1; continue }
+        if (character == "\"") return result
+        result = result character
+      }
+      return ""
+    }
+    { document = document $0 "\n" }
+    END {
+      position = 1
+      while (position <= length(document)) {
+        if (substr(document, position++, 1) != "\"") continue
+        key = string_value()
+        while (substr(document, position, 1) ~ /[[:space:]]/) position++
+        if (substr(document, position++, 1) != ":") continue
+        while (substr(document, position, 1) ~ /[[:space:]]/) position++
+        if (substr(document, position++, 1) != "\"") continue
+        value = string_value()
+        if (key == wanted_key) { print value; exit }
+      }
+    }
+  ' "$json_file"
+}
+
+add_check_failure() {
+  if [ -n "$CHECK_FAILURES" ]; then
+    CHECK_FAILURES="${CHECK_FAILURES}
+$1"
+  else
+    CHECK_FAILURES=$1
+  fi
+}
+
+version_is_at_least() {
+  awk -v actual="$1" -v required="$2" '
+    function core(value) { sub(/[-+].*$/, "", value); return value }
+    BEGIN {
+      actual_version = core(actual)
+      required_version = core(required)
+      actual_count = split(actual_version, actual_parts, ".")
+      required_count = split(required_version, required_parts, ".")
+      if (actual_count < 2 || required_count < 2) exit 1
+      for (part = 1; part <= 3; part++) {
+        if ((actual_parts[part] + 0) > (required_parts[part] + 0)) exit 0
+        if ((actual_parts[part] + 0) < (required_parts[part] + 0)) exit 1
+      }
+      if (actual ~ /-/ && actual_version == required_version) exit 1
+      exit 0
+    }
+  '
+}
+
+checksum_from_release_file() {
+  checksum_file=$1
+  binary_name=$2
+  awk -v binary_name="$binary_name" '
+    function basename(path, parts, count) {
+      count = split(path, parts, "/")
+      return parts[count]
+    }
+    {
+      digest = ""
+      filename = ""
+      for (field = 1; field <= NF; field++) {
+        value = $field
+        sub(/^\*/, "", value)
+        if (length(value) == 64 && value ~ /^[[:xdigit:]]+$/) digest = value
+        else filename = basename(value)
+      }
+      if (digest != "" && filename == binary_name) { print digest; exit }
+    }
+  ' "$checksum_file"
+}
+
+claude_marketplace_setting_is_current() {
+  awk '
+    {
+      brace_text = $0
+      open_braces = gsub(/\{/, "", brace_text)
+      close_braces = gsub(/\}/, "", brace_text)
+      depth_before = depth
+      depth_change = open_braces - close_braces
+
+      if (!in_marketplace && /"extraKnownMarketplaces"[[:space:]]*:/) {
+        depth += depth_change
+        marketplace_depth = depth
+        in_marketplace = 1
+        next
+      }
+
+      if (in_marketplace) {
+        if (!amber_depth && depth_before == marketplace_depth && /"amber"[[:space:]]*:/) {
+          depth += depth_change
+          amber_depth = depth
+          next
+        }
+        if (amber_depth && !source_depth && depth_before == amber_depth && /"source"[[:space:]]*:[[:space:]]*\{/) {
+          depth += depth_change
+          source_depth = depth
+          if (/"source"[[:space:]]*:[[:space:]]*"directory"/) has_directory_source = 1
+          if (/"path"[[:space:]]*:[[:space:]]*"\.\/\.amber\/claude-marketplace"/) has_marketplace_path = 1
+          if (depth <= amber_depth && has_directory_source && has_marketplace_path) found = 1
+          if (found) exit 0
+          next
+        }
+        if (source_depth && depth_before == source_depth) {
+          if (/"source"[[:space:]]*:[[:space:]]*"directory"/) has_directory_source = 1
+          if (/"path"[[:space:]]*:[[:space:]]*"\.\/\.amber\/claude-marketplace"/) has_marketplace_path = 1
+        }
+
+        depth += depth_change
+        if (source_depth && depth < source_depth) {
+          if (has_directory_source && has_marketplace_path) found = 1
+          source_depth = 0
+          has_directory_source = 0
+          has_marketplace_path = 0
+        }
+        if (amber_depth && depth < amber_depth) {
+          amber_depth = 0
+          source_depth = 0
+          has_directory_source = 0
+          has_marketplace_path = 0
+        }
+        if (depth < marketplace_depth) in_marketplace = 0
+        if (found) exit 0
+        next
+      }
+
+      depth += depth_change
+    }
+    END { if (found) exit 0; exit 1 }
+  ' "$1"
+}
+
+setup_cache_key() {
+  lsp_path=$1
+  lsp_mtime=missing
+  if [ -n "$lsp_path" ] && [ -f "$lsp_path" ]; then
+    lsp_mtime=$(file_mtime "$lsp_path" 2>/dev/null || printf unknown)
+  fi
+  setup_signature=missing
+  if [ -f .amber/agent_setup.json ]; then
+    setup_signature=$(cksum < .amber/agent_setup.json)
+  fi
+  dependent_mtimes=''
+  for dependent_file in \
+    "$lsp_path.sha256" \
+    "$(dirname "$(dirname "$lsp_path")")/share/amber_cli/checksums.txt" \
+    .amber/claude-marketplace/.claude-plugin/marketplace.json \
+    .amber/claude-marketplace/amber-lsp/.claude-plugin/plugin.json \
+    .amber/claude-marketplace/amber-lsp/.lsp.json \
+    .claude/settings.json \
+    "$MAIN_FILE" \
+    shard.yml
+  do
+    if [ -f "$dependent_file" ]; then
+      dependent_mtime=$(file_mtime "$dependent_file" 2>/dev/null || printf unknown)
+      dependent_mtimes="${dependent_mtimes}${dependent_mtimes:+,}${dependent_file}:${dependent_mtime}"
+    else
+      dependent_mtimes="${dependent_mtimes}${dependent_mtimes:+,}${dependent_file}:missing"
+    fi
+  done
+  cache_project=$(printf '%s' "$project_root" | cksum)
+  cache_identity=$(printf '%s\n%s\n%s\n%s' "$lsp_path" "$lsp_mtime" "$setup_signature" "$dependent_mtimes" | cksum)
+  CHECK_CACHE_KEY="$cache_project:$cache_identity"
+}
+
+compute_setup_check() {
+  CHECK_FAILURES=''
+  CHECK_VERSION='unknown'
+  lsp=$(resolve_lsp 2>/dev/null || :)
+  setup_cache_key "$lsp"
+  cache_dir=${TMPDIR:-/tmp}
+  cache_file="$cache_dir/amber-agent-hook-$CHECK_CACHE_KEY.cache"
+  if [ -f "$cache_file" ]; then
+    cached_key=''
+    cached_version='unknown'
+    cached_failures=''
+    {
+      IFS= read -r cached_key || :
+      IFS= read -r cached_version || :
+      while IFS= read -r cached_failure; do
+        if [ -n "$cached_failures" ]; then
+          cached_failures="${cached_failures}
+${cached_failure}"
+        else
+          cached_failures=$cached_failure
+        fi
+      done
+    } < "$cache_file"
+    if [ "$cached_key" = "$CHECK_CACHE_KEY" ]; then
+      CHECK_VERSION=$cached_version
+      CHECK_FAILURES=$cached_failures
+      return
+    fi
+  fi
+
+  setup_manifest=.amber/agent_setup.json
+  minimum_version=$DEFAULT_MINIMUM_AMBER_LSP_VERSION
+  if [ -f "$setup_manifest" ]; then
+    saved_minimum=$(json_string_value minimum_amber_lsp_version "$setup_manifest")
+    saved_hook_version=$(json_string_value generated_hook_version "$setup_manifest")
+    if [ -n "$saved_minimum" ]; then minimum_version=$saved_minimum; fi
+    if [ "$saved_hook_version" != "$HOOK_VERSION" ]; then
+      add_check_failure "The generated agent setup metadata is out of date; run \`amber setup:agent\`."
+    fi
+  else
+    add_check_failure "The project agent setup metadata is missing; run \`amber setup:agent\`."
+  fi
+
+  binary_is_verified=0
+  if [ -z "$lsp" ] || [ ! -x "$lsp" ]; then
+    requested_binary=${AMBER_LSP_BIN:-amber-lsp}
+    add_check_failure "The amber-lsp binary was not found at $requested_binary or on PATH."
+  else
+    version_output=$("$lsp" --version 2>&1)
+    version_status=$?
+    CHECK_VERSION=$(printf '%s\n' "$version_output" | awk '$1 == "amber-lsp" {print $2; exit}')
+    if [ "$version_status" -ne 0 ] || [ -z "$CHECK_VERSION" ]; then
+      add_check_failure 'The amber-lsp binary did not report a readable version; install a supported release.'
+      CHECK_VERSION=unknown
+    elif ! version_is_at_least "$CHECK_VERSION" "$minimum_version"; then
+      add_check_failure "The amber-lsp version $CHECK_VERSION is below the required $minimum_version; update amber-lsp."
+    fi
+
+    if [ -f "$lsp.sha256" ]; then
+      expected_checksum=$(awk 'NR == 1 { if ($1 == "SHA256") print $NF; else print $1; exit }' "$lsp.sha256")
+    else
+      checksum_file="$(dirname "$(dirname "$lsp")")/share/amber_cli/checksums.txt"
+      expected_checksum=''
+      if [ -f "$checksum_file" ]; then
+        expected_checksum=$(checksum_from_release_file "$checksum_file" "$(basename "$lsp")")
+      fi
+    fi
+    actual_checksum=$(sha256_file "$lsp" 2>/dev/null || :)
+    expected_checksum=$(printf '%s' "$expected_checksum" | tr '[:upper:]' '[:lower:]')
+    actual_checksum=$(printf '%s' "$actual_checksum" | tr '[:upper:]' '[:lower:]')
+    case "$expected_checksum" in
+      *[!0123456789abcdef]*|'') checksum_ok=0 ;;
+      *) [ "${#expected_checksum}" -eq 64 ] && [ "$expected_checksum" = "$actual_checksum" ] && checksum_ok=1 || checksum_ok=0 ;;
+    esac
+    if [ "$checksum_ok" -eq 0 ]; then
+      add_check_failure 'The amber-lsp checksum is missing or does not match; reinstall its checksum-verified release.'
+    elif [ "$version_status" -eq 0 ] && [ -n "$CHECK_VERSION" ] && version_is_at_least "$CHECK_VERSION" "$minimum_version"; then
+      binary_is_verified=1
+    fi
+  fi
+
+  if [ "$binary_is_verified" -eq 1 ]; then
+    coverage_output=$("$lsp" --check "$MAIN_FILE" 2>&1)
+    coverage_status=$?
+    case "$coverage_output" in
+      *declined*|*failed*)
+        add_check_failure "amber-lsp does not cover this project main entry file; update the Amber LSP rules and run \`amber setup:agent\` again."
+        ;;
+      *)
+        if [ "$coverage_status" -ne 0 ]; then
+          add_check_failure "amber-lsp could not confirm coverage for this project main entry file; run \`amber setup:agent\` after fixing the project."
+        fi
+        ;;
+    esac
+  fi
+
+  marketplace=.amber/claude-marketplace/.claude-plugin/marketplace.json
+  plugin=.amber/claude-marketplace/amber-lsp/.claude-plugin/plugin.json
+  server=.amber/claude-marketplace/amber-lsp/.lsp.json
+  settings=.claude/settings.json
+  if [ ! -f "$marketplace" ] || [ ! -f "$plugin" ] || [ ! -f "$server" ] || [ ! -f "$settings" ] || \
+    ! grep -Fq '"name": "amber"' "$marketplace" || \
+    ! grep -Fq '"name": "amber-lsp"' "$marketplace" || \
+    ! grep -Fq '"source": "./amber-lsp"' "$marketplace" || \
+    ! grep -Fq '"name": "amber-lsp"' "$plugin" || \
+    ! grep -Fq '"version": "1.0.0"' "$plugin" || \
+    ! grep -Fq '"description": "Language server for Amber V2 projects."' "$plugin" || \
+    ! grep -Fq '"command": "amber-lsp"' "$server" || \
+    ! grep -Fq '".cr": "crystal"' "$server" || \
+    ! claude_marketplace_setting_is_current "$settings" || \
+    ! grep -Fq '"amber-lsp@amber": true' "$settings"; then
+    add_check_failure "The Claude Amber LSP plugin files or settings are missing or out of date; run \`amber setup:agent\`."
+  fi
+
+  cache_temp="$cache_file.$$"
+  if {
+    printf '%s\n' "$CHECK_CACHE_KEY"
+    printf '%s\n' "$CHECK_VERSION"
+    [ -z "$CHECK_FAILURES" ] || printf '%s\n' "$CHECK_FAILURES"
+  } > "$cache_temp" 2>/dev/null && mv "$cache_temp" "$cache_file" 2>/dev/null; then
+    :
+  else
+    rm -f "$cache_temp"
+  fi
+}
+
+run_setup_check() {
+  compute_setup_check
+  if [ -n "$CHECK_FAILURES" ]; then
+    return 2
+  fi
+  return 0
+}
+
+print_setup_failures() {
+  if [ -n "$CHECK_FAILURES" ]; then
+    printf '%s\n' "$CHECK_FAILURES"
+  fi
+}
+
+print_setup_refusal() {
+  print_setup_failures
+  printf '%s\n' "Do not edit Crystal files yet. Tell the user to run \`amber setup:agent\` in this project, then continue."
+}
+
+pre_write_contains_crystal() {
+  awk '
+    function string_value(    character, escaped, result) {
+      result = ""; escaped = 0
+      while (position <= length(payload)) {
+        character = substr(payload, position++, 1)
+        if (escaped) {
+          if (character == "n") result = result "\n"
+          else if (character == "r") result = result "\r"
+          else if (character == "t") result = result "\t"
+          else result = result character
+          escaped = 0; continue
+        }
+        if (character == "\\") { escaped = 1; continue }
+        if (character == "\"") return result
+        result = result character
+      }
+      return ""
+    }
+    { payload = payload $0 "\n" }
+    END {
+      position = 1
+      while (position <= length(payload)) {
+        if (substr(payload, position++, 1) != "\"") continue
+        key = string_value()
+        while (substr(payload, position, 1) ~ /[[:space:]]/) position++
+        if (substr(payload, position++, 1) != ":") continue
+        while (substr(payload, position, 1) ~ /[[:space:]]/) position++
+        if (substr(payload, position++, 1) != "\"") continue
+        value = string_value()
+        if (key == "tool_name") tool_name = value
+        else if (key == "file_path") direct_path = value
+        else if (key == "command") command_text = value
+      }
+
+      if ((tool_name == "Edit" || tool_name == "Write") && direct_path ~ /[.]cr$/) {
+        print "crystal-write"
+        exit
+      }
+      if (tool_name == "apply_patch" && index(command_text, "*** Begin Patch") > 0) {
+        count = split(command_text, patch_lines, "\n")
+        for (line_number = 1; line_number <= count; line_number++) {
+          line = patch_lines[line_number]
+          if (line ~ /^\*\*\* (Update|Add) File: /) {
+            sub(/^\*\*\* (Update|Add) File: /, "", line)
+            sub(/\r$/, "", line)
+            if (line ~ /[.]cr$/) { print "crystal-write"; exit }
+          }
+        }
+      }
+      if (tool_name == "Bash") {
+        gsub(/\"/, "", command_text)
+        gsub(/\047/, "", command_text)
+        if (command_text ~ /(^|[[:space:];|&])tee[[:space:]][^;|&]*[.]cr([[:space:];|&]|$)/ ||
+            command_text ~ />[^;|&]*[.]cr([[:space:];|&]|$)/) print "crystal-write"
+      }
+    }
+  '
+}
+
 case "${1:-}" in
+  check)
+    if run_setup_check; then
+      printf '%s\n' 'Amber agent setup is ready.'
+      exit 0
+    fi
+    print_setup_failures
+    exit 2
+    ;;
+  session)
+    if run_setup_check; then
+      printf '%s\n' 'Amber agent setup is OK.'
+      printf 'amber-lsp version: %s\n' "$CHECK_VERSION"
+      printf '%s\n' "Before using a library API you are not sure of, run \`amber-lsp lookup 'Type.method'\` (or the LSP tool's workspaceSymbol/hover)."
+    else
+      print_setup_refusal
+    fi
+    exit 0
+    ;;
   pre)
+    if [ -n "$(pre_write_contains_crystal)" ]; then
+      if ! run_setup_check; then
+        print_setup_refusal >&2
+        exit 2
+      fi
+    fi
     if watch_coordination_is_available; then
       "$compiler" watch hold
       status=$?
@@ -218,7 +665,7 @@ case "${1:-}" in
     [ -z "$output" ] || printf '%s\n' "$output"
     ;;
   *)
-    echo 'Usage: bin/amber-agent-hook pre|post|stop' >&2
+    echo 'Usage: amber-agent-hook check|session|pre|post|stop' >&2
     exit 2
     ;;
 esac
