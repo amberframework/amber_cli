@@ -509,6 +509,12 @@ print_setup_refusal() {
   printf '%s\n' "Do not edit Crystal files yet. Tell the user to run \`amber setup:agent\` in this project, then continue."
 }
 
+print_post_refusal() {
+  requested_binary=${AMBER_LSP_BIN:-amber-lsp}
+  printf 'The amber-lsp binary was not found at %s or on PATH.\n' "$requested_binary" >&2
+  printf '%s\n' "Tell the user to run \`amber setup:agent\` in this project, then continue." >&2
+}
+
 # Keep preflight and post-edit file detection on one payload parser.
 changed_cr_files() {
   awk '
@@ -654,6 +660,10 @@ case "${1:-}" in
     edited_files=$(changed_cr_files)
     [ -n "$edited_files" ] || exit 0
     lsp=$(find_lsp) || lsp=''
+    if [ -z "$lsp" ]; then
+      print_post_refusal
+      exit 2
+    fi
     printf '%s\n' "$edited_files" | while IFS= read -r edited_file; do
       case "$edited_file" in
         *.cr) ;;
@@ -677,20 +687,13 @@ case "${1:-}" in
         exit 2
       fi
       [ -z "$format_output" ] || printf '%s\n' "$format_output"
-      if [ -n "$lsp" ]; then
-        diagnostics=$("$lsp" --check "$edited_file" 2>&1)
-        diagnostic_status=$?
-        if [ "$diagnostic_status" -ne 0 ]; then
-          [ -z "$diagnostics" ] || printf '%s\n' "$diagnostics" >&2
-          exit 2
-        fi
-        [ -z "$diagnostics" ] || printf '%s\n' "$diagnostics"
-      else
-        if [ "${warned_missing_lsp:-0}" -eq 0 ]; then
-          echo 'amber-agent-hook: amber-lsp unavailable; skipping file diagnostics' >&2
-          warned_missing_lsp=1
-        fi
+      diagnostics=$("$lsp" --check "$edited_file" 2>&1)
+      diagnostic_status=$?
+      if [ "$diagnostic_status" -ne 0 ]; then
+        [ -z "$diagnostics" ] || printf '%s\n' "$diagnostics" >&2
+        exit 2
       fi
+      [ -z "$diagnostics" ] || printf '%s\n' "$diagnostics"
     done
     exit $?
     ;;

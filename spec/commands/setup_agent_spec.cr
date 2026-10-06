@@ -361,7 +361,7 @@ describe "amber setup:agent" do
     end
   end
 
-  it "formats without an LSP and finds a project LSP when configured one is absent" do
+  it "blocks post without an LSP and finds a configured LSP when one is available" do
     SpecHelper.within_temp_directory do |project|
       Dir.mkdir_p("src")
       File.write("shard.yml", "name: my_app\ntargets:\n  my_app:\n    main: src/my_app.cr\n")
@@ -384,9 +384,11 @@ describe "amber setup:agent" do
 
       errors = IO::Memory.new
       missing_status = Process.run(hook, ["post"], input: IO::Memory.new(multiple_files_payload), output: IO::Memory.new, error: errors, env: environment)
-      missing_status.exit_code.should eq(0)
-      errors.to_s.scan(/amber-lsp unavailable/).size.should eq(1)
-      File.read(log).scan(/compiler tool format /).size.should eq(2)
+      missing_status.exit_code.should eq(2)
+      errors.to_s.should contain("The amber-lsp binary was not found at amber-lsp or on PATH.")
+      errors.to_s.should contain("Tell the user to run `amber setup:agent` in this project, then continue.")
+      errors.to_s.should_not contain("amber-lsp unavailable")
+      File.file?(log).should be_false
 
       project_lsp = File.join(project, "bin/amber-lsp")
       Dir.mkdir_p("bin")
