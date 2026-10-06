@@ -1,0 +1,127 @@
+card_version: 1
+library: crystal
+applies_to: ">= 1.21.0, < 2.0.0"
+error_hints:
+  - pattern: "undefined method '([^']+)' for [^(]+ \\(compile-time type is \\((.+ \\| Nil)\\)\\)"
+    hint: 'Narrow the `{2}` value before calling `{1}`; use an `if` expression or remove nil entries when that fits the collection.'
+    example: 'if value = optional_value; value.size; end'
+  - pattern: "expected argument #\\d+ to '([^']+)' .*not \\([^\\n]* \\| Nil\\)"
+    hint: 'Narrow the optional argument passed to `{1}` before the call; an `if` binding keeps the non-nil value in scope.'
+    example: 'if value = optional_value; value.size; end'
+  - pattern: "(?|can't infer the type of instance variable '@([A-Za-z_][A-Za-z0-9_]*)'|this 'initialize' doesn't explicitly initialize instance variable '@([A-Za-z_][A-Za-z0-9_]*)' of)"
+    hint: 'Crystal needs a declaration or initialization for `@{1}`. Add a type restriction or assign it on every initialize path.'
+    example: '@posts : Array(String) = [] of String'
+  - pattern: "can't declare (def|constant|class) dynamically"
+    hint: 'Crystal cannot declare a `{1}` inside a runtime `describe` or `it` block; define it at file or module scope.'
+    example: 'private def helper : String; "ready"; end'
+  - pattern: "(?|cannot use '([^']+)' as a (?:parameter|local variable) name|([^ ]+) is not a class, it's a annotation)"
+    hint: 'The name `{1}` is reserved by Crystal; rename it to an ordinary identifier.'
+    example: 'class Invoice; end; def configure(macro_name : Symbol? = nil, protected_environments : Array(String) = [] of String); end'
+  - pattern: "trailing `(while|until)` is not supported"
+    hint: 'Crystal does not support a trailing `{1}` modifier; put the condition before the loop body.'
+    example: 'while index < values.size; index += 1; end'
+  - pattern: "expected named argument, not (\\*\\*)"
+    hint: 'Ruby-style `{1}options` forwarding is unavailable here; pass the supported named arguments explicitly.'
+    example: 'foo(a: a, b: options[:b])'
+  - pattern: "undefined constant (JSON::Serializable)"
+    hint: 'Load `{1}` from Crystal’s JSON standard library with `require "json"`.'
+    example: 'require "json"'
+  - pattern: "expected argument #1 to '(UUID\\.new)' .*not YAML::ParseContext"
+    hint: 'The YAML adapter for `{1}` is loaded with `require "uuid/yaml"`.'
+    example: 'require "uuid/yaml"'
+  - pattern: "can't find file '([^']+)'"
+    hint: 'Could not resolve `{1}`. Resolve local requires from the source file with `./` or the needed number of `../` segments.'
+    example: 'require "./relative_helper"'
+  - pattern: "can't send closure to C function \\(closured vars: ([^)]+)\\)"
+    hint: 'The C callback captures `{1}`. Move that state to stable storage and pass a captureless callback.'
+    example: 'callback = -> { true }; callback.call'
+  - pattern: "wrong number of block parameters \\(given (\\d+), expected (\\d+)\\)"
+    hint: 'The block receives {1} parameters but this API expects {2}; use the block arity defined by that call.'
+    example: 'json.object { json.field "mode", "none" }'
+  - pattern: "TypeNode#(instance_vars|ancestors|superclass)`? cannot be called in the top-level scope"
+    hint: 'Move `{1}` into a macro expanded in the target type’s scope.'
+    example: 'class CardProbeFields; @value : String; macro first_ivar_name; {{ @type.instance_vars.first.name.stringify }}; end; def initialize(@value : String); end; def name : String; first_ivar_name; end; end; CardProbeFields.new("value").name'
+  - pattern: "undefined macro variable '([^']+)'"
+    hint: 'Macro variable `{1}` must be declared and used inside the same macro expansion scope.'
+    example: 'macro define_value_method; {% method_name = "value".id %}; def {{method_name}} : String; "ready"; end; end; class CardProbeMacro; define_value_method; end; CardProbeMacro.new.value'
+  - pattern: "undefined method '(to_sym)' for String"
+    hint: 'Crystal String has no `{1}`; keep values as String, or call `to_s` when converting a Symbol to String.'
+    example: 'name.to_s'
+  - pattern: "undefined method '(ancestors|superclass)' for ([A-Za-z_:][A-Za-z0-9_:]*)\\.class"
+    hint: 'Runtime class objects do not expose `{1}` for `{2}`; use `is_a?` for runtime checks or a macro for compile-time ancestry.'
+    example: 'instance.is_a?(CardProbeBase)'
+  - pattern: "(?|undefined method '([^']+)' for Base64:Module|undefined constant Base64::Decoder::([^\\s]+))"
+    hint: 'Base64 does not expose `{1}`; use the supported `Base64.decode` or `Base64.decode_string` method for URL-safe input.'
+    example: 'Base64.decode(token)'
+  - pattern: "wrong number of arguments for '(JSON::ParseException\\.new)' \\(given 1, expected 3\\.\\.4\\)"
+    hint: '`{1}` needs parser location arguments; use `ArgumentError` for request errors that are not JSON parse failures.'
+    example: 'JSON::ParseException.new("invalid JSON", 1, 1)'
+  - pattern: "undefined method '(file|hexdigest)' for Digest::SHA256(?:\\.class)?"
+    hint: 'Digest::SHA256 `{1}` is used on an instance for file/stream operations; call `hexfinal` for a streaming digest.'
+    example: 'digest = Digest::SHA256.new; digest.file(path); digest.hexfinal'
+  - pattern: "undefined method '(to_i64\\?)' for Int32"
+    hint: 'Int32 provides `{1}` for a checked conversion; use `to_i64` when the value is known to fit.'
+    example: 'value.to_i64'
+  - pattern: "undefined method '(<<)' for String"
+    hint: 'Crystal String does not support `{1}`; assign the concatenated String returned by `+`.'
+    example: 'text = text + "x"'
+  - pattern: "undefined method '(kill)' for Process"
+    hint: 'Use `{1}` as a Process instance method or send a signal with `Process.signal`.'
+    example: 'Process.signal(Signal::KILL, process.pid)'
+  - pattern: "undefined method '([^']+)' for JSON::Any"
+    hint: 'JSON::Any exposes a parsed object through `{1}`; mutate its Hash returned by `as_h`.'
+    example: 'values = JSON.parse("{}").as_h; values["mode"] = JSON::Any.new("ready")'
+  - pattern: "'JSON::Builder#(array)' is expected to be invoked with a block"
+    hint: '`{1}` needs a block that writes each JSON value.'
+    example: 'JSON.build { |json| json.array { json.string("ready") } }'
+  - pattern: "wrong number of arguments for '(HTTP::Headers.new)' \\(given 1, expected 0\\)"
+    hint: '`{1}` takes no initial Hash; create it empty and copy each header pair.'
+    example: 'http_headers = HTTP::Headers.new; headers.each { |key, value| http_headers[key] = value }'
+  - pattern: "wrong number of arguments for '(Time.utc)' \\(given 7, expected 0, 3, 4, 5, 6\\)"
+    hint: '`{1}` takes nanoseconds as a named argument after the seconds.'
+    example: 'Time.utc(2026, 1, 1, 0, 0, 0, nanosecond: 1)'
+  - pattern: "no overload matches '(Slice\\(UInt8\\).new)' with type Slice\\(UInt8\\)"
+    hint: '`{1}` copies an existing byte slice with `dup`.'
+    example: 'body.dup'
+  - pattern: "undefined method '(all\\?)' for NamedTuple"
+    hint: 'NamedTuple does not provide `{1}`; convert it to a Hash first.'
+    example: 'values = {id: 1_i64}.to_h.all? { |key, value| key.to_s == "id" && value > 0 }'
+  - pattern: "undefined method '(matched)' for Regex::MatchData"
+    hint: 'Use `{1}` on the match result tuple to read the captured text.'
+    example: '"a".scan(/a/).map(&.[0])'
+  - pattern: "undefined method '(delete_prefix)' for String"
+    hint: 'String does not provide `{1}`; use `byte_slice` with the prefix byte count.'
+    example: 'text.byte_slice(prefix.bytesize)'
+  - pattern: "undefined constant (Digest::SHA256)"
+    hint: 'Load `{1}` from the Crystal standard library with `require "digest/sha256"`.'
+    example: 'require "digest/sha256"'
+  - pattern: "undefined constant (FileUtils)"
+    hint: 'Load `{1}` from the Crystal standard library with `require "file_utils"`.'
+    example: 'require "file_utils"'
+  - pattern: "expecting token '\\)', not '([|][|])'"
+    hint: 'This block shorthand cannot combine predicates with `{1}`; name the block value and call both methods.'
+    example: 'queries.count { |query| query.includes?("SELECT") || query.includes?("INSERT") }'
+  - pattern: "can't (return) from captured block, use next"
+    hint: 'A captured block cannot use `{1}` to return from its enclosing method; use `next` to skip this block iteration.'
+    example: 'items.each { |item| next if item.nil? }'
+  - pattern: "undefined method '(mkdir_p)' for File:Module"
+    hint: 'Directory creation uses `Dir.{1}`; `File` handles individual files.'
+    example: 'Dir.mkdir_p(path)'
+  - pattern: "undefined local variable or method '(described_class)' for top-level"
+    hint: 'Crystal Spec does not provide `{1}`; name the type under test or assign it to a local constant.'
+    example: 'CardProbeSubject.value'
+  - pattern: "method ([^ ]+) must return (.+) but it is returning \\((.+ \\| Nil)\\)"
+    hint: 'Method `{1}` must return `{2}`; supply a fallback or raise when its expression is nil.'
+    example: 'value = optional_value || raise "missing"; value.size'
+  - pattern: "can't cast (.+) to \\((.+)\\)"
+    hint: 'The inferred value `{1}` cannot be cast to `{2}`; check its concrete type with `is_a?` before using it.'
+    example: 'if value.is_a?(Array(String)); value; end'
+  - pattern: "expecting token '(:)', not '(=)'"
+    hint: 'Crystal expected `{1}` before `{2}`; constants infer their type from `NAME = value`, while variable types use `name : Type`.'
+    example: 'API_LEVEL = 1'
+  - pattern: "too many block parameters \\(given (\\d+), expected maximum (\\d+)\\)"
+    hint: 'The block receives `{1}` parameters but this API allows at most `{2}`; use the arity expected by the call.'
+    example: 'values.each { }'
+  - pattern: "expected block to return (.+), not (.+)"
+    hint: 'This block must return `{1}`; make its final expression a value accepted by that type.'
+    example: 'with_integer { 1_i64 }'

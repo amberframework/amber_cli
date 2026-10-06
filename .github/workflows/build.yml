@@ -51,8 +51,11 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-shards-
     
+    - name: Build pinned Minecart
+      run: scripts/install_pinned_minecart.sh
+
     - name: Install dependencies
-      run: shards install
+      run: minecart install --frozen --skip-ai-docs
     
     - name: Build LSP binary for integration specs
       run: |

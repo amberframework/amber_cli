@@ -1,8 +1,12 @@
 module AmberLSP::Rules::Controllers
   class ActionReturnRule < AmberLSP::Rules::BaseRule
-    RESPONSE_METHODS  = ["render", "redirect_to", "redirect_back", "respond_with", "halt!"]
-    SKIPPED_METHODS   = ["initialize", "before_action", "after_action", "before_filter", "after_filter"]
-    VISIBILITY_CHANGE = /^\s*(private|protected)\s*$/
+    RESPONSE_METHODS   = ["render", "redirect_to", "redirect_back", "respond_with", "halt!"]
+    SKIPPED_METHODS    = ["initialize", "before_action", "after_action", "before_filter", "after_filter"]
+    VISIBILITY_CHANGE  = /^\s*(private|protected|public)\s*$/
+    METHOD_DECLARATION = /^(\s{2,4})(?:(private|protected|public)\s+)?def\s+([\w!?]+)/
+    CLASS_METHOD       = /^\s{2,4}(?:(?:private|protected|public)\s+)?def\s+self\./
+    CLASS_DECLARATION  = /^(\s*)class\b/
+    END_DECLARATION    = /^(\s*)end\b/
 
     def id : String
       "amber/action-return-type"
@@ -22,6 +26,7 @@ module AmberLSP::Rules::Controllers
 
     def check(file_path : String, content : String) : Array(Diagnostic)
       return [] of Diagnostic unless file_path.includes?("controllers/")
+      return [] of Diagnostic if action_support_file?(file_path)
 
       diagnostics = [] of Diagnostic
       lines = content.lines
@@ -34,30 +39,47 @@ module AmberLSP::Rules::Controllers
       method_indent = 0
       has_response_call = false
       is_private_section = false
+      list_of_class_indents = [] of Int32
 
       lines.each_with_index do |line, line_number|
+        if class_match = CLASS_DECLARATION.match(line)
+          list_of_class_indents << class_match[1].size
+          is_private_section = false
+        end
+
         # Track visibility section changes
-        if VISIBILITY_CHANGE.matches?(line)
-          is_private_section = true
+        if visibility_match = VISIBILITY_CHANGE.match(line)
+          is_private_section = visibility_match[1] != "public"
           next
         end
 
+        if end_match = END_DECLARATION.match(line)
+          if list_of_class_indents.last? == end_match[1].size
+            list_of_class_indents.pop
+            is_private_section = false
+          end
+        end
+
         # Detect method start at standard 2-space indent (methods inside a class)
-        method_match = /^(\s{2,4})def\s+(\w+)/.match(line)
+        method_match = METHOD_DECLARATION.match(line)
         if method_match && !in_public_method
+          next if CLASS_METHOD.matches?(line)
+
           indent = method_match[1].size
-          name = method_match[2]
+          visibility = method_match[2]?
+          name = method_match[3]
 
           # Skip private/protected methods and special methods
+          is_private_section = false if visibility == "public"
+          next if visibility == "private" || visibility == "protected"
           next if is_private_section
           next if SKIPPED_METHODS.includes?(name)
-          next if line.includes?("private def") || line.includes?("protected def")
 
           in_public_method = true
           method_name = name
           method_line = line_number
-          method_start_char = (method_match.begin(2) || 0).to_i32
-          method_end_char = (method_match.end(2) || line.size).to_i32
+          method_start_char = (method_match.begin(3) || 0).to_i32
+          method_end_char = (method_match.end(3) || line.size).to_i32
           method_indent = indent
           has_response_call = false
           next
@@ -65,7 +87,7 @@ module AmberLSP::Rules::Controllers
 
         if in_public_method
           # Check for response method calls
-          if RESPONSE_METHODS.any? { |m| line.includes?(m) }
+          if response_written_or_returned?(line)
             has_response_call = true
           end
 
@@ -92,6 +114,19 @@ module AmberLSP::Rules::Controllers
       end
 
       diagnostics
+    end
+
+    private def action_support_file?(file_path : String) : Bool
+      File.basename(file_path) == "application_controller.cr" ||
+        file_path.includes?("controllers/concerns/")
+    end
+
+    private def response_written_or_returned?(line : String) : Bool
+      RESPONSE_METHODS.any? { |method_name| line.includes?(method_name) } ||
+        line.includes?("respond_") ||
+        line.matches?(/\bcontext\.response\.(print|write)\b/) ||
+        line.matches?(/\b\w+\(context\.response\b/) ||
+        line.includes?("String.build")
     end
   end
 end

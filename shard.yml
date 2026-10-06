@@ -1,5 +1,5 @@
 name: amber_cli
-version: 2.0.6
+version: 2.0.7
 
 authors:
   - crimson-knight <crimsonknightstudios@gmail.com>
@@ -19,7 +19,7 @@ dependencies:
   # Stable static-asset compiler used by the CLI and generated applications.
   asset_pipeline:
     github: amberframework/asset_pipeline
-    version: ~> 0.37.0
+    version: 0.37.0
 
   micrate:
     github: amberframework/micrate
@@ -27,24 +27,24 @@ dependencies:
 
   pg:
     github: will/crystal-pg
-    version: ~> 0.29.0
+    version: 0.29.0
 
   mysql:
     github: crystal-lang/crystal-mysql
-    version: ~> 0.16.0
+    version: 0.16.0
 
   sqlite3:
     github: crystal-lang/crystal-sqlite3
-    version: ~> 0.21.0
+    version: 0.21.0
 
   exception_page:
     github: crystal-loot/exception_page
-    version: ~> 0.2.1
+    version: 0.2.2
 
   # CLI tool item, specifically for when distributing a compiled binary (like the CLI tool will be)
   compiled_license:
     github: elorest/compiled_license
-    version: ~> 1.2.2
+    version: 1.2.2
 
 development_dependencies:
   ameba:

@@ -23,14 +23,14 @@ jobs:
       matrix:
         include:
           - target: darwin-arm64
-            os: macos-latest
-            crystal_arch: aarch64
+            os: macos-26
+            runner_arch: arm64
           - target: linux-x86_64
-            os: ubuntu-latest
-            crystal_arch: x86_64
+            os: ubuntu-24.04
+            runner_arch: x86_64
           - target: linux-arm64
             os: ubuntu-24.04-arm
-            crystal_arch: aarch64
+            runner_arch: aarch64
     
     steps:
     - name: Checkout code
@@ -38,21 +38,18 @@ jobs:
       with:
         ref: ${{ github.event.release.tag_name || github.event.inputs.ref }}
 
-    - name: Refresh apt package index
-      # install-crystal runs apt-get install without an update, so a stale
-      # runner image index 404s on superseded packages.
-      if: runner.os == 'Linux'
-      run: sudo apt-get update
+    - name: Verify runner architecture
+      run: |
+        actual_arch="$(uname -m)"
+        expected_arch="${{ matrix.runner_arch }}"
+        if [[ "$actual_arch" != "$expected_arch" ]]; then
+          printf 'Runner architecture mismatch: expected %s, got %s\n' "$expected_arch" "$actual_arch" >&2
+          exit 1
+        fi
+        printf 'Verified runner architecture: %s\n' "$actual_arch"
 
-    - name: Install Crystal (Linux)
-      if: startsWith(matrix.target, 'linux-')
-      uses: crystal-lang/install-crystal@d8ef131ecec0352ce0e39b81b0a6d95def58fe2f # v1
-      with:
-        crystal: latest
-
-    - name: Install Crystal and OpenSSL (macOS)
-      if: matrix.target == 'darwin-arm64'
-      run: brew install crystal openssl@3
+    - name: Install hash-verified Crystal
+      run: scripts/install_pinned_crystal.sh "${{ matrix.target }}"
 
     - name: Verify release versions agree
       run: |
@@ -64,25 +61,25 @@ jobs:
           test "v$shard_version" = "$requested_ref"
         fi
     
+    - name: Build pinned Minecart
+      run: scripts/install_pinned_minecart.sh
+      env:
+        CRYSTAL: crystal-alpha
+
     - name: Install dependencies
-      run: |
-        if [ -f shard.lock ]; then
-          shards install --production
-        else
-          shards install
-        fi
+      run: minecart install --frozen --production --skip-ai-docs
     
     - name: Build binaries (Linux)
       if: startsWith(matrix.target, 'linux-')
       run: |
-        crystal build src/amber_cli.cr -o amber --release --static
-        crystal build src/amber_lsp.cr -o amber-lsp --release --static
+        crystal-alpha build src/amber_cli.cr -o amber --release --static
+        crystal-alpha build src/amber_lsp.cr -o amber-lsp --release --static
 
     - name: Build binaries (macOS ARM64)
       if: matrix.target == 'darwin-arm64'
       run: |
-        crystal build src/amber_cli.cr -o amber --release
-        crystal build src/amber_lsp.cr -o amber-lsp --release
+        crystal-alpha build src/amber_cli.cr -o amber --release
+        crystal-alpha build src/amber_lsp.cr -o amber-lsp --release
 
     - name: Verify binaries
       run: |
@@ -103,8 +100,22 @@ jobs:
 
     - name: Create archive
       run: |
-        mkdir -p dist
-        tar -czf dist/amber_cli-${{ matrix.target }}.tar.gz amber amber-lsp
+        mkdir -p dist/package/share/amber_cli/api dist/verify
+        cp amber amber-lsp dist/package/
+        cp src/amber_lsp/cards/crystal.yml dist/package/share/amber_cli/api/crystal.yml
+        if command -v sha256sum >/dev/null 2>&1; then
+          (cd dist/package && sha256sum amber amber-lsp > checksums.txt)
+        else
+          (cd dist/package && shasum -a 256 amber amber-lsp > checksums.txt)
+        fi
+        tar -czf dist/amber_cli-${{ matrix.target }}.tar.gz -C dist/package amber amber-lsp checksums.txt share
+        tar -xzf dist/amber_cli-${{ matrix.target }}.tar.gz -C dist/verify
+        if command -v sha256sum >/dev/null 2>&1; then
+          (cd dist/verify && sha256sum --check checksums.txt)
+        else
+          (cd dist/verify && shasum -a 256 -c checksums.txt)
+        fi
+        tar -tzf dist/amber_cli-${{ matrix.target }}.tar.gz | grep -Fx 'share/amber_cli/api/crystal.yml'
         
     - name: Calculate checksum
       id: checksum
@@ -115,7 +126,7 @@ jobs:
         else
           shasum -a 256 amber_cli-${{ matrix.target }}.tar.gz > amber_cli-${{ matrix.target }}.tar.gz.sha256
         fi
-        echo "sha256=$(cat amber_cli-${{ matrix.target }}.tar.gz.sha256 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+        echo "sha256=$(cat amber_cli-${{ matrix.target }}.tar.gz.sha256 | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
         
     - name: Upload artifact
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -125,13 +136,52 @@ jobs:
           dist/amber_cli-${{ matrix.target }}.tar.gz
           dist/amber_cli-${{ matrix.target }}.tar.gz.sha256
           
+  package-source:
+    name: Package checksummed source archive
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      with:
+        ref: ${{ github.event.release.tag_name || github.event.inputs.ref }}
+
+    - name: Verify release version
+      run: |
+        version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
+        requested_ref="${{ github.event.release.tag_name || github.event.inputs.ref }}"
+        if [[ "$requested_ref" == v* ]]; then
+          test "v$version" = "$requested_ref"
+        fi
+
+    - name: Create checksummed source archive
+      run: |
+        version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
+        mkdir -p dist
+        git archive --format=tar.gz --prefix="amber_cli-${version}/" HEAD > "dist/amber_cli-source-${version}.tar.gz"
+        cd dist
+        sha256sum "amber_cli-source-${version}.tar.gz" > "amber_cli-source-${version}.tar.gz.sha256"
+        printf 'CI source archive SHA-256: %s\n' "$(cut -d' ' -f1 < "amber_cli-source-${version}.tar.gz.sha256")"
+
+    - name: Upload source archive for preflight and release
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      with:
+        name: amber_cli-source
+        path: |
+          dist/amber_cli-source-*.tar.gz
+          dist/amber_cli-source-*.tar.gz.sha256
+
   upload-assets:
     name: Upload Release Assets
-    needs: build
-    runs-on: ubuntu-latest
+    needs: [build, package-source]
+    runs-on: ubuntu-24.04
     if: github.event_name == 'release'
-    
+
     steps:
+    - name: Checkout release source
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      with:
+        ref: ${{ github.event.release.tag_name }}
+
     - name: Download all artifacts
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
@@ -139,8 +189,11 @@ jobs:
         
     - name: Verify artifacts exist
       run: |
-        set -e
+        set -euo pipefail
+        version="$(sed -n 's/^version: *//p' shard.yml | head -1)"
         for f in \
+          "artifacts/amber_cli-source/amber_cli-source-${version}.tar.gz" \
+          "artifacts/amber_cli-source/amber_cli-source-${version}.tar.gz.sha256" \
           artifacts/amber_cli-darwin-arm64/amber_cli-darwin-arm64.tar.gz \
           artifacts/amber_cli-darwin-arm64/amber_cli-darwin-arm64.tar.gz.sha256 \
           artifacts/amber_cli-linux-x86_64/amber_cli-linux-x86_64.tar.gz \
@@ -156,6 +209,30 @@ jobs:
           echo "OK: $f"
         done
 
+    - name: Verify archive hashes and write release notes
+      run: |
+        set -euo pipefail
+        version="$(sed -n 's/^version: *//p' shard.yml | head -1)"
+        commit_hash="$(git rev-parse HEAD)"
+        source_archive="amber_cli-source-${version}.tar.gz"
+        source_checksum_file="artifacts/amber_cli-source/${source_archive}.sha256"
+        (cd artifacts/amber_cli-source && sha256sum --check "${source_archive}.sha256")
+        mkdir -p dist
+        {
+          printf "# Amber CLI v%s\n\n" "$version"
+          printf "Release commit: \`%s\`\n\n" "$commit_hash"
+          printf "Archive SHA-256 values:\n\n"
+          printf "| Archive | SHA-256 |\n|---|---|\n"
+          printf "| \`%s\` | \`%s\` |\n" "$source_archive" "$(cut -d' ' -f1 < "$source_checksum_file")"
+          for target in darwin-arm64 linux-x86_64 linux-arm64; do
+            archive="amber_cli-${target}.tar.gz"
+            checksum_file="artifacts/amber_cli-${target}/${archive}.sha256"
+            (cd "artifacts/amber_cli-${target}" && sha256sum --check "${archive}.sha256")
+            printf "| \`%s\` | \`%s\` |\n" "$archive" "$(cut -d' ' -f1 < "$checksum_file")"
+          done
+        } > dist/release-notes.md
+        cat dist/release-notes.md
+
     - name: Upload release assets
       uses: softprops/action-gh-release@c12583777ecdfd3be55c69cf75464299dc01057e # v3
       with:
@@ -166,22 +243,11 @@ jobs:
           artifacts/amber_cli-linux-x86_64/amber_cli-linux-x86_64.tar.gz.sha256
           artifacts/amber_cli-linux-arm64/amber_cli-linux-arm64.tar.gz
           artifacts/amber_cli-linux-arm64/amber_cli-linux-arm64.tar.gz.sha256
+          artifacts/amber_cli-source/amber_cli-source-*.tar.gz
+          artifacts/amber_cli-source/amber_cli-source-*.tar.gz.sha256
         tag_name: ${{ github.event.release.tag_name }}
         fail_on_unmatched_files: true
+        body_path: dist/release-notes.md
+        append_body: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
-  notify-homebrew:
-    name: Notify Homebrew Tap
-    needs: upload-assets
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-
-    steps:
-    - name: Dispatch to underscore tap (homebrew-amber_cli)
-      uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4
-      with:
-        token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        repository: amberframework/homebrew-amber_cli
-        event-type: release-published
-        client-payload: '{"version": "${{ github.event.release.tag_name }}"}'

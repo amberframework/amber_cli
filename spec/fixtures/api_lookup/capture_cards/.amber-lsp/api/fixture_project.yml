@@ -1,0 +1,10 @@
+card_version: 1
+library: fixture_project
+applies_to: ">= 1.0.0, < 2.0.0"
+error_hints:
+  - pattern: "undefined method '([a-z_]+)' for ([A-Za-z_:]+)"
+    hint: "Call {1} on {2}."
+    example: "{2}.{1}(\"widget-1\")"
+  - pattern: "undefined method '(?<method>[a-z_]+)' for Example::Widget"
+    hint: "Use {method} with the widget."
+    example: "Example::Widget.{method}(\"widget-2\")"

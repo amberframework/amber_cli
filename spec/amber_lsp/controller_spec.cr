@@ -1,4 +1,5 @@
 require "./spec_helper"
+require "../../src/amber_lsp/rules/controllers/naming_rule"
 
 describe AmberLSP::Controller do
   describe "#handle initialize" do
@@ -31,11 +32,90 @@ describe AmberLSP::Controller do
       text_doc_sync["openClose"].as_bool.should be_true
       text_doc_sync["change"].as_i.should eq(1)
       text_doc_sync["save"]["includeText"].as_bool.should be_true
+      capabilities["workspaceSymbolProvider"].as_bool.should be_true
+      capabilities["hoverProvider"].as_bool.should be_true
+      capabilities["definitionProvider"].as_bool.should be_true
 
       # Check serverInfo
       server_info = result["serverInfo"]
       server_info["name"].as_s.should eq("amber-lsp")
       server_info["version"].as_s.should eq(AmberLSP::VERSION)
+    end
+  end
+
+  describe "#handle didChange" do
+    it "analyzes full-document unsaved content after didOpen" do
+      with_tempdir do |project|
+        Dir.mkdir_p(File.join(project, "src/controllers"))
+        File.write(File.join(project, "shard.yml"), <<-YAML)
+          name: amber_lsp_controller_spec
+          version: 0.1.0
+          dependencies:
+            amber:
+              github: amberframework/amber
+        YAML
+
+        file_path = File.join(project, "src/controllers/users_controller.cr")
+        Dir.mkdir_p(File.join(project, "spec/controllers"))
+        File.write(File.join(project, "spec/controllers/users_controller_spec.cr"), "# Controller specs.\n")
+        clean_content = <<-CRYSTAL
+          # Serves the user pages.
+          class UsersController < Amber::Controller::Base
+          end
+        CRYSTAL
+        File.write(file_path, clean_content)
+        uri = "file://#{file_path}"
+
+        messages = [
+          {"jsonrpc" => "2.0", "id" => 1, "method" => "initialize", "params" => {"rootUri" => "file://#{project}"}},
+          {"jsonrpc" => "2.0", "method" => "initialized", "params" => {} of String => String},
+          {"jsonrpc" => "2.0", "method" => "textDocument/didOpen", "params" => {"textDocument" => {"uri" => uri, "text" => clean_content}}},
+          {"jsonrpc" => "2.0", "method" => "textDocument/didChange", "params" => {"textDocument" => {"uri" => uri, "version" => 2}, "contentChanges" => [{"text" => clean_content.gsub("UsersController", "UsersHandler")}]}},
+          {"jsonrpc" => "2.0", "id" => 2, "method" => "shutdown"},
+          {"jsonrpc" => "2.0", "method" => "exit"},
+        ]
+
+        AmberLSP::Rules::RuleRegistry.register(AmberLSP::Rules::Controllers::NamingRule.new)
+        responses = run_lsp_session(messages)
+        diagnostics_notifications = responses.select do |response|
+          response["method"]?.try(&.as_s?) == "textDocument/publishDiagnostics"
+        end
+
+        diagnostics_notifications.size.should eq(2)
+        diagnostics_notifications[0]["params"]["diagnostics"].as_a.should be_empty
+        changed_diagnostics = diagnostics_notifications[1]["params"]["diagnostics"].as_a
+        changed_diagnostics.map { |diagnostic| diagnostic["code"].as_s }.should contain("amber/controller-naming")
+        File.read(file_path).should eq(clean_content)
+      end
+    end
+  end
+
+  describe "#handle coverage status" do
+    it "reports declined coverage to the LSP client" do
+      with_tempdir do |project|
+        File.write(File.join(project, "shard.yml"), "name: plain_crystal_app\nversion: 0.1.0\n")
+        file_path = File.join(project, "main.cr")
+        File.write(file_path, "puts \"hello\"\n")
+        content = File.read(file_path)
+
+        messages = [
+          {"jsonrpc" => "2.0", "id" => 1, "method" => "initialize", "params" => {"rootUri" => "file://#{project}"}},
+          {"jsonrpc" => "2.0", "method" => "initialized", "params" => {} of String => String},
+          {"jsonrpc" => "2.0", "method" => "textDocument/didOpen", "params" => {"textDocument" => {"uri" => "file://#{file_path}", "text" => content}}},
+          {"jsonrpc" => "2.0", "id" => 2, "method" => "shutdown"},
+          {"jsonrpc" => "2.0", "method" => "exit"},
+        ]
+
+        responses = run_lsp_session(messages)
+        coverage_messages = responses.select do |response|
+          response["method"]?.try(&.as_s?) == "window/logMessage"
+        end
+
+        coverage_messages.size.should eq(1)
+        coverage_messages[0]["params"]["message"].as_s.should eq(
+          "amber-lsp: declined project is not an Amber V2 stack project"
+        )
+      end
     end
   end
 
@@ -69,7 +149,7 @@ describe AmberLSP::Controller do
       request = {
         "jsonrpc" => "2.0",
         "id"      => 99,
-        "method"  => "textDocument/hover",
+        "method"  => "textDocument/references",
       }.to_json
 
       response = server.controller.handle(request, server)

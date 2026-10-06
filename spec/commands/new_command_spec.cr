@@ -1,27 +1,27 @@
 require "../amber_cli_spec"
-require "../../src/amber_cli/commands/new"
+require "../../src/amber_cli/commands/new_command"
 
 describe AmberCLI::Commands::NewCommand do
-  describe ".find_shards_executable" do
-    it "prefers shards-alpha when it is available" do
-      executable = AmberCLI::Commands::NewCommand.find_shards_executable(
-        ->(command : String) { command == "shards-alpha" ? "/tools/shards-alpha" : "/tools/shards" }
-      )
-
-      executable.should eq("/tools/shards-alpha")
-    end
-
-    it "falls back to shards when shards-alpha is unavailable" do
+  describe ".find_minecart_executable" do
+    it "selects Minecart for checksum-verified installs" do
       lookup_calls = [] of String
-      executable = AmberCLI::Commands::NewCommand.find_shards_executable(
+      executable = AmberCLI::Commands::NewCommand.find_minecart_executable(
         ->(command : String) do
           lookup_calls << command
-          command == "shards" ? "/tools/shards" : nil
+          command == "minecart" ? "/tools/minecart" : "/tools/other"
         end
       )
 
-      executable.should eq("/tools/shards")
-      lookup_calls.should eq(["shards-alpha", "shards"])
+      executable.should eq("/tools/minecart")
+      lookup_calls.should eq(["minecart"])
+    end
+
+    it "returns nil rather than selecting an unverified installer" do
+      executable = AmberCLI::Commands::NewCommand.find_minecart_executable(
+        ->(command : String) { nil }
+      )
+
+      executable.should be_nil
     end
   end
 
@@ -92,7 +92,19 @@ describe AmberCLI::Commands::NewCommand do
       command.option_parser.parse(args)
 
       command.app_type.should eq("native")
-      command.no_deps.should be_true
+      command.should_skip_dependency_installation.should be_true
+    end
+
+    it "accepts --skip-agent-setup" do
+      command = AmberCLI::Commands::NewCommand.new("new")
+      args = ["my_app", "--skip-agent-setup"]
+
+      command.option_parser.unknown_args do |unknown_args, _|
+        command.remaining_arguments.concat(unknown_args)
+      end
+      command.option_parser.parse(args)
+
+      command.should_skip_agent_setup.should be_true
     end
   end
 
@@ -106,6 +118,10 @@ describe AmberCLI::Commands::NewCommand do
 
         File.exists?(File.join(destination, "src/beta_smoke.cr")).should be_true
         Dir.exists?(File.join(destination, "bin")).should be_true
+        File.file?(File.join(destination, ".amber/agent_setup.json")).should be_true
+        File.file?(File.join(destination, ".amber/amber-agent-hook")).should be_true
+        File.file?(File.join(destination, ".claude/settings.json")).should be_true
+        File.file?(File.join(destination, ".codex/hooks.json")).should be_true
 
         shard = File.read(File.join(destination, "shard.yml"))
         shard.should contain("github: amberframework/amber")
@@ -115,15 +131,20 @@ describe AmberCLI::Commands::NewCommand do
         shard.should contain("commit: da1e06161148f156dbce262a4a4efcb39cba5ba4")
         shard.should contain("asset_pipeline:")
         shard.should contain("github: amberframework/asset_pipeline")
+        shard.should contain("version: 0.37.0")
+        shard.should_not contain("version: ~> 0.37.0")
         shard.should contain("github: crystal-lang/crystal-sqlite3")
         shard.should_not contain("slang")
 
         File.exists?(File.join(destination, "shard.lock")).should be_false
+        policy = File.read(File.join(destination, ".minecart-policy.yml"))
+        policy.should contain("require_exact: true")
         readme = File.read(File.join(destination, "README.md"))
-        readme.should contain("shards install")
+        readme.should contain("minecart install --frozen")
+        readme.should contain("--skip-ai-docs")
         readme.should contain("crystal spec")
-        readme.should contain("writes a checksum-verified `shard.lock`")
-        readme.scan(/shards-alpha install/).size.should eq(1)
+        readme.should contain("git-tree:")
+        readme.should_not contain("shards install")
 
         amber_config_template = File.read(File.expand_path("../../src/amber_cli/templates/app/.amber.yml.ecr", __DIR__))
         amber_config_template.should contain("AMBER_ENV=test crystal spec")
@@ -223,6 +244,19 @@ describe AmberCLI::Commands::NewCommand do
         readme.should contain("amber assets build")
         readme.should contain("app/assets/stylesheets/")
         readme.should contain("public/assets/manifest.json")
+      end
+    end
+
+    it "leaves agent setup for a later command when --skip-agent-setup is passed" do
+      SpecHelper.within_temp_directory do |temp_dir|
+        destination = File.join(temp_dir, "skip_agent_app")
+        command = AmberCLI::Commands::NewCommand.new("new")
+
+        command.parse_and_execute([destination, "--type=web", "--no-deps", "--skip-agent-setup"])
+
+        File.exists?(File.join(destination, "src/skip_agent_app.cr")).should be_true
+        File.file?(File.join(destination, ".amber/agent_setup.json")).should be_false
+        File.file?(File.join(destination, ".codex/hooks.json")).should be_false
       end
     end
   end

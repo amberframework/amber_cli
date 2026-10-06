@@ -1,6 +1,43 @@
 require "json"
 
 module AmberLSP::Rules
+  # :nodoc:
+  struct LSPPosition
+    include JSON::Serializable
+
+    getter line : Int32
+    getter character : Int32
+
+    def initialize(@line : Int32, @character : Int32)
+    end
+  end
+
+  # :nodoc:
+  struct LSPRange
+    include JSON::Serializable
+
+    getter start : LSPPosition
+    @[JSON::Field(key: "end")]
+    getter end_position : LSPPosition
+
+    def initialize(@start : LSPPosition, @end_position : LSPPosition)
+    end
+  end
+
+  # :nodoc:
+  struct LSPDiagnostic
+    include JSON::Serializable
+
+    getter range : LSPRange
+    getter severity : Int32
+    getter code : String
+    getter source : String
+    getter message : String
+
+    def initialize(@range : LSPRange, @severity : Int32, @code : String, @source : String, @message : String)
+    end
+  end
+
   struct Position
     getter line : Int32
     getter character : Int32
@@ -33,23 +70,13 @@ module AmberLSP::Rules
     )
     end
 
-    def to_lsp_json : Hash(String, JSON::Any)
-      {
-        "range" => JSON::Any.new({
-          "start" => JSON::Any.new({
-            "line"      => JSON::Any.new(@range.start.line.to_i64),
-            "character" => JSON::Any.new(@range.start.character.to_i64),
-          }),
-          "end" => JSON::Any.new({
-            "line"      => JSON::Any.new(@range.end.line.to_i64),
-            "character" => JSON::Any.new(@range.end.character.to_i64),
-          }),
-        }),
-        "severity" => JSON::Any.new(@severity.value.to_i64),
-        "code"     => JSON::Any.new(@code),
-        "source"   => JSON::Any.new(@source),
-        "message"  => JSON::Any.new(@message),
-      }
+    def to_lsp_diagnostic : LSPDiagnostic
+      lsp_range = LSPRange.new(
+        LSPPosition.new(@range.start.line, @range.start.character),
+        LSPPosition.new(@range.end.line, @range.end.character),
+      )
+
+      LSPDiagnostic.new(lsp_range, @severity.value, @code, @source, @message)
     end
   end
 end

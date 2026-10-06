@@ -1,0 +1,83 @@
+{
+  "repository_name": "library-source-ownership-fixture",
+  "program": {
+    "kind": "module",
+    "full_name": "",
+    "types": [
+      {
+        "kind": "class",
+        "name": "Client",
+        "full_name": "Awscr::S3::Client",
+        "locations": [
+          {"filename": "/fixture_app/lib/awscr-s3/src/awscr/s3/client.cr", "line_number": 1},
+          {"filename": "/fixture_app/lib/awscr-signer/src/awscr/s3/client.cr", "line_number": 2}
+        ],
+        "instance_methods": [
+          {
+            "name": "list",
+            "args_string": "() : Array(String)",
+            "def": {"name": "list", "return_type": "Array(String)"},
+            "location": {"filename": "/fixture_app/lib/awscr-s3/src/awscr/s3/client.cr", "line_number": 10}
+          },
+          {
+            "name": "sign",
+            "args_string": "() : String",
+            "def": {"name": "sign", "return_type": "String"},
+            "location": {"filename": "/fixture_app/lib/awscr-signer/src/awscr/s3/client.cr", "line_number": 20}
+          },
+          {
+            "name": "header_value",
+            "args_string": "() : String | Nil",
+            "def": {"name": "header_value", "return_type": "String | Nil"},
+            "location": {"filename": "/fixture_app/crystal/src/http/headers.cr", "line_number": 30}
+          }
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "UnusedS3Type",
+        "full_name": "Awscr::S3::UnusedS3Type",
+        "locations": [
+          {"filename": "/fixture_app/lib/awscr-s3/src/awscr/s3/unused_s3_type.cr", "line_number": 1}
+        ],
+        "instance_methods": [
+          {
+            "name": "s3_only",
+            "args_string": "()",
+            "location": {"filename": "/fixture_app/lib/awscr-s3/src/awscr/s3/unused_s3_type.cr", "line_number": 2}
+          }
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "Signer",
+        "full_name": "Awscr::Signer::Signer",
+        "locations": [
+          {"filename": "/fixture_app/lib/awscr-signer/src/awscr/signer.cr", "line_number": 1}
+        ],
+        "instance_methods": [
+          {
+            "name": "sign_request",
+            "args_string": "()",
+            "location": {"filename": "/fixture_app/lib/awscr-signer/src/awscr/signer.cr", "line_number": 2}
+          }
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "Headers",
+        "full_name": "HTTP::Headers",
+        "locations": [
+          {"filename": "/fixture_app/crystal/src/http/headers.cr", "line_number": 1}
+        ],
+        "instance_methods": [
+          {
+            "name": "add",
+            "args_string": "()",
+            "location": {"filename": "/fixture_app/crystal/src/http/headers.cr", "line_number": 2}
+          }
+        ]
+      }
+    ]
+  }
+}

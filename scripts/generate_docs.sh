@@ -22,7 +22,7 @@ if [ ! -f "shard.yml" ]; then
 fi
 
 echo "📦 Installing dependencies..."
-shards install
+minecart install --frozen --skip-ai-docs
 
 echo "📖 Generating documentation..."
 
@@ -43,4 +43,4 @@ echo "✅ Documentation generated successfully in ./docs"
 echo ""
 echo "🎉 Done! Documentation is ready."
 echo "   Local files: ./docs/index.html"
-echo "   Live site: https://amberframework.github.io/amber_cli/" 
+echo "   Live site: https://amberframework.github.io/amber_cli/"

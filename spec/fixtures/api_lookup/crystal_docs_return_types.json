@@ -1,0 +1,131 @@
+{
+  "repository_name": "fixture_return_types",
+  "program": {
+    "kind": "module",
+    "name": "FixtureTypes",
+    "full_name": "FixtureTypes",
+    "types": [
+      {
+        "kind": "class",
+        "name": "Post",
+        "full_name": "FixtureTypes::Post",
+        "locations": [{"filename": "src/post.cr", "line_number": 1}],
+        "extended_modules": [{"kind": "module", "name": "ClassMethods", "full_name": "FixtureTypes::ClassMethods"}],
+        "instance_methods": [
+          {
+            "name": "reload",
+            "args_string": "() : self",
+            "location": {"filename": "src/post.cr", "line_number": 5},
+            "def": {"name": "reload", "return_type": "self"}
+          },
+          {
+            "name": "id",
+            "args_string": "() : Int64 | ::Nil",
+            "location": {"filename": "src/post.cr", "line_number": 9},
+            "def": {"name": "id", "return_type": "Int64 | ::Nil"}
+          }
+        ]
+      },
+      {
+        "kind": "module",
+        "name": "ClassMethods",
+        "full_name": "FixtureTypes::ClassMethods",
+        "locations": [{"filename": "src/class_methods.cr", "line_number": 1}],
+        "instance_methods": [
+          {
+            "name": "find",
+            "args_string": "(id : Int64) : self?",
+            "location": {"filename": "src/class_methods.cr", "line_number": 4},
+            "def": {"name": "find", "return_type": "self?"}
+          }
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "Builder",
+        "full_name": "Grant::Query::Builder(Model)",
+        "locations": [{"filename": "lib/grant/src/grant/query/builder.cr", "line_number": 1}],
+        "instance_methods": [
+          {
+            "name": "first",
+            "args_string": "() : Model | ::Nil",
+            "location": {"filename": "lib/grant/src/grant/query/builder.cr", "line_number": 20},
+            "def": {"name": "first", "return_type": "Model | ::Nil"}
+          },
+          {
+            "name": "first",
+            "args_string": "(n : Int32) : Array(Model)",
+            "location": {"filename": "lib/grant/src/grant/query/builder.cr", "line_number": 30},
+            "def": {"name": "first", "return_type": "Array(Model)"}
+          },
+          {
+            "name": "lock",
+            "args_string": "(enabled : Bool) : self",
+            "location": {"filename": "lib/grant/src/grant/query/locking.cr", "line_number": 40},
+            "def": {"name": "lock", "return_type": "self"}
+          },
+          {
+            "name": "untyped",
+            "args_string": "()",
+            "location": {"filename": "lib/grant/src/grant/query/builder.cr", "line_number": 50},
+            "def": {"name": "untyped", "return_type": ""}
+          }
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "Collection",
+        "full_name": "Grant::Collection(T)",
+        "locations": [{"filename": "lib/grant/src/grant/collection.cr", "line_number": 1}],
+        "instance_methods": [
+          {
+            "name": "first",
+            "args_string": "() : T?",
+            "location": {"filename": "lib/grant/src/grant/collection.cr", "line_number": 10},
+            "def": {"name": "first", "return_type": "T?"}
+          }
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "AssociationCollection",
+        "full_name": "Grant::AssociationCollection(Owner, Target)",
+        "locations": [{"filename": "lib/grant/src/grant/association_collection.cr", "line_number": 1}],
+        "instance_methods": [
+          {
+            "name": "owner",
+            "args_string": "() : Owner",
+            "location": {"filename": "lib/grant/src/grant/association_collection.cr", "line_number": 10},
+            "def": {"name": "owner", "return_type": "Owner"}
+          },
+          {
+            "name": "target",
+            "args_string": "() : Target?",
+            "location": {"filename": "lib/grant/src/grant/association_collection.cr", "line_number": 15},
+            "def": {"name": "target", "return_type": "Target?"}
+          }
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "LoadedAssociationCollection",
+        "full_name": "Grant::LoadedAssociationCollection(Owner, Target)",
+        "locations": [{"filename": "lib/grant/src/grant/loaded_association_collection.cr", "line_number": 1}],
+        "instance_methods": [
+          {
+            "name": "clear",
+            "args_string": "() : self",
+            "location": {"filename": "lib/grant/src/grant/loaded_association_collection.cr", "line_number": 10},
+            "def": {"name": "clear", "return_type": "self"}
+          },
+          {
+            "name": "target",
+            "args_string": "() : Target?",
+            "location": {"filename": "lib/grant/src/grant/loaded_association_collection.cr", "line_number": 15},
+            "def": {"name": "target", "return_type": "Target?"}
+          }
+        ]
+      }
+    ]
+  }
+}

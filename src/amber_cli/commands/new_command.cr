@@ -1,6 +1,8 @@
 require "../core/base_command"
 require "../generators/native_app"
 require "../static_assets"
+require "./setup_agent_command"
+require "./check_amber_agent_setup_command"
 
 # The `new` command creates a new Amber V2 application with a complete directory
 # structure, configuration files, and a working home page.
@@ -15,6 +17,7 @@ require "../static_assets"
 # - `-t, --template` - Template language (ECR is the only V2 engine)
 # - `--type` - Application type: web (default) or native (cross-platform desktop/mobile)
 # - `--no-deps` - Skip dependency installation
+# - `--skip-agent-setup` - Skip Claude Code and Codex hooks
 #
 # ## Examples
 # ```
@@ -39,13 +42,14 @@ module AmberCLI::Commands
     getter database : String = "sqlite"
     getter template : String = "ecr"
     getter app_type : String = "web"
-    getter assume_yes : Bool = false
-    getter no_deps : Bool = false
-    getter name : String = ""
+    getter should_assume_yes : Bool = false
+    getter should_skip_dependency_installation : Bool = false
+    getter should_skip_agent_setup : Bool = false
+    getter application_name : String = ""
 
     # :nodoc:
-    def self.find_shards_executable(path_lookup : Proc(String, String?)) : String?
-      path_lookup.call("shards-alpha") || path_lookup.call("shards")
+    def self.find_minecart_executable(path_lookup : Proc(String, String?)) : String?
+      path_lookup.call("minecart")
     end
 
     def help_description : String
@@ -82,12 +86,17 @@ module AmberCLI::Commands
 
       option_parser.on("-y", "--assume-yes", "Assume yes to disable interactive mode") do
         @parsed_options["assume_yes"] = true
-        @assume_yes = true
+        @should_assume_yes = true
       end
 
       option_parser.on("--no-deps", "Don't install dependencies") do
         @parsed_options["no_deps"] = true
-        @no_deps = true
+        @should_skip_dependency_installation = true
+      end
+
+      option_parser.on("--skip-agent-setup", "Skip Claude Code and Codex agent setup") do
+        @parsed_options["skip_agent_setup"] = true
+        @should_skip_agent_setup = true
       end
 
       option_parser.separator ""
@@ -112,16 +121,16 @@ module AmberCLI::Commands
         puts option_parser
         exit(1)
       end
-      @name = remaining_arguments[0]
+      @application_name = remaining_arguments[0]
     end
 
     def execute
-      if name == "."
+      if application_name == "."
         project_name = File.basename(Dir.current)
         full_path_name = Dir.current
       else
-        project_name = File.basename(name)
-        full_path_name = File.expand_path(name, Dir.current)
+        project_name = File.basename(application_name)
+        full_path_name = File.expand_path(application_name, Dir.current)
       end
 
       if full_path_name =~ /\s+/
@@ -154,7 +163,7 @@ module AmberCLI::Commands
       success "Successfully created #{project_name}!"
       puts ""
       info "To get started:"
-      info "  cd #{name}" unless name == "."
+      info "  cd #{application_name}" unless application_name == "."
       info "  make setup          # Install shards + create symlinks"
       info "  make macos          # Build for macOS"
       info "  make run            # Build and run"
@@ -167,6 +176,7 @@ module AmberCLI::Commands
       info "Test suite:"
       info "  ./mobile/run_all_tests.sh          # L1 + L2 tests"
       info "  ./mobile/run_all_tests.sh --e2e    # Full E2E tests"
+      setup_project_agent_loop(full_path_name)
     end
 
     private def execute_web(full_path_name : String, project_name : String)
@@ -177,7 +187,7 @@ module AmberCLI::Commands
 
       create_project_structure(full_path_name, project_name)
 
-      install_dependencies(full_path_name) unless no_deps
+      install_dependencies(full_path_name) unless should_skip_dependency_installation
 
       # Encrypt production.yml by default
       if File.exists?(File.join(full_path_name, "config", "environments", "production.yml"))
@@ -191,21 +201,65 @@ module AmberCLI::Commands
       success "Successfully created #{project_name}!"
       puts ""
       info "To get started:"
-      info "  cd #{name}" unless name == "."
-      info "  shards install" if no_deps
+      info "  cd #{application_name}" unless application_name == "."
+      if should_skip_dependency_installation
+        info "  minecart install --strict-pinning --skip-ai-docs"
+        info "  minecart assistant init --skip-ai-docs"
+      end
+      info "  minecart install --frozen --skip-ai-docs  # For later installs"
       info "  crystal spec"
       info "  amber generate scaffold Pet name:string:required species:string:required"
       info "  amber database migrate"
       info "  amber watch"
       info "  # Choose -d pg or -d mysql when you need a server database."
+      setup_project_agent_loop(full_path_name)
+    end
+
+    private def setup_project_agent_loop(project_path : String) : Nil
+      previous_directory = Dir.current
+      Dir.cd(project_path)
+      begin
+        if should_skip_agent_setup
+          info "Skipped Claude Code and Codex setup (--skip-agent-setup)."
+        else
+          AmberCLI::Commands::SetupAgentCommand.new("setup:agent").execute
+        end
+
+        info ""
+        info "Amber doctor summary:"
+        puts AmberCLI::Commands::CheckAmberAgentSetupCommand.new("doctor").perform
+      ensure
+        Dir.cd(previous_directory)
+      end
     end
 
     private def install_dependencies(path : String)
-      info "Installing dependencies..."
-      shards_executable = self.class.find_shards_executable(->(command : String) { Process.find_executable(command) })
+      minecart = self.class.find_minecart_executable(->(command : String) { Process.find_executable(command) })
+      unless minecart
+        error "Minecart is required to create a checksum-verified Amber web app."
+        info "Install Minecart with Amber, then run 'minecart install --strict-pinning --skip-ai-docs' in #{path}."
+        exit!(error: true)
+      end
+
+      info "Installing dependencies with Minecart..."
+      run_minecart(minecart, ["install", "--strict-pinning", "--skip-ai-docs"], path)
+      verify_minecart_lock(path)
+
+      info "Installing Minecart assistant files..."
+      run_minecart(minecart, ["assistant", "init", "--skip-ai-docs"], path)
+      unless File.exists?(File.join(path, ".claude", "CLAUDE.md"))
+        error "Minecart assistant setup did not create .claude/CLAUDE.md; the project files were kept."
+        exit!(error: true)
+      end
+    rescue ex : File::NotFoundError
+      error "Minecart disappeared during project setup; the project files were kept."
+      exit!(error: true)
+    end
+
+    private def run_minecart(executable : String, list_of_arguments : Array(String), path : String)
       status = Process.run(
-        shards_executable || "shards",
-        ["install"],
+        executable,
+        list_of_arguments,
         chdir: path,
         input: Process::Redirect::Inherit,
         output: Process::Redirect::Inherit,
@@ -213,13 +267,24 @@ module AmberCLI::Commands
       )
       return if status.success?
 
-      warning "Dependency installation failed; the project files were kept."
-      warning "Run 'shards install' in #{path} after resolving the error."
+      error "Minecart #{list_of_arguments.join(" ")} failed; the project files were kept."
       exit!(error: true)
-    rescue ex : File::NotFoundError
-      warning "The 'shards' executable was not found; the project files were kept."
-      warning "Install Crystal and run 'shards install' in #{path}."
-      exit!(error: true)
+    end
+
+    private def verify_minecart_lock(path : String)
+      lock_path = File.join(path, "shard.lock")
+      unless File.exists?(lock_path)
+        error "Minecart completed without shard.lock; the project files were kept."
+        exit!(error: true)
+      end
+
+      lock = File.read(lock_path)
+      dependency_count = lock.lines.count { |line| /^  [^\s:]+:$/.matches?(line.chomp) }
+      checksum_count = lock.lines.count { |line| /^    checksum: git-tree:[0-9a-f]{40}$/.matches?(line.chomp) }
+      if dependency_count == 0 || checksum_count != dependency_count
+        error "Minecart did not lock every dependency with a git-tree checksum; the project files were kept."
+        exit!(error: true)
+      end
     end
 
     private def create_project_structure(path : String, name : String)
@@ -252,6 +317,7 @@ module AmberCLI::Commands
       create_amber_yml(path, name)
       create_readme(path, name)
       create_gitignore(path)
+      create_minecart_policy(path)
       create_main_file(path, name)
       create_config_files(path, name)
       create_assets_config(path)
@@ -296,7 +362,7 @@ dependencies:
     commit: da1e06161148f156dbce262a4a4efcb39cba5ba4
   asset_pipeline:
     github: amberframework/asset_pipeline
-    version: ~> 0.37.0
+    version: 0.37.0
 #{database_shard_dependency}
 SHARD
 
@@ -327,7 +393,7 @@ An ECR web application generated by Amber CLI for Amber `2.0.0-beta.5`.
 ## Run it
 
 ```bash
-shards install
+minecart install --frozen --skip-ai-docs
 amber assets build
 amber assets check
 crystal spec
@@ -336,7 +402,14 @@ amber database migrate
 amber watch
 ```
 
-`shards-alpha install` writes a checksum-verified `shard.lock` when `shards-alpha` is installed; commit the lock with the application.
+`amber new` uses Minecart to write a `shard.lock` with `git-tree:` checksums and
+install `.claude/` assistant files. Commit the lock and `.minecart-policy.yml`.
+For later installs, use `minecart install --frozen --skip-ai-docs`. If the project was created
+with `--no-deps`, first run `minecart install --strict-pinning --skip-ai-docs` and
+`minecart assistant init --skip-ai-docs`, then commit the lock.
+
+Dependency AI docs can be large and are skipped by default. Minecart's own
+assistant config and skills are still installed.
 
 Open <http://127.0.0.1:3000> for the starter page or
 <http://127.0.0.1:3000/pets/new> after generating the example scaffold.
@@ -405,6 +478,17 @@ Thumbs.db
 GITIGNORE
 
       write_text(File.join(path, ".gitignore"), gitignore_content)
+    end
+
+    private def create_minecart_policy(path : String)
+      policy_content = <<-POLICY
+version: 1
+rules:
+  dependencies:
+    require_exact: true
+POLICY
+
+      write_text(File.join(path, ".minecart-policy.yml"), policy_content)
     end
 
     private def create_main_file(path : String, name : String)

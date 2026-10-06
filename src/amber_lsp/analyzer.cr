@@ -2,16 +2,44 @@ module AmberLSP
   class Analyzer
     getter configuration : Configuration
     @project_root : String?
+    @project_context : ProjectContext?
+    @library_rule_pack_analyzer : LibraryRulePacks::AnalyzeProjectFilesWithRulePacks?
+    @list_of_rule_pack_load_failures : Array(LibraryRulePacks::RulePackLoadFailure)
 
     def initialize
       @configuration = Configuration.new
       @project_root = nil
+      @project_context = nil
+      @library_rule_pack_analyzer = nil
+      @list_of_rule_pack_load_failures = [] of LibraryRulePacks::RulePackLoadFailure
     end
 
     def configure(project_context : ProjectContext) : Nil
       @configuration = Configuration.load(project_context.root_path)
       @project_root = project_context.root_path
+      @project_context = project_context
+      rule_pack_loader = LibraryRulePacks::LoadRulePacksForProject.new(project_context)
+      list_of_rule_packs = rule_pack_loader.load_rule_packs
+      @list_of_rule_pack_load_failures = rule_pack_loader.list_of_load_failures
+      @library_rule_pack_analyzer = LibraryRulePacks::AnalyzeProjectFilesWithRulePacks.new(
+        project_context,
+        @configuration,
+        list_of_rule_packs,
+      )
       register_custom_rules
+    end
+
+    def rule_pack_load_failure : String?
+      return nil if @list_of_rule_pack_load_failures.empty?
+
+      @list_of_rule_pack_load_failures.map(&.formatted_error).join("\n")
+    end
+
+    def has_applicable_library_rule_pack?(file_path : String, content : String) : Bool
+      analyzer = @library_rule_pack_analyzer
+      return false unless analyzer
+
+      analyzer.has_applicable_pack?(file_path, content)
     end
 
     private def register_custom_rules : Nil
@@ -35,8 +63,6 @@ module AmberLSP
         )
         Rules::RuleRegistry.register(rule)
       end
-    rescue ex
-      STDERR.puts "WARNING: Failed to load custom rules: #{ex.message}"
     end
 
     def analyze(file_path : String, content : String) : Array(Rules::Diagnostic)
@@ -48,12 +74,16 @@ module AmberLSP
 
       rules.each do |rule|
         next unless @configuration.rule_enabled?(rule.id)
+        if rule.requires_amber_project?
+          project_context = @project_context
+          next unless project_context && project_context.amber_project?
+        end
 
         rule_diagnostics = rule.check(file_path, content)
         severity = @configuration.rule_severity(rule.id, rule.default_severity)
 
         rule_diagnostics.each do |diagnostic|
-          if diagnostic.severity != severity
+          if diagnostic.severity == rule.default_severity && diagnostic.severity != severity
             diagnostics << Rules::Diagnostic.new(
               range: diagnostic.range,
               severity: severity,
@@ -65,6 +95,10 @@ module AmberLSP
             diagnostics << diagnostic
           end
         end
+      end
+
+      if analyzer = @library_rule_pack_analyzer
+        diagnostics.concat(analyzer.list_of_diagnostics_for(file_path, content))
       end
 
       diagnostics

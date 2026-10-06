@@ -16,7 +16,7 @@ require "./amber_cli/documentation"
 require "./amber_cli/static_assets"
 
 # Load all commands - they will register themselves
-require "./amber_cli/commands/new"
+require "./amber_cli/commands/new_command"
 require "./amber_cli/commands/assets"
 require "./amber_cli/commands/database"
 require "./amber_cli/commands/routes"
@@ -26,7 +26,9 @@ require "./amber_cli/commands/exec"
 require "./amber_cli/commands/plugin"
 require "./amber_cli/commands/pipelines"
 require "./amber_cli/commands/generate"
-require "./amber_cli/commands/setup_lsp"
+require "./amber_cli/commands/setup_lsp_command"
+require "./amber_cli/commands/setup_agent_command"
+require "./amber_cli/commands/check_amber_agent_setup_command"
 
 backend = Log::IOBackend.new
 backend.formatter = Log::Formatter.new do |entry, io|
@@ -40,7 +42,7 @@ end
 Log.builder.bind "*", :info, backend
 
 module AmberCLI
-  VERSION = "2.0.6"
+  VERSION = "2.0.7"
 
   def self.run(args = ARGV)
     if args.empty?
@@ -78,6 +80,8 @@ module AmberCLI
       plugin (pl)     Generate application plugins
       pipelines       Show application pipelines and plugs
       setup:lsp (lsp) Set up Amber LSP for Claude Code integration
+      setup:agent (agent) Set up Claude Code and Codex feedback hooks
+      doctor          Check Amber agent setup and trust
 
     Options:
       --version, -v   Show version number

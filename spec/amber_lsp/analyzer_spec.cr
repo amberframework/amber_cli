@@ -2,6 +2,10 @@ require "./spec_helper"
 
 # A mock rule for testing the analyzer
 class MockTestRule < AmberLSP::Rules::BaseRule
+  def requires_amber_project? : Bool
+    false
+  end
+
   def id : String
     "mock/test-rule"
   end
@@ -39,6 +43,10 @@ end
 
 # A mock rule that only applies to controller files
 class MockControllerRule < AmberLSP::Rules::BaseRule
+  def requires_amber_project? : Bool
+    false
+  end
+
   def id : String
     "mock/controller-rule"
   end
