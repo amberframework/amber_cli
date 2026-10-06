@@ -16,6 +16,10 @@ module AmberLSP::Rules::FSDD
       ["src/**/process_managers/**", "src/**/processes/**"]
     end
 
+    def requires_amber_project? : Bool
+      false
+    end
+
     def check(file_path : String, content : String) : Array(Diagnostic)
       return [] of Diagnostic unless file_path.includes?("process_managers/") || file_path.includes?("processes/")
 

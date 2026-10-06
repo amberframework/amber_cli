@@ -14,8 +14,6 @@ module AmberLSP::LibraryRulePacks
       list_of_output_lines = [] of String
 
       list_of_rule_packs.each do |rule_pack|
-        next if project_context.shard_name == rule_pack.library_shard_name
-
         project_state = DetermineProjectRulePackState.new(project_context, rule_pack, "", "")
         next unless project_state.has_any_applicable_mode?
 

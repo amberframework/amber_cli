@@ -9,8 +9,6 @@ module AmberLSP::LibraryRulePacks
 
     def has_applicable_pack?(file_path : String, content : String) : Bool
       @list_of_rule_packs.any? do |rule_pack|
-        next true if library_is_project_root?(rule_pack)
-
         DetermineProjectRulePackState.new(@project_context, rule_pack, file_path, content)
           .has_any_applicable_mode?
       end
@@ -21,8 +19,6 @@ module AmberLSP::LibraryRulePacks
       list_of_diagnostics = [] of Rules::Diagnostic
 
       @list_of_rule_packs.each do |rule_pack|
-        next if library_is_project_root?(rule_pack)
-
         project_state = DetermineProjectRulePackState.new(
           @project_context,
           rule_pack,
@@ -50,10 +46,6 @@ module AmberLSP::LibraryRulePacks
       end
 
       apply_configured_severity(list_of_diagnostics)
-    end
-
-    private def library_is_project_root?(rule_pack : DescribeLibraryRulePack) : Bool
-      @project_context.shard_name == rule_pack.library_shard_name
     end
 
     private def rule_applies_to_file?(rule : DescribeLibraryRulePack::Rule, relative_file_path : String) : Bool

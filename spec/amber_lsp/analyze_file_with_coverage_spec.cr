@@ -1,5 +1,6 @@
 require "./spec_helper"
 require "../../src/amber_lsp/rules/controllers/naming_rule"
+require "../../src/amber_lsp/rules/fsdd/method_type_signature_rule"
 require "../../src/amber_lsp/analyze_file_with_coverage"
 
 describe AmberLSP::AnalyzeFileWithCoverage do
@@ -28,6 +29,24 @@ describe AmberLSP::AnalyzeFileWithCoverage do
         coverage.should be_a(AmberLSP::Coverage::Covered)
         if covered = coverage.as?(AmberLSP::Coverage::Covered)
           covered.list_of_diagnostics.map(&.code).should contain("amber/controller-naming")
+        end
+      end
+    end
+
+    it "covers a Grant-only project and runs FSDD rules there" do
+      with_tempdir do |project|
+        Dir.mkdir_p(File.join(project, "src/models"))
+        File.write(File.join(project, "shard.yml"), "name: grant\nversion: 0.1.0\n")
+        file_path = File.join(project, "src/models/account.cr")
+        content = "def label\n  \"account\"\nend\n"
+        File.write(file_path, content)
+        AmberLSP::Rules::RuleRegistry.register(AmberLSP::Rules::FSDD::MethodTypeSignatureRule.new)
+
+        coverage = AmberLSP::AnalyzeFileWithCoverage.new(file_path).perform
+
+        coverage.should be_a(AmberLSP::Coverage::Covered)
+        if covered = coverage.as?(AmberLSP::Coverage::Covered)
+          covered.list_of_diagnostics.map(&.code).should contain("fsdd/method-type-signature")
         end
       end
     end

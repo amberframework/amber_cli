@@ -91,6 +91,27 @@ describe "AmberLSP Grant tenancy rule pack v2" do
     end
   end
 
+  it "loads and runs the Grant pack in the library's own repository" do
+    with_tempdir do |root|
+      install_tenancy_fixture_app(root, "row_app")
+      File.write(File.join(root, "shard.yml"), "name: grant\nversion: 0.1.0\n")
+      FileUtils.rm_rf(File.join(root, "lib"))
+
+      own_repository_pack_path = File.join(root, ".amber-lsp", "packs", "tenancy.yml")
+      Dir.mkdir_p(File.dirname(own_repository_pack_path))
+      File.write(own_repository_pack_path, File.read(GRANT_TENANCY_PACK_FIXTURE_PATH))
+
+      file_path = File.join(root, "src", "controllers", "invoices_controller.cr")
+      content = "Invoice.unscoped.all\n"
+      coverage = AmberLSP::AnalyzeFileWithCoverage.new(file_path, content).perform
+
+      coverage.should be_a(AmberLSP::Coverage::Covered)
+      if covered = coverage.as?(AmberLSP::Coverage::Covered)
+        covered.list_of_diagnostics.map(&.code).should contain("grant/chained-unscoped-in-request-code")
+      end
+    end
+  end
+
   it "skips malformed and unreadable pack files" do
     with_tempdir do |root|
       pack_directory = File.join(root, "lib", "grant", ".amber-lsp", "packs")

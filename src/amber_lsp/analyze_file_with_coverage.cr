@@ -22,7 +22,7 @@ module AmberLSP
         return Coverage::Failed.new(error)
       end
 
-      unless current_project_context.amber_project?
+      unless current_project_context.stack_project?
         return Coverage::Declined.new("project is not an Amber V2 stack project")
       end
 

@@ -19,6 +19,10 @@ module AmberLSP::Rules::FSDD
       ["src/**"]
     end
 
+    def requires_amber_project? : Bool
+      false
+    end
+
     def check(file_path : String, content : String) : Array(Diagnostic)
       diagnostics = [] of Diagnostic
 
