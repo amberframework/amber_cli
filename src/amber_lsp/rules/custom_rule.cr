@@ -20,6 +20,10 @@ module AmberLSP::Rules
     )
     end
 
+    def requires_amber_project? : Bool
+      false
+    end
+
     def check(file_path : String, content : String) : Array(Diagnostic)
       return [] of Diagnostic unless applies_to.any? { |pattern|
                                        RuleRegistry.file_matches_pattern?(file_path, pattern)

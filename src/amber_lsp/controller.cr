@@ -312,9 +312,9 @@ module AmberLSP
       # Analyze Crystal source and the app-owned performance convention files.
       return unless file_path.ends_with?(".cr") || file_path.ends_with?(".ecr") || file_path.ends_with?(".slang") || file_path.ends_with?(File.join("performance", "budget.json")) || file_path.ends_with?(File.join("performance", "opt_out.json"))
 
-      # Only run if we detected an Amber project
       ctx = @project_context
-      return unless ctx && ctx.amber_project?
+      return unless ctx
+      return unless ctx.amber_project? || @analyzer.has_applicable_library_rule_pack?(file_path, content)
 
       diagnostics = @analyzer.analyze(file_path, content)
       publish_diagnostics(uri, diagnostics, server)

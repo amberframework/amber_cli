@@ -2,16 +2,34 @@ module AmberLSP
   class Analyzer
     getter configuration : Configuration
     @project_root : String?
+    @project_context : ProjectContext?
+    @library_rule_pack_analyzer : LibraryRulePacks::AnalyzeProjectFilesWithRulePacks?
 
     def initialize
       @configuration = Configuration.new
       @project_root = nil
+      @project_context = nil
+      @library_rule_pack_analyzer = nil
     end
 
     def configure(project_context : ProjectContext) : Nil
       @configuration = Configuration.load(project_context.root_path)
       @project_root = project_context.root_path
+      @project_context = project_context
+      list_of_rule_packs = LibraryRulePacks::LoadRulePacksForProject.new(project_context).load_rule_packs
+      @library_rule_pack_analyzer = LibraryRulePacks::AnalyzeProjectFilesWithRulePacks.new(
+        project_context,
+        @configuration,
+        list_of_rule_packs,
+      )
       register_custom_rules
+    end
+
+    def has_applicable_library_rule_pack?(file_path : String, content : String) : Bool
+      analyzer = @library_rule_pack_analyzer
+      return false unless analyzer
+
+      analyzer.has_applicable_pack?(file_path, content)
     end
 
     private def register_custom_rules : Nil
@@ -48,6 +66,10 @@ module AmberLSP
 
       rules.each do |rule|
         next unless @configuration.rule_enabled?(rule.id)
+        if rule.requires_amber_project?
+          project_context = @project_context
+          next unless project_context && project_context.amber_project?
+        end
 
         rule_diagnostics = rule.check(file_path, content)
         severity = @configuration.rule_severity(rule.id, rule.default_severity)
@@ -65,6 +87,10 @@ module AmberLSP
             diagnostics << diagnostic
           end
         end
+      end
+
+      if analyzer = @library_rule_pack_analyzer
+        diagnostics.concat(analyzer.list_of_diagnostics_for(file_path, content))
       end
 
       diagnostics

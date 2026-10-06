@@ -70,6 +70,7 @@ describe AmberLSP::Controller do
           {"jsonrpc" => "2.0", "method" => "exit"},
         ]
 
+        AmberLSP::Rules::RuleRegistry.register(AmberLSP::Rules::Controllers::NamingRule.new)
         responses = run_lsp_session(messages)
         diagnostics_notifications = responses.select do |response|
           response["method"]?.try(&.as_s?) == "textDocument/publishDiagnostics"
