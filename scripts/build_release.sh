@@ -22,7 +22,7 @@ mkdir -p "$BUILD_DIR" "$PACKAGE_ROOT/share/amber_cli/api"
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
-PLATFORM_FLAGS=()
+PLATFORM_FLAG=""
 
 case "$OS" in
   darwin)
@@ -42,7 +42,7 @@ case "$OS" in
         exit 1
         ;;
     esac
-    PLATFORM_FLAGS=(--static)
+    PLATFORM_FLAG="--static"
     CHECKSUM_CMD=(sha256sum)
     ;;
   *)
@@ -55,17 +55,25 @@ echo "Building for target: $TARGET"
 
 echo "Installing dependencies..."
 if command -v minecart >/dev/null 2>&1; then
-  minecart install --production --skip-ai-docs
+  minecart install --frozen --production --skip-ai-docs
 else
   command -v shards-alpha >/dev/null 2>&1 || { echo "minecart or shards-alpha is required" >&2; exit 1; }
   shards-alpha install --production --frozen
 fi
 
 echo "Compiling amber..."
-crystal-alpha build src/amber_cli.cr -o "$BUILD_DIR/amber" --release "${PLATFORM_FLAGS[@]}"
+if [ -n "$PLATFORM_FLAG" ]; then
+  crystal-alpha build src/amber_cli.cr -o "$BUILD_DIR/amber" --release "$PLATFORM_FLAG"
+else
+  crystal-alpha build src/amber_cli.cr -o "$BUILD_DIR/amber" --release
+fi
 
 echo "Compiling amber-lsp..."
-crystal-alpha build src/amber_lsp.cr -o "$BUILD_DIR/amber-lsp" --release "${PLATFORM_FLAGS[@]}"
+if [ -n "$PLATFORM_FLAG" ]; then
+  crystal-alpha build src/amber_lsp.cr -o "$BUILD_DIR/amber-lsp" --release "$PLATFORM_FLAG"
+else
+  crystal-alpha build src/amber_lsp.cr -o "$BUILD_DIR/amber-lsp" --release
+fi
 
 "$BUILD_DIR/amber" --version
 "$BUILD_DIR/amber-lsp" --version

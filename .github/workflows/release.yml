@@ -67,7 +67,7 @@ jobs:
         CRYSTAL: crystal-alpha
 
     - name: Install dependencies
-      run: minecart install --production --skip-ai-docs
+      run: minecart install --frozen --production --skip-ai-docs
     
     - name: Build binaries (Linux)
       if: startsWith(matrix.target, 'linux-')
