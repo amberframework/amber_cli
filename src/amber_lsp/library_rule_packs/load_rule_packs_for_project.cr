@@ -1,12 +1,29 @@
 require "log"
 
 module AmberLSP::LibraryRulePacks
+  # :nodoc:
+  struct RulePackLoadFailure
+    getter pack_path : String
+    getter reason : String
+
+    def initialize(@pack_path : String, @reason : String)
+    end
+
+    def formatted_error : String
+      "#{pack_path}: #{reason}"
+    end
+  end
+
   class LoadRulePacksForProject
+    getter list_of_load_failures : Array(RulePackLoadFailure)
+
     def initialize(@project_context : AmberLSP::ProjectContext)
+      @list_of_load_failures = [] of RulePackLoadFailure
     end
 
     def load_rule_packs : Array(DescribeLibraryRulePack)
       list_of_packs_by_id = {} of String => DescribeLibraryRulePack
+      @list_of_load_failures.clear
 
       dependency_pack_paths.each do |pack_path|
         load_rule_pack(pack_path).try do |rule_pack|
@@ -38,9 +55,11 @@ module AmberLSP::LibraryRulePacks
       rule_pack = DescribeLibraryRulePack.from_yaml(read_rule_pack_contents(pack_path))
       return rule_pack if rule_pack_is_valid?(rule_pack)
 
+      @list_of_load_failures << RulePackLoadFailure.new(pack_path, "invalid rule pack schema")
       Log.warn { "Ignoring invalid amber-lsp rule pack at #{pack_path}." }
       nil
     rescue ex : YAML::ParseException | IO::Error
+      @list_of_load_failures << RulePackLoadFailure.new(pack_path, ex.message || ex.class.to_s)
       Log.warn(exception: ex) do
         "Could not load amber-lsp rule pack at #{pack_path} (#{ex.class}): #{ex.message}"
       end

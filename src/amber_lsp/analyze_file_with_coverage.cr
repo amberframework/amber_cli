@@ -28,6 +28,9 @@ module AmberLSP
 
       analyzer = analyzer_for(current_project_context)
       @analysis_analyzer = analyzer
+      if error = analyzer.rule_pack_load_failure
+        return Coverage::Failed.new(error)
+      end
       Coverage::Covered.new(analyzer.analyze(@file_path, current_content))
     rescue ex : Exception
       Coverage::Failed.new("#{ex.class}: #{ex.message}")

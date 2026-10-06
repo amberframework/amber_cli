@@ -1,4 +1,5 @@
 require "./spec_helper"
+require "../../src/amber_lsp/check_file_for_diagnostics"
 
 GRANT_TENANCY_PACK_FIXTURE_PATH = File.join(
   Dir.current,
@@ -112,17 +113,51 @@ describe "AmberLSP Grant tenancy rule pack v2" do
     end
   end
 
-  it "skips malformed and unreadable pack files" do
+  it "records malformed, invalid, and unreadable pack files" do
     with_tempdir do |root|
       pack_directory = File.join(root, "lib", "grant", ".amber-lsp", "packs")
       Dir.mkdir_p(pack_directory)
       File.write(File.join(pack_directory, "malformed.yml"), "pack: [\n")
+      File.write(File.join(pack_directory, "invalid.yml"), "pack: test\n")
       Dir.mkdir(File.join(pack_directory, "unreadable.yml"))
 
       project_context = AmberLSP::ProjectContext.new(root)
-      list_of_rule_packs = AmberLSP::LibraryRulePacks::LoadRulePacksForProject.new(project_context).load_rule_packs
+      loader = AmberLSP::LibraryRulePacks::LoadRulePacksForProject.new(project_context)
+      list_of_rule_packs = loader.load_rule_packs
 
       list_of_rule_packs.should be_empty
+      loader.list_of_load_failures.size.should eq(3)
+      loader.list_of_load_failures.map(&.pack_path).should contain(File.join(pack_directory, "malformed.yml"))
+      loader.list_of_load_failures.map(&.pack_path).should contain(File.join(pack_directory, "invalid.yml"))
+      loader.list_of_load_failures.map(&.pack_path).should contain(File.join(pack_directory, "unreadable.yml"))
+    end
+  end
+
+  it "fails coverage and --check when a library rule pack cannot be loaded" do
+    with_tempdir do |root|
+      install_tenancy_fixture_app(root, "row_app")
+      File.write(
+        File.join(root, "shard.yml"),
+        "name: malformed_pack_app\nversion: 0.1.0\ndependencies:\n  grant:\n    github: amberframework/grant\n",
+      )
+      pack_path = File.join(root, "lib", "grant", ".amber-lsp", "packs", "tenancy.yml")
+      File.write(pack_path, "pack: [\n")
+      file_path = File.join(root, "src", "controllers", "invoices_controller.cr")
+      content = "Invoice.unscoped.all\n"
+      File.write(file_path, content)
+
+      coverage = AmberLSP::AnalyzeFileWithCoverage.new(file_path, content).perform
+      coverage.should be_a(AmberLSP::Coverage::Failed)
+      if failed = coverage.as?(AmberLSP::Coverage::Failed)
+        failed.error.should contain(pack_path)
+        failed.error.should contain("line")
+      end
+
+      output = IO::Memory.new
+      exit_code = AmberLSP::CheckFileForDiagnostics.new(file_path, output).perform
+      exit_code.should eq(2)
+      output.to_s.should contain("amber-lsp: failed")
+      output.to_s.should contain(pack_path)
     end
   end
 
