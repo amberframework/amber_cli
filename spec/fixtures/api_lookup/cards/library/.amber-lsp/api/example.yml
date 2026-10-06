@@ -1,0 +1,12 @@
+card_version: 1
+library: example
+applies_to: "~> 0.3.0"
+docs_flags:
+  - example_docs
+notes:
+  - symbol: Example::Widget#id
+    text: This getter follows the library's primary key.
+error_hints:
+  - pattern: "undefined method 'lookup'"
+    hint: Use the lookup helper defined on the widget's query module.
+    example: Example::Widget.lookup("widget-1")

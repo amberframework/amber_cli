@@ -1,0 +1,12 @@
+card_version: 1
+library: fixture_project
+applies_to: ">= 1.0.0, < 2.0.0"
+docs_flags:
+  - fixture_project_docs
+notes:
+  - symbol: FixtureAPI::User#id
+    text: The ID getter is generated from the persisted table column.
+error_hints:
+  - pattern: "undefined method 'save'"
+    hint: Persist the model with its supported save operation.
+    example: user.save

@@ -8,6 +8,8 @@ describe "AmberLSP::Lookup::BuildLayeredAPIIndex#perform" do
       cache_root = File.join(root, "cache")
       Dir.mkdir_p(File.join(project_root, "src"))
       Dir.mkdir_p(File.join(project_root, "lib", "tiny", "src"))
+      Dir.mkdir_p(File.join(project_root, ".amber-lsp", "api"))
+      Dir.mkdir_p(File.join(project_root, "lib", "tiny", ".amber-lsp", "api"))
       File.write(
         File.join(project_root, "shard.yml"),
         "name: lookup_fixture\nversion: 1.0.0\ndependencies:\n  tiny:\n    github: example/tiny\ntargets:\n  app:\n    main: src/lookup_fixture.cr\n",
@@ -28,6 +30,14 @@ describe "AmberLSP::Lookup::BuildLayeredAPIIndex#perform" do
         File.join(project_root, "src", "lookup_fixture.cr"),
         "require \"tiny\"\nclass FixtureUser\n  def id : Int64?\n    1_i64\n  end\nend\n",
       )
+      File.write(
+        File.join(project_root, ".amber-lsp", "api", "lookup_fixture.yml"),
+        "card_version: 1\nlibrary: lookup_fixture\napplies_to: 1.0.0\ndocs_flags:\n  - fixture_docs\n",
+      )
+      File.write(
+        File.join(project_root, "lib", "tiny", ".amber-lsp", "api", "tiny.yml"),
+        "card_version: 1\nlibrary: tiny\napplies_to: '~> 1.2.0'\ndocs_flags:\n  - tiny_docs\n",
+      )
 
       builder = AmberLSP::Lookup::BuildLayeredAPIIndex.new(project_root, cache_root)
       first_build = builder.perform
@@ -42,6 +52,8 @@ describe "AmberLSP::Lookup::BuildLayeredAPIIndex#perform" do
       project_layer.not_nil!.freshness.should eq("fresh")
       library_layer.not_nil!.freshness.should eq("fresh")
       standard_library_layer.not_nil!.freshness.should eq("fresh")
+      project_layer.not_nil!.layer.not_nil!.docs_flags.should eq(["fixture_docs"])
+      library_layer.not_nil!.layer.not_nil!.docs_flags.should eq(["tiny_docs"])
 
       fixture_user = project_layer.not_nil!.layer.not_nil!.list_of_types.find { |type| type.name == "FixtureUser" }
       fixture_user.should_not be_nil

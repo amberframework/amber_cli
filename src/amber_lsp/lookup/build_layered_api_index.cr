@@ -3,6 +3,7 @@ require "process"
 require "yaml"
 
 require "./build_crystal_docs_json"
+require "./api_cards"
 require "./index_cache"
 require "./normalize_crystal_docs"
 require "./source_models"
@@ -58,11 +59,13 @@ module AmberLSP::Lookup
 
     def perform : Array(CachedAPIIndexLayer)
       manifest = read_project_manifest
+      card_flags = LoadAPICards.new(@root_path).perform.docs_flags_by_library
+      list_of_docs_flags = card_flags.merge(@list_of_docs_flags_by_library)
       identity = DetectCrystalAlpha.new(@compiler_command).perform
       cache = APIIndexCache.new(@cache_root, @root_path)
       list_of_layers = [] of CachedAPIIndexLayer
       project_name = manifest.name.empty? ? File.basename(@root_path) : manifest.name
-      project_flags = docs_flags_for(project_name)
+      project_flags = docs_flags_for(project_name, list_of_docs_flags)
       project_key = CalculateProjectLayerKey.new(@root_path, project_flags, identity.version).perform
       project_entrypoint = find_project_entrypoint(manifest)
 
@@ -125,7 +128,7 @@ module AmberLSP::Lookup
           next
         end
 
-        docs_flags = docs_flags_for(library_name)
+        docs_flags = docs_flags_for(library_name, list_of_docs_flags)
         layer_key = CalculateLibraryLayerKey.new(library_name, locked_shard.version, docs_flags, identity.version).perform
         environment_overrides = {"CRYSTAL_PATH" => project_crystal_path || ""}
 
@@ -200,8 +203,8 @@ module AmberLSP::Lookup
       Dir.glob(File.join(source_root, "*.cr")).sort.first? || Dir.glob(File.join(source_root, "**", "*.cr")).sort.first?
     end
 
-    private def docs_flags_for(library_name : String) : Array(String)
-      @list_of_docs_flags_by_library[library_name]?.try(&.sort) || [] of String
+    private def docs_flags_for(library_name : String, list_of_docs_flags : Hash(String, Array(String))) : Array(String)
+      list_of_docs_flags[library_name]?.try(&.sort) || [] of String
     end
 
     private def build_or_load_layer(

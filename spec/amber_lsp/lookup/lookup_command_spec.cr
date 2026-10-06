@@ -38,6 +38,7 @@ describe AmberLSP::Lookup::RunLookupCommand do
       found_result[0].should eq(0)
       found_result[1].should contain("amber-lsp lookup: found (")
       found_result[1].should contain("Int64 | Nil")
+      found_result[1].should contain("Note [CLIProject::User#id]")
       candidate_result[0].should eq(3)
       candidate_result[1].should contain("amber-lsp lookup: candidates (")
       unknown_result[0].should eq(4)
@@ -89,6 +90,7 @@ describe AmberLSP::Lookup::RunLookupCommand do
       json["entries"].as_a.first["name"].as_s.should eq("id")
       json["verification_status"].as_s.should eq("present")
       json["verification_elapsed_milliseconds"].as_i.should be >= 0
+      json["card_notes"].as_a.size.should eq(1)
     end
   end
 
@@ -122,6 +124,7 @@ private def with_lookup_cli_project(&)
   with_tempdir do |project|
     source_path = File.join(project, "src", "cli_lookup_fixture.cr")
     Dir.mkdir_p(File.dirname(source_path))
+    Dir.mkdir_p(File.join(project, ".amber-lsp", "api"))
     File.write(File.join(project, "shard.yml"), <<-YAML)
       name: cli_lookup_fixture
       version: 0.1.0
@@ -151,6 +154,10 @@ private def with_lookup_cli_project(&)
         end
       end
     CRYSTAL
+    File.write(
+      File.join(project, ".amber-lsp", "api", "cli_lookup_fixture.yml"),
+      "card_version: 1\nlibrary: cli_lookup_fixture\napplies_to: 0.1.0\nnotes:\n  - symbol: CLIProject::User#id\n    text: The ID is a nullable persisted column.\n",
+    )
     yield project
   end
 end

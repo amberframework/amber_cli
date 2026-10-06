@@ -41,6 +41,12 @@ module AmberLSP::Lookup
     getter verification_elapsed_milliseconds : Int64?
     @[JSON::Field(emit_null: true)]
     getter failure_reason : String?
+    @[JSON::Field(key: "card_notes")]
+    getter list_of_card_notes : Array(APICardNote)
+    @[JSON::Field(key: "error_hints")]
+    getter list_of_error_hints : Array(APICardErrorHint)
+    @[JSON::Field(key: "api_card_errors")]
+    getter list_of_api_card_errors : Array(String)
 
     def initialize(
       @query : String,
@@ -52,6 +58,9 @@ module AmberLSP::Lookup
       @verification_status : String?,
       @verification_elapsed_milliseconds : Int64?,
       @failure_reason : String?,
+      @list_of_card_notes : Array(APICardNote) = [] of APICardNote,
+      @list_of_error_hints : Array(APICardErrorHint) = [] of APICardErrorHint,
+      @list_of_api_card_errors : Array(String) = [] of String,
     )
     end
   end
@@ -114,6 +123,7 @@ module AmberLSP::Lookup
     def perform : Int32
       options = parse_options
       query = lookup_query(options)
+      card_collection = LoadAPICards.new(options.root_path).perform
       cached_layers = BuildLayeredAPIIndex.new(
         options.root_path,
         @cache_root,
@@ -124,7 +134,9 @@ module AmberLSP::Lookup
       resolution = ResolveAPIQuery.new(query, list_of_index_layers).perform
       answer = AnswerAPIQuery.new(query, resolution, cached_layers).perform
       probe = options.verify ? VerifyAPIQuery.new(options.root_path, query, resolution, @compiler_command).perform : nil
-      cli_answer = make_cli_answer(answer, probe)
+      note_list = card_collection.matching_notes(query)
+      hint_list = probe.try(&.output).try { |output| card_collection.matching_error_hints(output) } || [] of APICardErrorHint
+      cli_answer = make_cli_answer(answer, probe, note_list, hint_list, card_collection.list_of_errors)
 
       if options.json
         @stdout.puts cli_answer.to_json
@@ -199,7 +211,13 @@ module AmberLSP::Lookup
       extracted.query
     end
 
-    private def make_cli_answer(answer : LookupAnswer, probe : APIProbeResult?) : LookupCLIAnswer
+    private def make_cli_answer(
+      answer : LookupAnswer,
+      probe : APIProbeResult?,
+      list_of_card_notes : Array(APICardNote),
+      list_of_error_hints : Array(APICardErrorHint),
+      list_of_api_card_errors : Array(String),
+    ) : LookupCLIAnswer
       status = answer.status
       list_of_entries = answer.list_of_entries
       verification_status = probe.try(&.status)
@@ -231,6 +249,9 @@ module AmberLSP::Lookup
         verification_status,
         probe.try(&.elapsed_milliseconds),
         failure_reason,
+        list_of_card_notes,
+        list_of_error_hints,
+        list_of_api_card_errors,
       )
     end
 
@@ -245,6 +266,18 @@ module AmberLSP::Lookup
         return_type = entry.return_type.gsub("::Nil", "Nil")
         @stdout.puts("#{entry.owner}##{entry.name}#{argument_string} : #{return_type}  — #{entry.source_path}:#{entry.source_line}  [#{entry.source_layer}]")
         @stdout.puts("  #{entry.doc_line}") if entry.doc_line
+      end
+
+      answer.list_of_card_notes.each do |note|
+        @stdout.puts("  Note [#{note.symbol}]: #{note.text}")
+      end
+      answer.list_of_error_hints.each do |hint|
+        @stdout.puts("  Hint: #{hint.hint}")
+        @stdout.puts("  Example: #{hint.example}")
+      end
+
+      answer.list_of_api_card_errors.each do |error|
+        @stderr.puts("amber-lsp lookup: API card warning: #{error}")
       end
 
       if probe
