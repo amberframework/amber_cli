@@ -24,6 +24,7 @@ function Invoke-Checked {
 }
 
 $cliPath = (Resolve-Path $Cli).Path
+$null = Get-Command minecart -ErrorAction Stop
 $smokeRoot = Join-Path $env:RUNNER_TEMP "amber-v2-windows-smoke"
 $appPath = Join-Path $smokeRoot "amber_beta_smoke"
 
@@ -32,7 +33,7 @@ if (Test-Path $smokeRoot) {
 }
 New-Item -ItemType Directory -Force $smokeRoot | Out-Null
 
-Invoke-Checked -Command $cliPath -Arguments @("new", $appPath, "--type", "web", "--no-deps")
+Invoke-Checked -Command $cliPath -Arguments @("new", $appPath, "--type", "web", "-y")
 
 $shardPath = Join-Path $appPath "shard.yml"
 $amberConfigPath = Join-Path $appPath ".amber.yml"
@@ -54,8 +55,18 @@ if (-not $manifest.Contains("github: crystal-lang/crystal-sqlite3")) {
 if (-not $manifest.Contains("github: amberframework/asset_pipeline")) {
   throw "Generated shard.yml does not include Asset Pipeline"
 }
-if (-not $manifest.Contains("version: ~> 0.37.0")) {
+if (-not $manifest.Contains("version: 0.37.0")) {
   throw "Generated shard.yml does not pin the supported Asset Pipeline release"
+}
+if (-not (Test-Path (Join-Path $appPath ".claude/CLAUDE.md"))) {
+  throw "Minecart did not install assistant files"
+}
+$assistantBytes = (Get-ChildItem -Path (Join-Path $appPath ".claude") -File -Recurse | Measure-Object -Property Length -Sum).Sum
+if ($assistantBytes -ge 10MB) {
+  throw "Minecart copied optional dependency AI docs into the beginner app"
+}
+if (-not ([System.IO.File]::ReadAllText((Join-Path $appPath ".minecart-policy.yml")).Contains("require_exact: true"))) {
+  throw "Generated app does not require exact root dependency pins"
 }
 if (-not $amberConfig.Contains("database: sqlite") -or -not $amberConfig.Contains("model: grant")) {
   throw "Generated .amber.yml does not select SQLite and Grant"
@@ -84,7 +95,17 @@ if ($FrameworkCommit) {
 Push-Location $appPath
 try {
   Invoke-Checked -Command $cliPath -Arguments @("assets", "check")
-  Invoke-Checked -Command "shards" -Arguments @("install")
+  if ($FrameworkCommit) {
+    Invoke-Checked -Command "minecart" -Arguments @("install", "--strict-pinning", "--skip-ai-docs")
+  } else {
+    Invoke-Checked -Command "minecart" -Arguments @("install", "--frozen", "--skip-ai-docs")
+  }
+  $lock = [System.IO.File]::ReadAllText((Join-Path $appPath "shard.lock"))
+  $shardCount = [regex]::Matches($lock, '(?m)^  [A-Za-z0-9_-]+:$').Count
+  $checksumCount = [regex]::Matches($lock, '(?m)^    checksum: git-tree:[0-9a-f]{40}$').Count
+  if ($shardCount -eq 0 -or $checksumCount -ne $shardCount) {
+    throw "Minecart lock is missing a git-tree checksum for a dependency"
+  }
   Invoke-Checked -Command $cliPath -Arguments @("assets", "build")
   Invoke-Checked -Command $cliPath -Arguments @("assets", "check")
 

@@ -2,26 +2,26 @@ require "../amber_cli_spec"
 require "../../src/amber_cli/commands/new_command"
 
 describe AmberCLI::Commands::NewCommand do
-  describe ".find_shards_executable" do
-    it "prefers shards-alpha when it is available" do
-      executable = AmberCLI::Commands::NewCommand.find_shards_executable(
-        ->(command : String) { command == "shards-alpha" ? "/tools/shards-alpha" : "/tools/shards" }
-      )
-
-      executable.should eq("/tools/shards-alpha")
-    end
-
-    it "falls back to shards when shards-alpha is unavailable" do
+  describe ".find_minecart_executable" do
+    it "selects Minecart for checksum-verified installs" do
       lookup_calls = [] of String
-      executable = AmberCLI::Commands::NewCommand.find_shards_executable(
+      executable = AmberCLI::Commands::NewCommand.find_minecart_executable(
         ->(command : String) do
           lookup_calls << command
-          command == "shards" ? "/tools/shards" : nil
+          command == "minecart" ? "/tools/minecart" : "/tools/other"
         end
       )
 
-      executable.should eq("/tools/shards")
-      lookup_calls.should eq(["shards-alpha", "shards"])
+      executable.should eq("/tools/minecart")
+      lookup_calls.should eq(["minecart"])
+    end
+
+    it "returns nil rather than selecting an unverified installer" do
+      executable = AmberCLI::Commands::NewCommand.find_minecart_executable(
+        ->(command : String) { nil }
+      )
+
+      executable.should be_nil
     end
   end
 
@@ -131,15 +131,20 @@ describe AmberCLI::Commands::NewCommand do
         shard.should contain("commit: da1e06161148f156dbce262a4a4efcb39cba5ba4")
         shard.should contain("asset_pipeline:")
         shard.should contain("github: amberframework/asset_pipeline")
+        shard.should contain("version: 0.37.0")
+        shard.should_not contain("version: ~> 0.37.0")
         shard.should contain("github: crystal-lang/crystal-sqlite3")
         shard.should_not contain("slang")
 
         File.exists?(File.join(destination, "shard.lock")).should be_false
+        policy = File.read(File.join(destination, ".minecart-policy.yml"))
+        policy.should contain("require_exact: true")
         readme = File.read(File.join(destination, "README.md"))
-        readme.should contain("shards install")
+        readme.should contain("minecart install --frozen")
+        readme.should contain("--skip-ai-docs")
         readme.should contain("crystal spec")
-        readme.should contain("writes a checksum-verified `shard.lock`")
-        readme.scan(/shards-alpha install/).size.should eq(1)
+        readme.should contain("git-tree:")
+        readme.should_not contain("shards install")
 
         amber_config_template = File.read(File.expand_path("../../src/amber_cli/templates/app/.amber.yml.ecr", __DIR__))
         amber_config_template.should contain("AMBER_ENV=test crystal spec")

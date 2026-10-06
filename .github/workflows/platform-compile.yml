@@ -26,8 +26,11 @@ jobs:
         with:
           crystal: latest
 
+      - name: Build pinned Minecart
+        run: scripts/install_pinned_minecart.sh
+
       - name: Install CLI dependencies
-        run: shards install
+        run: minecart install --frozen --skip-ai-docs
 
       - name: Build Amber CLI
         run: crystal build src/amber_cli.cr --no-debug -o amber
@@ -62,8 +65,12 @@ jobs:
           "CRYSTAL_LIBRARY_PATH=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\lib;$crystalLibraryPath" >> $env:GITHUB_ENV
           "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\bin" >> $env:GITHUB_PATH
 
+      - name: Build pinned Minecart
+        shell: pwsh
+        run: scripts/install_pinned_minecart.ps1
+
       - name: Install CLI dependencies
-        run: shards install
+        run: minecart install --frozen --skip-ai-docs
 
       - name: Build Amber CLI
         run: crystal build src/amber_cli.cr --no-debug -o amber.exe

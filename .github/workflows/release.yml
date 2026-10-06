@@ -64,13 +64,11 @@ jobs:
           test "v$shard_version" = "$requested_ref"
         fi
     
+    - name: Build pinned Minecart
+      run: scripts/install_pinned_minecart.sh
+
     - name: Install dependencies
-      run: |
-        if [ -f shard.lock ]; then
-          shards install --production
-        else
-          shards install
-        fi
+      run: minecart install --production --skip-ai-docs
     
     - name: Build binaries (Linux)
       if: startsWith(matrix.target, 'linux-')
@@ -115,7 +113,7 @@ jobs:
         else
           shasum -a 256 amber_cli-${{ matrix.target }}.tar.gz > amber_cli-${{ matrix.target }}.tar.gz.sha256
         fi
-        echo "sha256=$(cat amber_cli-${{ matrix.target }}.tar.gz.sha256 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+        echo "sha256=$(cat amber_cli-${{ matrix.target }}.tar.gz.sha256 | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
         
     - name: Upload artifact
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -132,6 +130,24 @@ jobs:
     if: github.event_name == 'release'
     
     steps:
+    - name: Checkout release source
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      with:
+        ref: ${{ github.event.release.tag_name }}
+
+    - name: Package checksummed source archive
+      run: |
+        version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
+        test "v$version" = "${{ github.event.release.tag_name }}"
+        mkdir -p dist
+        git archive --format=tar --prefix="amber_cli-${version}/" HEAD | gzip -n -9 > "dist/amber_cli-source-${version}.tar.gz"
+        cd dist
+        if command -v sha256sum >/dev/null 2>&1; then
+          sha256sum "amber_cli-source-${version}.tar.gz" > "amber_cli-source-${version}.tar.gz.sha256"
+        else
+          shasum -a 256 "amber_cli-source-${version}.tar.gz" > "amber_cli-source-${version}.tar.gz.sha256"
+        fi
+
     - name: Download all artifacts
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
@@ -166,22 +182,9 @@ jobs:
           artifacts/amber_cli-linux-x86_64/amber_cli-linux-x86_64.tar.gz.sha256
           artifacts/amber_cli-linux-arm64/amber_cli-linux-arm64.tar.gz
           artifacts/amber_cli-linux-arm64/amber_cli-linux-arm64.tar.gz.sha256
+          dist/amber_cli-source-*.tar.gz
+          dist/amber_cli-source-*.tar.gz.sha256
         tag_name: ${{ github.event.release.tag_name }}
         fail_on_unmatched_files: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
-  notify-homebrew:
-    name: Notify Homebrew Tap
-    needs: upload-assets
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-
-    steps:
-    - name: Dispatch to underscore tap (homebrew-amber_cli)
-      uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4
-      with:
-        token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        repository: amberframework/homebrew-amber_cli
-        event-type: release-published
-        client-payload: '{"version": "${{ github.event.release.tag_name }}"}'

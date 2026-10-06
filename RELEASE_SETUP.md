@@ -4,27 +4,29 @@ This guide documents the current Amber CLI release path and the checks we expect
 
 ## What "Done" Looks Like
 
-A successful release means all of the following happen without manual file editing:
+A successful release means all of the following have been reviewed and run:
 
 1. A published GitHub release in `amberframework/amber_cli` builds macOS and Linux binaries.
-2. The workflow uploads release archives and checksum files to that release.
-3. The workflow dispatches `amberframework/homebrew-amber_cli`.
-4. The tap rewrites `Formula/amber_cli.rb` with the new version and checksums.
-5. The tap explicitly dispatches its install validation after the bot pushes the
-   formula. This is required because pushes made by `GITHUB_TOKEN` do not start
-   push-triggered workflows.
-6. On Apple Silicon macOS, x86_64 Linux, and ARM64 Linux, validation proves a clean
+2. The workflow uploads binary archives and checksum files. It packages a
+   source archive from the tagged commit and uploads its SHA-256 for Homebrew.
+3. The reviewed tap commit contains the Amber and Minecart source archive URLs
+   and SHA-256 values. It is pushed only after both archives are available.
+4. Tap install validation passes on supported Homebrew platforms.
+5. On Apple Silicon macOS, x86_64 Linux, and ARM64 Linux, validation proves a clean
    machine can:
    - `brew install amberframework/amber_cli/amber_cli`
    - `brew test amber_cli`
    - create the ECR web template with `amber new smoke_app --type web`
-   - install shards, build and verify assets, run specs, and build the generated app
+   - use Minecart to write and verify the app lock, build and verify assets, run
+     specs, and build the generated app
    - launch the built app and request `/` plus its manifest-rendered
      fingerprinted CSS, JavaScript, image, and favicon URLs
 
-The fully qualified Homebrew command trusts only the `amber_cli` formula under
-Homebrew's third-party tap trust model. Do not replace it with a separate
-`brew tap` step in public installation instructions.
+The assistant runs `brew trust --tap amberframework/amber_cli`, fetches the
+tap, checks out the reviewed full commit, and disables Homebrew auto-update
+for the single `brew install` command. Trust covers the tap; the commit fixes
+the formula content. Homebrew-core dependencies still follow the local core
+catalog rather than exact versions pinned by this tap.
 
 If any one of those steps is red, the release is not ready to announce.
 
@@ -45,18 +47,13 @@ Use the repository PR template for this so release context stays attached to the
   - [`.github/workflows/release.yml`](.github/workflows/release.yml)
   - [`scripts/build_release.sh`](scripts/build_release.sh)
 - `amberframework/homebrew-amber_cli`
-  - `Formula/amber_cli.rb`
-  - `.github/workflows/update-formula.yml`
+  - `Formula/amber_cli.rb` and `Formula/minecart.rb`
   - `.github/workflows/validate-install.yml`
 
 ## Required Secrets
 
-`amberframework/amber_cli` needs a `HOMEBREW_TAP_TOKEN` secret that can dispatch workflows in `amberframework/homebrew-amber_cli`.
-
-Recommended scopes for a classic PAT:
-
-- `repo`
-- `workflow`
+No cross-repository token is needed. Formula updates are reviewed and committed
+with the exact source archive SHA-256 values after the release assets exist.
 
 ## Release Flow
 
@@ -106,8 +103,14 @@ Publishing the release triggers the automated flow:
 
 1. build macOS and Linux binaries
 2. upload archives and checksums to the release
-3. dispatch the Homebrew tap update
-4. run the tap smoke test on macOS and Linux
+3. package the tagged source and publish its archive and checksum
+
+Before pushing the tap commit, download the published
+`amber_cli-source-2.0.7.tar.gz` archive, verify its sidecar checksum, and compare
+its SHA-256 with `Formula/amber_cli.rb`. The CI-generated gzip archive can
+have different bytes from a local archive of the same commit, so update the
+formula to the published asset hash when they differ. Then run the tap smoke
+on macOS and Linux.
 
 ## CI Gates To Check
 
@@ -119,13 +122,6 @@ In `amberframework/amber_cli`, the release workflow must be green for:
 - `Build linux-x86_64`
 - `Build linux-arm64`
 - `Upload Release Assets`
-- `Notify Homebrew Tap`
-
-### Tap update
-
-In `amberframework/homebrew-amber_cli`, the formula update workflow must be green for:
-
-- `Update Formula`
 
 ### Tap install smoke
 
@@ -137,11 +133,12 @@ In `amberframework/homebrew-amber_cli`, the install smoke workflow must be green
 That workflow explicitly runs:
 
 ```bash
-brew install amberframework/amber_cli/amber_cli
+brew trust --tap amberframework/amber_cli
+HOMEBREW_NO_AUTO_UPDATE=1 brew install amberframework/amber_cli/amber_cli
 brew test amber_cli
-amber new smoke_app --type web -y --no-deps
+amber new smoke_app --type web -y
 cd smoke_app
-shards install
+minecart install --frozen
 amber assets build
 amber assets check
 crystal spec
@@ -158,10 +155,10 @@ also rejects binaries linked to `openssl@1.1`.
 If the tap update fails after a release:
 
 1. Download the release assets and checksum files from GitHub.
-2. Update `Formula/amber_cli.rb` in `amberframework/homebrew-amber_cli`.
-3. Commit and push to `main`.
-4. Explicitly dispatch `.github/workflows/validate-install.yml`; a bot-token
-   push alone will not trigger it.
+2. Compare the source asset hash with `Formula/amber_cli.rb` and the Minecart
+   source asset hash with `Formula/minecart.rb`.
+3. Fix any mismatch in the review branch; never skip verification.
+4. Push the reviewed tap commit only after validation passes.
 
 If the release build fails before the tap update:
 
@@ -171,9 +168,9 @@ If the release build fails before the tap update:
 
 ## Current Packaging Direction
 
-The Homebrew tap and matching release archives are the supported install paths
-for Apple Silicon macOS, x86_64 Linux, and ARM64 Linux today. Windows x86-64 is
-compiled in CI as a compatibility check but does not gate this beta and does not
-yet have a release archive.
+The Homebrew tap is the one-install beginner path after trust and tap pinning.
+Windows x86-64 passes the generated-app CI gate but has no release archive.
 
-For eventual `homebrew/core` inclusion, we should plan for a source-building formula and a clean `brew audit --new --formula amber_cli` story. The current tap keeps release onboarding fast, while the source-build path is the more likely route for upstream Homebrew acceptance.
+The tap builds both Minecart and Amber CLI from hash-checked source archives.
+For eventual `homebrew/core` inclusion, validate the formula against core's
+additional audit rules.
