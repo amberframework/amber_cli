@@ -118,6 +118,10 @@ module AmberLSP::Lookup
     getter source_layer : String
     getter? abstract : Bool
     getter? macro : Bool
+    @[JSON::Field(emit_null: true)]
+    getter verified_return_type : String? = nil
+    @[JSON::Field(emit_null: true)]
+    getter verification_skip_reason : String? = nil
 
     def initialize(
       @owner : String,
@@ -132,6 +136,8 @@ module AmberLSP::Lookup
       @abstract : Bool,
       @macro : Bool,
       resolved_return_type : String? = nil,
+      @verified_return_type : String? = nil,
+      @verification_skip_reason : String? = nil,
     )
       @resolved_return_type = resolved_return_type || @declared_return_type
     end
@@ -154,6 +160,8 @@ module AmberLSP::Lookup
         abstract?,
         macro?,
         resolved_return_type,
+        verified_return_type,
+        verification_skip_reason,
       )
     end
 
@@ -171,6 +179,46 @@ module AmberLSP::Lookup
         abstract?,
         macro?,
         resolved_type,
+        verified_return_type,
+        verification_skip_reason,
+      )
+    end
+
+    def with_verified_return_type(verified_type : String) : APIIndexMethod
+      APIIndexMethod.new(
+        owner,
+        name,
+        method_kind,
+        args_string,
+        declared_return_type,
+        doc_line,
+        source_path,
+        source_line,
+        source_layer,
+        abstract?,
+        macro?,
+        resolved_return_type,
+        verified_type,
+        nil,
+      )
+    end
+
+    def with_verification_skip_reason(reason : String) : APIIndexMethod
+      APIIndexMethod.new(
+        owner,
+        name,
+        method_kind,
+        args_string,
+        declared_return_type,
+        doc_line,
+        source_path,
+        source_line,
+        source_layer,
+        abstract?,
+        macro?,
+        resolved_return_type,
+        nil,
+        reason,
       )
     end
 
