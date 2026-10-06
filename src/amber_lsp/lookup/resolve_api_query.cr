@@ -1,6 +1,7 @@
 require "set"
 
 require "./index_models"
+require "./parse_api_type_name"
 require "./resolve_api_return_type"
 
 module AmberLSP::Lookup
@@ -190,28 +191,18 @@ module AmberLSP::Lookup
     end
 
     private def base_type_name(name : String) : String
-      output = String::Builder.new
-      generic_depth = 0
-
-      name.each_char do |character|
-        case character
-        when '('
-          generic_depth += 1
-        when ')'
-          generic_depth -= 1 if generic_depth > 0
-        else
-          output << character unless generic_depth > 0
-        end
-      end
-
-      output.to_s
+      ParseAPITypeName.new(name).perform.base_name
     end
 
     private def receiver_type(type_name : String, matching_types : Array(APIIndexType)) : String
       normalized_name = normalize_type_name(type_name)
       return normalized_name if normalized_name.includes?('(')
 
-      matching_types.first?.try(&.name) || normalized_name
+      if matching_type = matching_types.first?
+        return matching_type.name
+      end
+
+      normalized_name
     end
 
     private def found_result(
@@ -221,7 +212,11 @@ module AmberLSP::Lookup
       receiver_type : String? = nil,
     ) : APIResolution
       resolved_methods = methods.map do |method|
-        resolved_return_type = ResolveAPIIndexReturnType.new(method.declared_return_type, receiver_type).perform
+        resolved_return_type = ResolveAPIIndexReturnType.new(
+          method.declared_return_type,
+          receiver_type,
+          method.owner,
+        ).perform
         method.with_resolved_return_type(resolved_return_type)
       end
       APIResolution.new(query, resolution_kind, nil, resolved_methods)

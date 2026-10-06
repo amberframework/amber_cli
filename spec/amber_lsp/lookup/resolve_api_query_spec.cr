@@ -53,6 +53,42 @@ describe "AmberLSP::Lookup::ResolveAPIQuery#perform" do
     )
   end
 
+  it "parses generic receivers and binds each owner type parameter" do
+    builder_result = resolve_return_type_fixture_query("Grant::Query::Builder(Post)#first")
+    builder_first = builder_result.list_of_methods.find { |method| method.args_string == "()" }
+    builder_first_entry = builder_first || raise "Expected the no-argument first overload"
+    builder_first_entry.resolved_return_type.should eq("Post | Nil")
+
+    bare_builder_result = resolve_return_type_fixture_query("Grant::Query::Builder#first")
+    bare_first = bare_builder_result.list_of_methods.find { |method| method.args_string == "()" }
+    bare_first_entry = bare_first || raise "Expected the bare generic first overload"
+    bare_first_entry.resolved_return_type.should eq("Model | Nil")
+
+    lock_result = resolve_return_type_fixture_query("Grant::Query::Builder(Post)#lock")
+    lock_result.list_of_methods.first.resolved_return_type.should eq("Grant::Query::Builder(Post)")
+
+    collection_result = resolve_return_type_fixture_query("Grant::AssociationCollection(User, Post)#target")
+    collection_result.list_of_methods.first.resolved_return_type.should eq("Post | Nil")
+
+    owner_result = resolve_return_type_fixture_query("Grant::AssociationCollection(User, Post)#owner")
+    owner_result.list_of_methods.first.resolved_return_type.should eq("User")
+
+    generic_collection_result = resolve_return_type_fixture_query("Grant::Collection(Post)#first")
+    generic_collection_result.list_of_methods.first.resolved_return_type.should eq("Post | Nil")
+
+    loaded_result = resolve_return_type_fixture_query("Grant::LoadedAssociationCollection(User, Post)#clear")
+    loaded_result.list_of_methods.first.resolved_return_type.should eq(
+      "Grant::LoadedAssociationCollection(User, Post)",
+    )
+
+    nested_loaded_result = resolve_return_type_fixture_query(
+      "Grant::LoadedAssociationCollection(User, Grant::Query::Builder(Post))#target",
+    )
+    nested_loaded_result.list_of_methods.first.resolved_return_type.should eq(
+      "Grant::Query::Builder(Post) | Nil",
+    )
+  end
+
   it "returns a type summary for a type-only query, including a generic base-name match" do
     result = resolve_fixture_query("FixtureAPI::Team")
     generic_result = resolve_fixture_query("Grant::Query::Builder")
