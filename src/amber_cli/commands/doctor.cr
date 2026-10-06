@@ -164,7 +164,7 @@ module AmberCLI::Commands
         matcher = is_claude_settings ? AmberCLI::Agent::MergeAgentHooksIntoSettings::CLAUDE_PRE_MATCHER : AmberCLI::Agent::MergeAgentHooksIntoSettings::CODEX_PRE_MATCHER
         {events.pre_tool_use, matcher}
       when "post"
-        {events.post_tool_use, AmberCLI::Agent::MergeAgentHooksIntoSettings::POST_MATCHER}
+        {events.post_tool_use, AmberCLI::Agent::MergeAgentHooksIntoSettings.post_matcher_for(is_claude_settings)}
       else
         {events.stop, nil}
       end

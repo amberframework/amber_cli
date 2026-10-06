@@ -21,7 +21,7 @@ module DoctorCommandSpecHelper
       events = AmberCLI::Agent::HookEvents.new
       events.session_start = [legacy_hook_group("session", nil)]
       events.pre_tool_use = [legacy_hook_group("pre", pre_matcher)]
-      events.post_tool_use = [legacy_hook_group("post", AmberCLI::Agent::MergeAgentHooksIntoSettings::POST_MATCHER)]
+      events.post_tool_use = [legacy_hook_group("post", "Edit|Write|MultiEdit|NotebookEdit")]
       events.stop = [legacy_hook_group("stop", nil)]
       settings = AmberCLI::Agent::HookSettings.new
       settings.hooks = events

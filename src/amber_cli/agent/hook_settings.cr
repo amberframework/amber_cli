@@ -84,7 +84,8 @@ module AmberCLI::Agent
   class MergeAgentHooksIntoSettings
     CLAUDE_PRE_MATCHER    = "Edit|Write|Bash"
     CODEX_PRE_MATCHER     = "apply_patch|Bash"
-    POST_MATCHER          = "Edit|Write|MultiEdit|NotebookEdit"
+    CLAUDE_POST_MATCHER   = "Edit|Write"
+    CODEX_POST_MATCHER    = "apply_patch|Bash"
     CLAUDE_COMMAND_PREFIX = %("$CLAUDE_PROJECT_DIR"/.amber/amber-agent-hook )
     CODEX_COMMAND_PREFIX  = %(sh -c 'root=$(git rev-parse --show-toplevel 2>/dev/null) && exec "$root/.amber/amber-agent-hook" )
 
@@ -94,6 +95,10 @@ module AmberCLI::Agent
       else
         "#{CODEX_COMMAND_PREFIX}#{mode}'"
       end
+    end
+
+    def self.post_matcher_for(is_claude_settings : Bool) : String
+      is_claude_settings ? CLAUDE_POST_MATCHER : CODEX_POST_MATCHER
     end
 
     def initialize(@existing_json : String, @is_claude_settings : Bool = true)
@@ -106,7 +111,7 @@ module AmberCLI::Agent
       remove_stale_generated_hooks(hooks)
       add_hook(hooks.session_start, nil, self.class.generated_command_for("session", @is_claude_settings))
       add_hook(hooks.pre_tool_use, pre_matcher, self.class.generated_command_for("pre", @is_claude_settings))
-      add_hook(hooks.post_tool_use, POST_MATCHER, self.class.generated_command_for("post", @is_claude_settings))
+      add_hook(hooks.post_tool_use, self.class.post_matcher_for(@is_claude_settings), self.class.generated_command_for("post", @is_claude_settings))
       add_hook(hooks.stop, nil, self.class.generated_command_for("stop", @is_claude_settings))
       settings.hooks = hooks
       settings.to_pretty_json + "\n"
@@ -119,10 +124,14 @@ module AmberCLI::Agent
         {"post", events.post_tool_use},
         {"stop", events.stop},
       }.each do |mode, groups|
-        legacy_command = ".amber/amber-agent-hook #{mode}"
+        generated_commands = [
+          ".amber/amber-agent-hook #{mode}",
+          self.class.generated_command_for(mode, true),
+          self.class.generated_command_for(mode, false),
+        ]
         groups.each do |group|
           group.hooks = group.hooks.reject do |handler|
-            handler.type == "command" && handler.command == legacy_command
+            handler.type == "command" && generated_commands.any? { |command| handler.command == command }
           end
         end
       end

@@ -509,8 +509,62 @@ print_setup_refusal() {
   printf '%s\n' "Do not edit Crystal files yet. Tell the user to run \`amber setup:agent\` in this project, then continue."
 }
 
-pre_write_contains_crystal() {
+# Keep preflight and post-edit file detection on one payload parser.
+changed_cr_files() {
   awk '
+    function add_cr_path(path) {
+      sub(/\r$/, "", path)
+      if (path ~ /[.]cr$/ && !seen[path]++) print path
+    }
+    function flush_token() {
+      if (token == "") return
+      if (expect_redirect) {
+        add_cr_path(token)
+        expect_redirect = 0
+      } else if (tee_targets && token !~ /^-/) {
+        add_cr_path(token)
+      }
+      if (is_command_position) {
+        if (token == "tee") tee_targets = 1
+        is_command_position = 0
+      }
+      token = ""
+    }
+    function scan_bash_command(command,    command_index, character, quote, escaped, single_quote, double_quote) {
+      single_quote = sprintf("%c", 39)
+      double_quote = sprintf("%c", 34)
+      is_command_position = 1
+      for (command_index = 1; command_index <= length(command); command_index++) {
+        character = substr(command, command_index, 1)
+        if (escaped) {
+          token = token character
+          escaped = 0
+        } else if (quote != "") {
+          if (character == quote) quote = ""
+          else if (character == "\\" && quote == double_quote) escaped = 1
+          else token = token character
+        } else if (character == single_quote || character == double_quote) {
+          quote = character
+        } else if (character == "\\") {
+          escaped = 1
+        } else if (character ~ /[[:space:]]/) {
+          flush_token()
+        } else if (character == "|" || character == "&" || character == ";") {
+          flush_token()
+          tee_targets = 0
+          is_command_position = 1
+        } else if (character == ">") {
+          flush_token()
+          expect_redirect = 1
+        } else if (character == "<") {
+          flush_token()
+          expect_redirect = 0
+        } else {
+          token = token character
+        }
+      }
+      flush_token()
+    }
     function string_value(    character, escaped, result) {
       result = ""; escaped = 0
       while (position <= length(payload)) {
@@ -545,25 +599,19 @@ pre_write_contains_crystal() {
       }
 
       if ((tool_name == "Edit" || tool_name == "Write") && direct_path ~ /[.]cr$/) {
-        print "crystal-write"
-        exit
-      }
-      if (tool_name == "apply_patch" && index(command_text, "*** Begin Patch") > 0) {
+        add_cr_path(direct_path)
+      } else if (tool_name == "apply_patch" && index(command_text, "*** Begin Patch") > 0) {
         count = split(command_text, patch_lines, "\n")
         for (line_number = 1; line_number <= count; line_number++) {
           line = patch_lines[line_number]
           if (line ~ /^\*\*\* (Update|Add) File: /) {
             sub(/^\*\*\* (Update|Add) File: /, "", line)
             sub(/\r$/, "", line)
-            if (line ~ /[.]cr$/) { print "crystal-write"; exit }
+            add_cr_path(line)
           }
         }
-      }
-      if (tool_name == "Bash") {
-        gsub(/\"/, "", command_text)
-        gsub(/\047/, "", command_text)
-        if (command_text ~ /(^|[[:space:];|&])tee[[:space:]][^;|&]*[.]cr([[:space:];|&]|$)/ ||
-            command_text ~ />[^;|&]*[.]cr([[:space:];|&]|$)/) print "crystal-write"
+      } else if (tool_name == "Bash") {
+        scan_bash_command(command_text)
       }
     }
   '
@@ -589,7 +637,7 @@ case "${1:-}" in
     exit 0
     ;;
   pre)
-    if [ -n "$(pre_write_contains_crystal)" ]; then
+    if [ -n "$(changed_cr_files)" ]; then
       if ! run_setup_check; then
         print_setup_refusal >&2
         exit 2
@@ -603,58 +651,7 @@ case "${1:-}" in
     fi
     ;;
   post)
-    # Claude supplies file_path; Codex supplies an apply_patch command.
-    # Parse JSON strings and patch headers without another runtime.
-    edited_files=$(awk '
-      function string_value(    character, escaped, result) {
-        result = ""; escaped = 0
-        while (position <= length(payload)) {
-          character = substr(payload, position++, 1)
-          if (escaped) {
-            if (character == "n") result = result "\n"
-            else if (character == "r") result = result "\r"
-            else if (character == "t") result = result "\t"
-            else if (character == "u") return ""
-            else result = result character
-            escaped = 0; continue
-          }
-          if (character == "\\") { escaped = 1; continue }
-          if (character == "\"") return result
-          result = result character
-        }
-        return ""
-      }
-      { payload = payload $0 "\n" }
-      END {
-        position = 1
-        while (position <= length(payload)) {
-          if (substr(payload, position++, 1) != "\"") continue
-          key = string_value()
-          while (substr(payload, position, 1) ~ /[[:space:]]/) position++
-          if (substr(payload, position++, 1) != ":") continue
-          while (substr(payload, position, 1) ~ /[[:space:]]/) position++
-          if (substr(payload, position++, 1) != "\"") continue
-          value = string_value()
-          if (key == "file_path") direct_path = value
-          else if (key == "path" && direct_path == "") direct_path = value
-          else if (key == "tool_name") tool_name = value
-          else if (key == "command") patch = value
-        }
-        if (tool_name == "apply_patch" && index(patch, "*** Begin Patch") > 0) {
-          count = split(patch, lines, "\n")
-          for (line_number = 1; line_number <= count; line_number++) {
-            line = lines[line_number]
-            if (line ~ /^\*\*\* (Update|Add) File: /) {
-              sub(/^\*\*\* (Update|Add) File: /, "", line)
-              sub(/\r$/, "", line)
-              if (!seen[line]++) print line
-            }
-          }
-        } else if (direct_path != "") {
-          print direct_path
-        }
-      }
-    ')
+    edited_files=$(changed_cr_files)
     [ -n "$edited_files" ] || exit 0
     lsp=$(find_lsp) || lsp=''
     printf '%s\n' "$edited_files" | while IFS= read -r edited_file; do

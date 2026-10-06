@@ -77,6 +77,22 @@ describe "amber setup:agent" do
     settings.should contain(".amber/amber-agent-hook\\\" pre")
   end
 
+  it "matches the PostToolUse tools used by each agent" do
+    claude = AmberCLI::Agent::HookSettings.from_json(AmberCLI::Agent::MergeAgentHooksIntoSettings.new("", true).perform)
+    codex = AmberCLI::Agent::HookSettings.from_json(AmberCLI::Agent::MergeAgentHooksIntoSettings.new("", false).perform)
+
+    if claude_events = claude.hooks
+      claude_events.post_tool_use.map(&.matcher).should eq(["Edit|Write"])
+    else
+      fail "Claude hooks were not generated"
+    end
+    if codex_events = codex.hooks
+      codex_events.post_tool_use.map(&.matcher).should eq(["apply_patch|Bash"])
+    else
+      fail "Codex hooks were not generated"
+    end
+  end
+
   it "installs the loop into a project without changing existing instructions twice" do
     SpecHelper.within_temp_directory do |project|
       Dir.mkdir_p("src")
@@ -185,7 +201,7 @@ describe "amber setup:agent" do
 
       run_hook.call("pre", "{}", "0", "0")[0].should eq(0)
       edited_file = File.join(project, "src/my app.cr")
-      run_hook.call("post", {"tool_input" => {"file_path" => edited_file}}.to_json, "0", "0")[0].should eq(0)
+      run_hook.call("post", {"tool_name" => "Edit", "tool_input" => {"file_path" => edited_file}}.to_json, "0", "0")[0].should eq(0)
       calls = File.read(log)
       calls.should contain("compiler watch hold")
       calls.should contain("compiler tool format #{edited_file}")
@@ -194,11 +210,11 @@ describe "amber setup:agent" do
 
       quoted_file = File.join(project, %(src/odd"file.cr))
       File.write(quoted_file, "puts :ok\n")
-      run_hook.call("post", {"tool_input" => {"file_path" => quoted_file}}.to_json, "0", "0")[0].should eq(0)
+      run_hook.call("post", {"tool_name" => "Edit", "tool_input" => {"file_path" => quoted_file}}.to_json, "0", "0")[0].should eq(0)
       File.read(log).should contain("compiler tool format #{quoted_file}")
 
       previous_calls = File.read(log)
-      run_hook.call("post", {"tool_input" => {"file_path" => "README.md"}}.to_json, "0", "0")[0].should eq(0)
+      run_hook.call("post", {"tool_name" => "Edit", "tool_input" => {"file_path" => "README.md"}}.to_json, "0", "0")[0].should eq(0)
       File.read(log).should eq(previous_calls)
 
       another_file = File.join(project, "src/another_file.cr")
@@ -210,9 +226,34 @@ describe "amber setup:agent" do
       codex_calls.should match(/compiler tool format .*\/src\/another_file\.cr/)
       codex_calls.should match(/lsp --check .*\/src\/another_file\.cr/)
 
+      added_file = File.join(File.realpath(project), "src/added_by_patch.cr")
+      File.write(added_file, "puts :added_by_patch\n")
+      add_patch = "*** Begin Patch\n*** Add File: src/added_by_patch.cr\n+puts :added_by_patch\n*** End Patch"
+      add_payload = {"tool_name" => "apply_patch", "tool_input" => {"command" => add_patch}}.to_json
+      run_hook.call("post", add_payload, "0", "0")[0].should eq(0)
+      add_calls = File.read(log)
+      add_calls.should contain("compiler tool format #{added_file}")
+      add_calls.should contain("lsp --check #{added_file}")
+
+      bash_file = File.join(File.realpath(project), "src/bash_write.cr")
+      File.write(bash_file, "puts :bash_write\n")
+      bash_payload = {"tool_name" => "Bash", "tool_input" => {"command" => "cat > src/bash_write.cr <<'EOF'\nputs :bash_write\nEOF"}}.to_json
+      run_hook.call("post", bash_payload, "0", "0")[0].should eq(0)
+      bash_calls = File.read(log)
+      bash_calls.should contain("compiler tool format #{bash_file}")
+      bash_calls.should contain("lsp --check #{bash_file}")
+
+      tee_file = File.join(File.realpath(project), "src/tee_write.cr")
+      File.write(tee_file, "puts :tee_write\n")
+      tee_payload = {"tool_name" => "Bash", "tool_input" => {"command" => "printf 'puts :tee_write' | tee src/tee_write.cr"}}.to_json
+      run_hook.call("post", tee_payload, "0", "0")[0].should eq(0)
+      tee_calls = File.read(log)
+      tee_calls.should contain("compiler tool format #{tee_file}")
+      tee_calls.should contain("lsp --check #{tee_file}")
+
       diagnostic_output = IO::Memory.new
       diagnostic_errors = IO::Memory.new
-      diagnostic_status = Process.run(hook, ["post"], input: IO::Memory.new({"tool_input" => {"file_path" => edited_file}}.to_json),
+      diagnostic_status = Process.run(hook, ["post"], input: IO::Memory.new({"tool_name" => "Edit", "tool_input" => {"file_path" => edited_file}}.to_json),
         output: diagnostic_output, error: diagnostic_errors,
         env: {"PATH" => path, "TEST_COMMAND_LOG" => log, "TEST_LSP_EXIT" => "1"})
       diagnostic_status.exit_code.should eq(2)
@@ -335,7 +376,7 @@ describe "amber setup:agent" do
       File.write(compiler, "#!/bin/sh\nprintf 'compiler %s\\n' \"$*\" >> \"$TEST_COMMAND_LOG\"\nif [ \"${TEST_FORMAT_EXIT:-0}\" -ne 0 ]; then\n  echo 'format failed'\n  exit \"$TEST_FORMAT_EXIT\"\nfi\n")
       File.chmod(compiler, 0o755)
       hook = File.join(project, ".amber/amber-agent-hook")
-      payload = {"tool_input" => {"file_path" => "src/my_app.cr"}}.to_json
+      payload = {"tool_name" => "Edit", "tool_input" => {"file_path" => "src/my_app.cr"}}.to_json
       File.write("src/other.cr", "puts :other\n")
       patch = "*** Begin Patch\n*** Update File: src/my_app.cr\n*** Update File: src/other.cr\n*** End Patch"
       multiple_files_payload = {"tool_name" => "apply_patch", "tool_input" => {"command" => patch}}.to_json

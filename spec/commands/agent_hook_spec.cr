@@ -102,7 +102,7 @@ module AgentHookSpecHelper
     events = AmberCLI::Agent::HookEvents.new
     events.session_start = [legacy_hook_group("session", nil)]
     events.pre_tool_use = [legacy_hook_group("pre", AmberCLI::Agent::MergeAgentHooksIntoSettings::CLAUDE_PRE_MATCHER)]
-    events.post_tool_use = [legacy_hook_group("post", AmberCLI::Agent::MergeAgentHooksIntoSettings::POST_MATCHER)]
+    events.post_tool_use = [legacy_hook_group("post", "Edit|Write|MultiEdit|NotebookEdit")]
     events.stop = [legacy_hook_group("stop", nil)]
 
     claude = AmberCLI::Agent::HookSettings.from_json(File.read(".claude/settings.json"))
@@ -112,7 +112,7 @@ module AgentHookSpecHelper
     codex_events = AmberCLI::Agent::HookEvents.new
     codex_events.session_start = [legacy_hook_group("session", nil)]
     codex_events.pre_tool_use = [legacy_hook_group("pre", AmberCLI::Agent::MergeAgentHooksIntoSettings::CODEX_PRE_MATCHER)]
-    codex_events.post_tool_use = [legacy_hook_group("post", AmberCLI::Agent::MergeAgentHooksIntoSettings::POST_MATCHER)]
+    codex_events.post_tool_use = [legacy_hook_group("post", "Edit|Write|MultiEdit|NotebookEdit")]
     codex_events.stop = [legacy_hook_group("stop", nil)]
     codex = AmberCLI::Agent::HookSettings.new
     codex.hooks = codex_events
