@@ -55,7 +55,11 @@ module AgentHookSpecHelper
     codex_settings = AmberCLI::Agent::MergeAgentHooksIntoSettings.new("", false).perform
     File.write(".codex/hooks.json", codex_settings)
 
-    script = AmberCLI::Commands::SetupAgentCommand::AGENT_HOOK_SCRIPT.gsub("__AMBER_MAIN__", "src/app.cr")
+    script = AmberCLI::Commands::SetupAgentCommand::AGENT_HOOK_SCRIPT
+      .gsub("__AMBER_MAIN__", "src/app.cr")
+      .gsub("__AMBER_LOOKUP_INSTRUCTION__", AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION)
+      .gsub("__PLAIN_CRYSTAL_LOOKUP_INSTRUCTION__", AmberCLI::Agent::AgentSetupGuidance::PLAIN_CRYSTAL_REQUIRED_LOOKUP_INSTRUCTION)
+      .gsub("__PLAIN_CRYSTAL_READINESS_ITEM__", AmberCLI::Agent::AgentSetupGuidance::PLAIN_CRYSTAL_READINESS_ITEM)
     hook_path = File.join(project_root, ".amber/amber-agent-hook")
     File.write(hook_path, script)
     File.chmod(hook_path, 0o755)
@@ -151,6 +155,42 @@ describe "amber-agent-hook readiness and preflight" do
       session[1].should contain("Amber agent setup is OK.")
       session[1].should contain("amber-lsp version: 1.0.0")
       session[1].should contain("Before writing code that calls Grant, Amber, asset_pipeline, or Crystal standard library methods, list each method you will call and run `amber-lsp lookup 'Type.method'` (class method) or `amber-lsp lookup 'Type#method'` (instance method) for each one, adding `--verify` when the answer is unknown. Use exactly the signatures and return types it reports, and follow any card note it prints.")
+    end
+  end
+
+  it "accepts declined coverage for a plain Crystal project after verifying the LSP" do
+    SpecHelper.within_temp_directory do |project_root|
+      fixture = AgentHookSpecHelper.create_ready_project(
+        project_root,
+        coverage: "amber-lsp: declined project is not an Amber V2 stack project",
+        coverage_exit: "2",
+      )
+
+      check = AgentHookSpecHelper.run_hook(fixture, "check")
+      session = AgentHookSpecHelper.run_hook(fixture, "session")
+
+      check[0].should eq(0)
+      check[1].should eq("plain Crystal project: Amber rules do not apply; lookup and Crystal hints are active\n")
+      session[0].should eq(0)
+      session[1].should contain("plain Crystal project: Amber rules do not apply; lookup and Crystal hints are active")
+      session[1].should contain("amber-lsp version: 1.0.0")
+      session[1].should contain("Before writing code that calls Crystal standard library methods or methods from this project's own shards, list each method you will call and run `amber-lsp lookup 'Type.method'` (class method) or `amber-lsp lookup 'Type#method'` (instance method) for each one, adding `--verify` when the answer is unknown. Use exactly the signatures and return types it reports, and follow any card note it prints.")
+      session[1].should_not contain("Before writing code that calls Grant, Amber, asset_pipeline")
+    end
+  end
+
+  it "still fails when amber-lsp reports failed coverage" do
+    SpecHelper.within_temp_directory do |project_root|
+      fixture = AgentHookSpecHelper.create_ready_project(
+        project_root,
+        coverage: "amber-lsp: failed invalid project configuration",
+        coverage_exit: "1",
+      )
+
+      check = AgentHookSpecHelper.run_hook(fixture, "check")
+
+      check[0].should eq(2)
+      check[1].should contain("amber-lsp does not cover this project main entry file")
     end
   end
 

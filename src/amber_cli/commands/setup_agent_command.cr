@@ -18,7 +18,7 @@ module AmberCLI::Commands
     DOCUMENT_END              = AmberCLI::Agent::AgentSetupGuidance::DOCUMENT_END
 
     def help_description : String
-      "Set up the Claude Code and Codex agent loop in an Amber V2 project"
+      "Set up the Claude Code and Codex agent loop for a Crystal project"
     end
 
     def setup_command_options
@@ -26,7 +26,16 @@ module AmberCLI::Commands
 
     def execute
       main_file = find_project_main_file
-      SetupLSPCommand.new("setup:lsp").execute
+      uses_amber_stack = AmberCLI::Agent::AgentSetupGuidance.uses_amber_v2_stack?(Dir.current)
+      required_lookup_instruction = AmberCLI::Agent::AgentSetupGuidance.required_lookup_instruction_for(Dir.current)
+      if uses_amber_stack
+        SetupLSPCommand.new("setup:lsp").execute
+      else
+        info "Setting up the Amber LSP Claude plugin..."
+        list_of_updated_paths = AmberCLI::Agent::InstallClaudeAmberLSPPlugin.new.perform
+        list_of_updated_paths.each { |path| info "Updated: #{path}" }
+        success "Amber LSP plugin setup complete."
+      end
       [{".claude/settings.json", true}, {".codex/hooks.json", false}].each do |path, is_claude_settings|
         write_merged_hooks(path, is_claude_settings)
       end
@@ -34,14 +43,14 @@ module AmberCLI::Commands
       write_setup_manifest
       warn_about_ignored_agent_hook_settings
       ["CLAUDE.md", "AGENTS.md"].each do |path|
-        append_agent_loop_instructions(path)
+        append_agent_loop_instructions(path, required_lookup_instruction)
       end
       success "Amber agent loop installed."
     end
 
     private def find_project_main_file : String
       unless File.file?("shard.yml")
-        raise "Run amber setup:agent from an Amber project with shard.yml"
+        raise "Run amber setup:agent from a Crystal project with shard.yml"
       end
 
       manifest = YAML.parse(File.read("shard.yml"))
@@ -80,7 +89,11 @@ module AmberCLI::Commands
 
     private def write_hook_script(main_file : String) : Nil
       path = ".amber/amber-agent-hook"
-      content = AGENT_HOOK_SCRIPT.gsub("__AMBER_MAIN__", main_file)
+      content = AGENT_HOOK_SCRIPT
+        .gsub("__AMBER_MAIN__", main_file)
+        .gsub("__AMBER_LOOKUP_INSTRUCTION__", AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION)
+        .gsub("__PLAIN_CRYSTAL_LOOKUP_INSTRUCTION__", AmberCLI::Agent::AgentSetupGuidance::PLAIN_CRYSTAL_REQUIRED_LOOKUP_INSTRUCTION)
+        .gsub("__PLAIN_CRYSTAL_READINESS_ITEM__", AmberCLI::Agent::AgentSetupGuidance::PLAIN_CRYSTAL_READINESS_ITEM)
       Dir.mkdir_p(".amber")
       if !File.file?(path) || File.read(path) != content
         File.write(path, content)
@@ -99,7 +112,7 @@ module AmberCLI::Commands
       File.write(".amber/agent_setup.json", manifest.to_pretty_json + "\n")
     end
 
-    private def append_agent_loop_instructions(path : String) : Nil
+    private def append_agent_loop_instructions(path : String, required_lookup_instruction : String) : Nil
       content = File.file?(path) ? File.read(path) : ""
       if content.includes?(DOCUMENT_START) && content.includes?(DOCUMENT_END)
         marker_start = content.index(DOCUMENT_START)
@@ -115,8 +128,14 @@ module AmberCLI::Commands
             "Before using a library API you are not sure of, run `amber-lsp lookup 'Type.method'` or use the LSP tool's workspaceSymbol/hover.",
             "",
           )
-          unless updated_section.includes?(AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION)
-            updated_section += "\n#{AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION}"
+          obsolete_lookup_instruction = if required_lookup_instruction == AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION
+                                          AmberCLI::Agent::AgentSetupGuidance::PLAIN_CRYSTAL_REQUIRED_LOOKUP_INSTRUCTION
+                                        else
+                                          AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION
+                                        end
+          updated_section = updated_section.gsub(obsolete_lookup_instruction, "")
+          unless updated_section.includes?(required_lookup_instruction)
+            updated_section += "\n#{required_lookup_instruction}"
           end
           unless updated_section.includes?("stop and tell the user to run `amber setup:agent`")
             updated_section += "\nThe SessionStart hook reports whether setup is complete. When setup is missing, stop and tell the user to run `amber setup:agent` before editing Crystal files."
@@ -138,7 +157,7 @@ module AmberCLI::Commands
       Use `crystal-alpha spec --affected` when available. Format Crystal files with
       `crystal-alpha tool format`. The installed hooks hold the watcher during
       edits, check each changed file, and build when the agent stops.
-      #{AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION}
+      #{required_lookup_instruction}
       The SessionStart hook reports whether setup is complete. When setup is
       missing, stop and tell the user to run `amber setup:agent` before editing
       Crystal files.

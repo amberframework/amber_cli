@@ -97,7 +97,7 @@ describe "amber setup:agent" do
     SpecHelper.within_temp_directory do |project|
       Dir.mkdir_p("src")
       File.write("src/custom_entry.cr", "puts :ok\n")
-      File.write("shard.yml", "name: my_app\ntargets:\n  app_entry:\n    main: src/custom_entry.cr\n")
+      File.write("shard.yml", "name: amber_cli\ntargets:\n  app_entry:\n    main: src/custom_entry.cr\n")
       File.write("CLAUDE.md", "# Existing Claude instructions\n")
       File.write("AGENTS.md", "# Existing Codex instructions\n")
       Dir.mkdir_p(".claude")
@@ -130,7 +130,7 @@ describe "amber setup:agent" do
       setup_manifest = AmberCLI::Agent::AgentSetupManifest.from_json(File.read(".amber/agent_setup.json"))
       setup_manifest.amber_cli_version.should eq(AmberCli::VERSION)
       setup_manifest.minimum_amber_lsp_version.should eq("1.0.0")
-      setup_manifest.generated_hook_version.should eq("5")
+      setup_manifest.generated_hook_version.should eq("6")
       File.file?(".amber/claude-marketplace/amber-lsp/.lsp.json").should be_true
       File.file?(".lsp.json").should be_false
       File.info(".amber/amber-agent-hook").permissions.to_i.&(0o111).should_not eq(0)
@@ -303,11 +303,35 @@ describe "amber setup:agent" do
     end
   end
 
+  it "sets up plain Crystal without adding Amber configuration or dependencies" do
+    SpecHelper.within_temp_directory do
+      Dir.mkdir_p("src")
+      File.write("shard.yml", "name: plain_app\nversion: 0.1.0\n")
+      File.write("src/plain_app.cr", "puts :ok\n")
+
+      command = RecordSetupAgentMessages.new("setup:agent")
+      command.execute
+
+      Dir.exists?("config").should be_false
+      File.exists?(".amber-lsp.yml").should be_false
+      File.read("shard.yml").should_not contain("dependencies:")
+      File.file?(".amber/amber-agent-hook").should be_true
+      File.file?(".amber/agent_setup.json").should be_true
+      File.file?(".amber/claude-marketplace/.claude-plugin/marketplace.json").should be_true
+      File.file?(".amber/claude-marketplace/amber-lsp/.claude-plugin/plugin.json").should be_true
+      File.file?(".claude/settings.json").should be_true
+      File.file?(".codex/hooks.json").should be_true
+      File.read("CLAUDE.md").should contain("Before writing code that calls Crystal standard library methods or methods from this project's own shards")
+      File.read("AGENTS.md").should contain("Before writing code that calls Crystal standard library methods or methods from this project's own shards")
+      File.read("CLAUDE.md").should_not contain("Before writing code that calls Grant, Amber, asset_pipeline")
+    end
+  end
+
   it "corrects older marked agent instructions on rerun" do
     SpecHelper.within_temp_directory do
       Dir.mkdir_p("src")
-      File.write("shard.yml", "name: my_app\n")
-      File.write("src/my_app.cr", "puts :ok\n")
+      File.write("shard.yml", "name: amber_cli\n")
+      File.write("src/amber_cli.cr", "puts :ok\n")
       older_instructions = "# Keep this\n\n<!-- amber-agent-loop:start -->\n## Agent loop\n\nUse `crystal spec --affected` when available.\nBefore using a library API you are not sure of, run\n`amber-lsp lookup 'Type.method'` or use the LSP tool's workspaceSymbol/hover.\nThe SessionStart hook reports whether setup is complete.\n<!-- amber-agent-loop:end -->\n"
       File.write("CLAUDE.md", older_instructions)
       File.write("AGENTS.md", older_instructions)

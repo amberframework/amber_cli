@@ -4,7 +4,7 @@ set -u
 project_root=$(CDPATH='' cd "$(dirname "$0")/.." && pwd -P) || exit 2
 cd "$project_root" || exit 2
 
-HOOK_VERSION=5
+HOOK_VERSION=6
 DEFAULT_MINIMUM_AMBER_LSP_VERSION=1.0.0
 MAIN_FILE='__AMBER_MAIN__'
 
@@ -354,13 +354,14 @@ setup_cache_key() {
     fi
   done
   cache_project=$(printf '%s' "$project_root" | cksum)
-  cache_identity=$(printf '%s\n%s\n%s\n%s' "$lsp_path" "$lsp_mtime" "$setup_signature" "$dependent_mtimes" | cksum)
+  cache_identity=$(printf '%s\n%s\n%s\n%s\n%s' "$HOOK_VERSION" "$lsp_path" "$lsp_mtime" "$setup_signature" "$dependent_mtimes" | cksum)
   CHECK_CACHE_KEY="$cache_project:$cache_identity"
 }
 
 compute_setup_check() {
   CHECK_FAILURES=''
   CHECK_VERSION='unknown'
+  CHECK_PROJECT_KIND='amber-stack'
   lsp=$(resolve_lsp 2>/dev/null || :)
   setup_cache_key "$lsp"
   cache_dir=${TMPDIR:-/tmp}
@@ -368,10 +369,12 @@ compute_setup_check() {
   if [ -f "$cache_file" ]; then
     cached_key=''
     cached_version='unknown'
+    cached_project_kind='amber-stack'
     cached_failures=''
     {
       IFS= read -r cached_key || :
       IFS= read -r cached_version || :
+      IFS= read -r cached_project_kind || cached_project_kind='amber-stack'
       while IFS= read -r cached_failure; do
         if [ -n "$cached_failures" ]; then
           cached_failures="${cached_failures}
@@ -383,6 +386,7 @@ ${cached_failure}"
     } < "$cache_file"
     if [ "$cached_key" = "$CHECK_CACHE_KEY" ]; then
       CHECK_VERSION=$cached_version
+      CHECK_PROJECT_KIND=$cached_project_kind
       CHECK_FAILURES=$cached_failures
       return
     fi
@@ -449,6 +453,9 @@ ${cached_failure}"
     coverage_output=$("$lsp" --check "$MAIN_FILE" 2>&1)
     coverage_status=$?
     case "$coverage_output" in
+      'amber-lsp: declined project is not an Amber V2 stack project')
+        CHECK_PROJECT_KIND='plain-crystal'
+        ;;
       *declined*|*failed*)
         add_check_failure "amber-lsp does not cover this project main entry file; update the Amber LSP rules and run \`amber setup:agent\` again."
         ;;
@@ -482,6 +489,7 @@ ${cached_failure}"
   if {
     printf '%s\n' "$CHECK_CACHE_KEY"
     printf '%s\n' "$CHECK_VERSION"
+    printf '%s\n' "$CHECK_PROJECT_KIND"
     [ -z "$CHECK_FAILURES" ] || printf '%s\n' "$CHECK_FAILURES"
   } > "$cache_temp" 2>/dev/null && mv "$cache_temp" "$cache_file" 2>/dev/null; then
     :
@@ -626,7 +634,11 @@ changed_cr_files() {
 case "${1:-}" in
   check)
     if run_setup_check; then
-      printf '%s\n' 'Amber agent setup is ready.'
+      if [ "$CHECK_PROJECT_KIND" = 'plain-crystal' ]; then
+        printf '%s\n' '__PLAIN_CRYSTAL_READINESS_ITEM__'
+      else
+        printf '%s\n' 'Amber agent setup is ready.'
+      fi
       exit 0
     fi
     print_setup_failures
@@ -634,11 +646,18 @@ case "${1:-}" in
     ;;
   session)
     if run_setup_check; then
-      printf '%s\n' 'Amber agent setup is OK.'
       printf 'amber-lsp version: %s\n' "$CHECK_VERSION"
-      cat <<'AMBER_LOOKUP_GUIDANCE'
-Before writing code that calls Grant, Amber, asset_pipeline, or Crystal standard library methods, list each method you will call and run `amber-lsp lookup 'Type.method'` (class method) or `amber-lsp lookup 'Type#method'` (instance method) for each one, adding `--verify` when the answer is unknown. Use exactly the signatures and return types it reports, and follow any card note it prints.
+      if [ "$CHECK_PROJECT_KIND" = 'plain-crystal' ]; then
+        printf '%s\n' '__PLAIN_CRYSTAL_READINESS_ITEM__'
+        cat <<'PLAIN_CRYSTAL_LOOKUP_GUIDANCE'
+__PLAIN_CRYSTAL_LOOKUP_INSTRUCTION__
+PLAIN_CRYSTAL_LOOKUP_GUIDANCE
+      else
+        printf '%s\n' 'Amber agent setup is OK.'
+        cat <<'AMBER_LOOKUP_GUIDANCE'
+__AMBER_LOOKUP_INSTRUCTION__
 AMBER_LOOKUP_GUIDANCE
+      fi
     else
       print_setup_refusal
     fi

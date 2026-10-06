@@ -180,7 +180,7 @@ module AmberCLI::Commands
     private def check_generated_agent_instructions : DoctorCheck
       setup_manifest_path = File.join(@project_root, ".amber/agent_setup.json")
       hook_path = File.join(@project_root, ".amber/amber-agent-hook")
-      required_instruction = AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION
+      required_instruction = AmberCLI::Agent::AgentSetupGuidance.required_lookup_instruction_for(@project_root)
       has_current_manifest = false
       if File.file?(setup_manifest_path)
         setup_manifest = AmberCLI::Agent::AgentSetupManifest.from_json(File.read(setup_manifest_path))
@@ -225,6 +225,9 @@ module AmberCLI::Commands
 
       exit_code, output, errors = run_process(hook_path, ["check"], @project_root)
       if exit_code == 0
+        if output.lines.any? { |line| line.strip == AmberCLI::Agent::AgentSetupGuidance::PLAIN_CRYSTAL_READINESS_ITEM }
+          return [DoctorCheck.new("PASS", AmberCLI::Agent::AgentSetupGuidance::PLAIN_CRYSTAL_READINESS_ITEM)]
+        end
         [DoctorCheck.new("PASS", "Amber agent readiness check passed.")]
       else
         list_of_readiness_failures = (output + errors).lines.map(&.strip).reject(&.empty?)

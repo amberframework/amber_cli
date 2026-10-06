@@ -1,11 +1,14 @@
 require "../amber_cli_spec"
+require "digest/sha256"
 require "../../src/amber_cli/commands/check_amber_agent_setup_command"
+require "../../src/amber_cli/commands/setup_agent_command"
 require "../../src/amber_cli/agent/install_claude_amber_lsp_plugin"
 require "../../src/amber_cli/agent/agent_setup_manifest"
 require "../../src/amber_cli/agent/agent_setup_guidance"
 
 module DoctorCommandSpecHelper
   def self.create_agent_settings(project_root : String) : String
+    File.write(File.join(project_root, "shard.yml"), "name: amber_cli\nversion: 0.1.0\n")
     Dir.mkdir_p(File.join(project_root, ".claude"))
     Dir.mkdir_p(File.join(project_root, ".codex"))
     Dir.mkdir_p(File.join(project_root, ".amber"))
@@ -105,7 +108,7 @@ describe "amber doctor" do
       Dir.mkdir_p(File.join(project_root, ".amber"))
       old_guidance = "Before using a library API you are not sure of, run `amber-lsp lookup 'Type.method'`."
       File.write(File.join(project_root, ".amber/agent_setup.json"), <<-JSON)
-      {"amber_cli_version":"2.0.7","minimum_amber_lsp_version":"1.0.0","generated_hook_version":"4"}
+      {"amber_cli_version":"2.0.7","minimum_amber_lsp_version":"1.0.0","generated_hook_version":"5"}
       JSON
       File.write(File.join(project_root, ".amber/amber-agent-hook"), "#!/bin/sh\n#{old_guidance}\n")
       File.write(File.join(project_root, "CLAUDE.md"), "<!-- amber-agent-loop:start -->\n#{old_guidance}\n<!-- amber-agent-loop:end -->\n")
@@ -115,6 +118,46 @@ describe "amber doctor" do
 
       report.exit_code.should eq(1)
       report.to_s.should contain("[FAIL] Generated agent instructions are out of date; run `amber setup:agent`.")
+    end
+  end
+
+  it "passes the plain Crystal readiness item when the verified LSP declines Amber coverage" do
+    SpecHelper.within_temp_directory do |project_root|
+      Dir.mkdir_p(File.join(project_root, "src"))
+      File.write(File.join(project_root, "shard.yml"), "name: plain_app\nversion: 0.1.0\n")
+      File.write(File.join(project_root, "src/plain_app.cr"), "puts :ok\n")
+      AmberCLI::Commands::SetupAgentCommand.new("setup:agent").execute
+
+      home_directory = File.join(project_root, "home")
+      tools_directory = File.join(project_root, "tools")
+      Dir.mkdir_p(home_directory)
+      Dir.mkdir_p(tools_directory)
+      lsp_path = File.join(tools_directory, "amber-lsp")
+      DoctorCommandSpecHelper.write_executable(lsp_path, <<-SH)
+      #!/bin/sh
+      case "$1" in
+        --version) printf '%s\\n' 'amber-lsp 1.0.0'; exit 0 ;;
+        --check) printf '%s\\n' 'amber-lsp: declined project is not an Amber V2 stack project'; exit 2 ;;
+        lookup) printf '%s\\n' 'Amber API index is fresh'; exit 0 ;;
+      esac
+      exit 2
+      SH
+      checksum = Digest::SHA256.hexdigest(File.read(lsp_path))
+      File.write("#{lsp_path}.sha256", "#{checksum}  #{lsp_path}\n")
+
+      previous_path = ENV["PATH"]?
+      previous_lsp = ENV["AMBER_LSP_BIN"]?
+      ENV["PATH"] = "#{tools_directory}:/usr/bin:/bin"
+      ENV["AMBER_LSP_BIN"] = lsp_path
+      begin
+        report = AmberCLI::Commands::CheckAmberAgentSetupCommand.new("doctor", project_root, home_directory).perform
+
+        report.to_s.should contain("[PASS] plain Crystal project: Amber rules do not apply; lookup and Crystal hints are active")
+        report.to_s.should_not contain("amber-lsp does not cover this project main entry file")
+      ensure
+        DoctorCommandSpecHelper.restore_environment("PATH", previous_path)
+        DoctorCommandSpecHelper.restore_environment("AMBER_LSP_BIN", previous_lsp)
+      end
     end
   end
 
