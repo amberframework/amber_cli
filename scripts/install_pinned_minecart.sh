@@ -2,10 +2,10 @@
 set -euo pipefail
 
 # The source commit is verified by its Git tree before it can run the web smoke.
-minecart_commit=091e8e2da15a0a4885a40b174d5a561da0201c1b
-minecart_tree=2d00f70352d6ff70b29b1037bc85a316a6a13117
+minecart_commit=0ffac921c68774ea143aeaa83c369d0a38c2d3e5
+minecart_tree=f0e8a69bffe22afd0cee9b24994bde629384f093
 minecart_repository="${MINECART_SOURCE_REPOSITORY:-https://github.com/crimson-knight/shards.git}"
-minecart_source_ref="${MINECART_SOURCE_REF:-refs/tags/v2025.11.25.7}"
+minecart_source_ref="${MINECART_SOURCE_REF:-refs/tags/v2025.11.25.8}"
 install_root="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/amber-pinned-minecart"
 
 mkdir -p "$install_root"
@@ -20,11 +20,15 @@ git -C "$install_root" checkout -q --detach FETCH_HEAD
 test "$(git -C "$install_root" rev-parse HEAD)" = "$minecart_commit"
 test "$(git -C "$install_root" rev-parse 'HEAD^{tree}')" = "$minecart_tree"
 
-make -C "$install_root" bin/minecart bin/shards-alpha CRYSTAL="${CRYSTAL:-crystal-alpha}"
+# crystal-alpha is preferred; CI runners and Homebrew have stock crystal.
+if [[ -z "${CRYSTAL:-}" ]]; then
+  if command -v crystal-alpha >/dev/null 2>&1; then CRYSTAL=crystal-alpha; else CRYSTAL=crystal; fi
+fi
+make -C "$install_root" bin/minecart bin/shards-alpha CRYSTAL="$CRYSTAL"
 test -x "$install_root/bin/minecart"
 test -x "$install_root/bin/shards-alpha"
-"$install_root/bin/minecart" --version | grep -F "Minecart 2025.11.25.7"
-"$install_root/bin/shards-alpha" --version | grep -F "Minecart 2025.11.25.7"
+"$install_root/bin/minecart" --version | grep -F "Minecart 2025.11.25.8"
+"$install_root/bin/shards-alpha" --version | grep -F "Minecart 2025.11.25.8"
 
 if [[ -n "${GITHUB_PATH:-}" ]]; then
   echo "$install_root/bin" >> "$GITHUB_PATH"
