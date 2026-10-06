@@ -25,16 +25,16 @@ module AmberLSP::Rules::FSDD
       diagnostics = [] of Diagnostic
       lines = content.lines
 
-      in_block       = false
-      block_lines    = [] of String
-      block_start    = 0
+      in_block = false
+      block_lines = [] of String
+      block_start = 0
 
       lines.each_with_index do |line, i|
         is_comment = line.strip.starts_with?("#")
 
         if is_comment
           unless in_block
-            in_block    = true
+            in_block = true
             block_start = i
             block_lines = [] of String
           end
@@ -53,7 +53,7 @@ module AmberLSP::Rules::FSDD
     private def emit_story_diagnostics(
       block_lines : Array(String),
       block_start : Int32,
-      diagnostics : Array(Diagnostic)
+      diagnostics : Array(Diagnostic),
     ) : Nil
       block_text = block_lines.join(" ")
       return unless STORY_INITIATOR_RE.matches?(block_text)

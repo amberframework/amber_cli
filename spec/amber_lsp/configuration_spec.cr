@@ -61,9 +61,10 @@ describe AmberLSP::Configuration do
       config.exclude_patterns.should eq(["lib/", "tmp/", "db/migrations/"])
     end
 
-    it "handles invalid YAML gracefully" do
-      config = AmberLSP::Configuration.parse("{{invalid")
-      config.rule_enabled?("any-rule").should be_true
+    it "raises for invalid YAML so coverage can report the failure" do
+      expect_raises(YAML::ParseException) do
+        AmberLSP::Configuration.parse("{{invalid")
+      end
     end
   end
 

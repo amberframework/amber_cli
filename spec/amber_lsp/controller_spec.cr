@@ -53,6 +53,8 @@ describe AmberLSP::Controller do
         YAML
 
         file_path = File.join(project, "src/controllers/users_controller.cr")
+        Dir.mkdir_p(File.join(project, "spec/controllers"))
+        File.write(File.join(project, "spec/controllers/users_controller_spec.cr"), "# Controller specs.\n")
         clean_content = <<-CRYSTAL
           # Serves the user pages.
           class UsersController < Amber::Controller::Base
@@ -81,6 +83,35 @@ describe AmberLSP::Controller do
         changed_diagnostics = diagnostics_notifications[1]["params"]["diagnostics"].as_a
         changed_diagnostics.map { |diagnostic| diagnostic["code"].as_s }.should contain("amber/controller-naming")
         File.read(file_path).should eq(clean_content)
+      end
+    end
+  end
+
+  describe "#handle coverage status" do
+    it "reports declined coverage to the LSP client" do
+      with_tempdir do |project|
+        File.write(File.join(project, "shard.yml"), "name: plain_crystal_app\nversion: 0.1.0\n")
+        file_path = File.join(project, "main.cr")
+        File.write(file_path, "puts \"hello\"\n")
+        content = File.read(file_path)
+
+        messages = [
+          {"jsonrpc" => "2.0", "id" => 1, "method" => "initialize", "params" => {"rootUri" => "file://#{project}"}},
+          {"jsonrpc" => "2.0", "method" => "initialized", "params" => {} of String => String},
+          {"jsonrpc" => "2.0", "method" => "textDocument/didOpen", "params" => {"textDocument" => {"uri" => "file://#{file_path}", "text" => content}}},
+          {"jsonrpc" => "2.0", "id" => 2, "method" => "shutdown"},
+          {"jsonrpc" => "2.0", "method" => "exit"},
+        ]
+
+        responses = run_lsp_session(messages)
+        coverage_messages = responses.select do |response|
+          response["method"]?.try(&.as_s?) == "window/logMessage"
+        end
+
+        coverage_messages.size.should eq(1)
+        coverage_messages[0]["params"]["message"].as_s.should eq(
+          "amber-lsp: declined project is not an Amber V2 stack project"
+        )
       end
     end
   end

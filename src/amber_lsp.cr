@@ -37,6 +37,7 @@ require "./amber_lsp/library_rule_packs/grant_tenancy/visit_grant_schema_queries
 require "./amber_lsp/library_rule_packs/analyze_project_files_with_rule_packs"
 require "./amber_lsp/library_rule_packs/print_detected_rule_pack_contexts"
 require "./amber_lsp/analyzer"
+require "./amber_lsp/analyze_file_with_coverage"
 require "./amber_lsp/controller"
 require "./amber_lsp/server"
 require "./amber_lsp/check_file_for_diagnostics"

@@ -53,8 +53,6 @@ module AmberLSP
         )
         Rules::RuleRegistry.register(rule)
       end
-    rescue ex
-      STDERR.puts "WARNING: Failed to load custom rules: #{ex.message}"
     end
 
     def analyze(file_path : String, content : String) : Array(Rules::Diagnostic)

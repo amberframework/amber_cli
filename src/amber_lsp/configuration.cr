@@ -116,8 +116,6 @@ module AmberLSP
         exclude_patterns: exclude_patterns,
         custom_rules: custom_rules,
       )
-    rescue YAML::ParseException
-      Configuration.new
     end
 
     def rule_enabled?(id : String) : Bool

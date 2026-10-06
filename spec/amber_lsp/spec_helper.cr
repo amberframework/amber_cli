@@ -24,6 +24,7 @@ require "../../src/amber_lsp/library_rule_packs/grant_tenancy/visit_grant_schema
 require "../../src/amber_lsp/library_rule_packs/analyze_project_files_with_rule_packs"
 require "../../src/amber_lsp/library_rule_packs/print_detected_rule_pack_contexts"
 require "../../src/amber_lsp/analyzer"
+require "../../src/amber_lsp/analyze_file_with_coverage"
 require "../../src/amber_lsp/controller"
 require "../../src/amber_lsp/server"
 

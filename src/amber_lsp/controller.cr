@@ -1,4 +1,5 @@
 require "json"
+require "set"
 require "uri"
 
 module AmberLSP
@@ -169,12 +170,37 @@ module AmberLSP
     end
   end
 
+  # :nodoc:
+  struct LogMessageParams
+    include JSON::Serializable
+
+    getter type : Int32
+    getter message : String
+
+    def initialize(@type : Int32, @message : String)
+    end
+  end
+
+  # :nodoc:
+  struct LogMessageNotification
+    include JSON::Serializable
+
+    getter jsonrpc : String = "2.0"
+    getter method : String = "window/logMessage"
+    getter params : LogMessageParams
+
+    def initialize(@params : LogMessageParams)
+    end
+  end
+
   class Controller
-    @project_context : ProjectContext? = nil
+    @project_root_path : String? = nil
+    @analyzer : Analyzer? = nil
+    @last_coverage_status : String? = nil
+    @uris_with_current_diagnostics = Set(String).new
 
     def initialize
       @document_store = DocumentStore.new
-      @analyzer = Analyzer.new
     end
 
     def handle(raw_message : String, server : Server) : String?
@@ -218,16 +244,9 @@ module AmberLSP
     private def handle_initialize(id : Int64 | String | Nil, params : IncomingParams?) : String
       if params
         if root_uri = params.root_uri
-          root_path = uri_to_path(root_uri)
-          @project_context = ProjectContext.detect(root_path)
-          if ctx = @project_context
-            @analyzer.configure(ctx)
-          end
+          set_project_root_path(uri_to_path(root_uri))
         elsif root_path = params.root_path
-          @project_context = ProjectContext.detect(root_path)
-          if ctx = @project_context
-            @analyzer.configure(ctx)
-          end
+          set_project_root_path(root_path)
         end
       end
 
@@ -237,6 +256,10 @@ module AmberLSP
     private def handle_initialized : Nil
       # No-op: client acknowledged initialization
       nil
+    end
+
+    private def set_project_root_path(project_root_path : String) : Nil
+      @project_root_path = project_root_path
     end
 
     private def handle_did_open(params : IncomingParams?, server : Server) : Nil
@@ -291,7 +314,10 @@ module AmberLSP
       return unless uri
 
       @document_store.remove(uri)
-      publish_diagnostics(uri, [] of Rules::Diagnostic, server)
+      if @uris_with_current_diagnostics.includes?(uri)
+        publish_diagnostics(uri, [] of Rules::Diagnostic, server)
+        @uris_with_current_diagnostics.delete(uri)
+      end
     end
 
     private def handle_shutdown(id : Int64 | String | Nil) : String
@@ -310,14 +336,46 @@ module AmberLSP
       file_path = uri_to_path(uri)
 
       # Analyze Crystal source and the app-owned performance convention files.
-      return unless file_path.ends_with?(".cr") || file_path.ends_with?(".ecr") || file_path.ends_with?(".slang") || file_path.ends_with?(File.join("performance", "budget.json")) || file_path.ends_with?(File.join("performance", "opt_out.json"))
+      is_supported_analysis_file = file_path.ends_with?(".cr") ||
+                                   file_path.ends_with?(".ecr") ||
+                                   file_path.ends_with?(".slang") ||
+                                   file_path.ends_with?(File.join("performance", "budget.json")) ||
+                                   file_path.ends_with?(File.join("performance", "opt_out.json"))
+      return unless is_supported_analysis_file
 
-      ctx = @project_context
-      return unless ctx
-      return unless ctx.amber_project? || @analyzer.has_applicable_library_rule_pack?(file_path, content)
+      analysis = AnalyzeFileWithCoverage.new(
+        file_path,
+        content,
+        @project_root_path,
+        @analyzer,
+      )
+      coverage = analysis.perform
+      @analyzer = analysis.analysis_analyzer
 
-      diagnostics = @analyzer.analyze(file_path, content)
-      publish_diagnostics(uri, diagnostics, server)
+      if coverage.is_a?(Coverage::Covered)
+        publish_diagnostics(uri, coverage.list_of_diagnostics, server)
+        @uris_with_current_diagnostics.add(uri)
+        @last_coverage_status = nil
+      elsif coverage.is_a?(Coverage::Declined)
+        status_line = "amber-lsp: declined #{coverage.reason}"
+        publish_coverage_status(uri, status_line, 2, server)
+      elsif coverage.is_a?(Coverage::Failed)
+        status_line = "amber-lsp: failed #{coverage.error}"
+        publish_coverage_status(uri, status_line, 1, server)
+      end
+    end
+
+    private def publish_coverage_status(uri : String, status_line : String, message_type : Int32, server : Server) : Nil
+      return if @last_coverage_status == status_line
+
+      if @uris_with_current_diagnostics.includes?(uri)
+        publish_diagnostics(uri, [] of Rules::Diagnostic, server)
+        @uris_with_current_diagnostics.delete(uri)
+      end
+      params = LogMessageParams.new(message_type, status_line)
+      notification = LogMessageNotification.new(params)
+      server.write_notification(notification.to_json)
+      @last_coverage_status = status_line
     end
 
     private def publish_diagnostics(uri : String, diagnostics : Array(Rules::Diagnostic), server : Server) : Nil

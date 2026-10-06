@@ -25,7 +25,7 @@ module AmberLSP::Rules::FSDD
       # def initialize with at least one typed parameter: matches ( ... : ... )
       init_typed_re = /^\s*def\s+initialize\s*\([^)]*:[^)]*\)/
       # Public def perform or call; private def perform|call is excluded
-      perform_re         = /^\s*def\s+(perform|call)\b/
+      perform_re = /^\s*def\s+(perform|call)\b/
       private_perform_re = /^\s*private\s+def\s+(perform|call)\b/
 
       has_typed_init = lines.any? { |line| init_typed_re.matches?(line) }
@@ -41,7 +41,7 @@ module AmberLSP::Rules::FSDD
 
         class_name = match[1]
         start_char = (match.begin(1) || 0).to_i32
-        end_char   = (match.end(1) || line.size).to_i32
+        end_char = (match.end(1) || line.size).to_i32
 
         issues = [] of String
         issues << "missing initialize with typed parameters" unless has_typed_init

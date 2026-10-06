@@ -37,7 +37,7 @@ module AmberLSP::Rules::FSDD
         next if line.strip.empty?
 
         is_class = CLASS_RE.matches?(line)
-        is_def   = DEF_RE.matches?(line)
+        is_def = DEF_RE.matches?(line)
         next unless is_class || is_def
 
         # Skip singleton class (class << self)
@@ -61,13 +61,13 @@ module AmberLSP::Rules::FSDD
 
         name_match = NAME_RE.match(line)
         if nm = name_match
-          name       = nm[1]
+          name = nm[1]
           start_char = (nm.begin(1) || 0).to_i32
-          end_char   = (nm.end(1) || line.size).to_i32
+          end_char = (nm.end(1) || line.size).to_i32
         else
-          name       = is_class ? "class" : "method"
+          name = is_class ? "class" : "method"
           start_char = 0
-          end_char   = 0
+          end_char = 0
         end
 
         kind = is_class ? "Class" : "Method"
