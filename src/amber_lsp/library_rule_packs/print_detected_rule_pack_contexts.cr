@@ -3,12 +3,18 @@ require "yaml"
 
 module AmberLSP::LibraryRulePacks
   class PrintDetectedRulePackContexts
-    Log = ::Log.for(self)
+    Log   = ::Log.for(self)
+    USAGE = "Usage: amber-lsp context [--root DIR]\nPrints the library rule packs that apply to this project and the mode each one detected."
 
     def initialize(@list_of_arguments : Array(String))
     end
 
     def perform : Int32
+      if @list_of_arguments.includes?("--help") || @list_of_arguments.includes?("-h")
+        STDOUT.puts(USAGE)
+        return 0
+      end
+
       project_context = AmberLSP::ProjectContext.detect(project_root_from_arguments)
       list_of_rule_packs = LoadRulePacksForProject.new(project_context).load_rule_packs
       list_of_output_lines = [] of String

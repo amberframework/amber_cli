@@ -1,6 +1,14 @@
 require "./spec_helper"
 
 describe AmberLSP do
+  describe "USAGE" do
+    it "names every command-line mode" do
+      ["lookup QUERY", "hint", "--check FILE.cr", "context", "--version"].each do |mode|
+        AmberLSP::USAGE.should contain("amber-lsp #{mode}")
+      end
+    end
+  end
+
   describe ".version_line" do
     it "names the server version, the amber_cli release, and the build commit" do
       AmberLSP.version_line.should eq(

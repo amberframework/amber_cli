@@ -48,7 +48,10 @@ require "./amber_lsp/lookup/verify_api_query"
 require "./amber_lsp/lookup/lookup_command"
 require "./amber_lsp/lookup/hint_command"
 
-if ARGV.includes?("--version")
+if ARGV.first?.in?("--help", "-h", "help")
+  STDOUT.puts AmberLSP::USAGE
+  exit 0
+elsif ARGV.includes?("--version")
   STDOUT.puts AmberLSP.version_line
   exit 0
 elsif ARGV.first? == "lookup"

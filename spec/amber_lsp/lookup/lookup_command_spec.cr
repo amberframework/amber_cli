@@ -89,6 +89,15 @@ describe AmberLSP::Lookup::RunLookupCommand do
     end
   end
 
+  it "prints its usage and exit codes for --help" do
+    result = run_lookup_cli(["--help"], lookup_cli_cache_root)
+
+    result[0].should eq(0)
+    result[1].should contain("Usage: amber-lsp lookup QUERY")
+    result[1].should contain("Exit codes: 0 found, 3 several candidates, 4 unknown, 5 absent, 2 failed.")
+    result[2].should eq("")
+  end
+
   it "uses exit code 2 when the compiler cannot run" do
     with_lookup_cli_project do |project|
       stdout = IO::Memory.new

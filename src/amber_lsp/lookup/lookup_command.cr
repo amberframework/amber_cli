@@ -71,6 +71,21 @@ module AmberLSP::Lookup
   end
 
   class RunLookupCommand
+    USAGE = <<-TEXT
+    Usage: amber-lsp lookup QUERY [--root DIR] [--json] [--verify]
+           amber-lsp lookup --at FILE:LINE:COL [--root DIR] [--json] [--verify]
+
+    Looks up a Crystal API in the project, its shards in lib/, and the standard library.
+    QUERY is Type.method (class method), Type#method (instance method), or Type.
+
+      --root DIR   project root (default: the current directory)
+      --at LOC     look up the call at FILE:LINE:COL instead of a QUERY
+      --json       print the answer as JSON
+      --verify     compile a probe when the answer is unknown, to confirm the return type
+
+    Exit codes: 0 found, 3 several candidates, 4 unknown, 5 absent, 2 failed.
+    TEXT
+
     def initialize(
       @arguments : Array(String),
       @cache_root : String = APIIndexCache.default_root,
@@ -81,6 +96,11 @@ module AmberLSP::Lookup
     end
 
     def perform : Int32
+      if @arguments.includes?("--help") || @arguments.includes?("-h")
+        @stdout.puts(USAGE)
+        return 0
+      end
+
       options = parse_options
       query = lookup_query(options)
       card_collection = LoadAPICards.new(options.root_path).perform
