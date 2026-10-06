@@ -6,6 +6,7 @@ require "yaml"
 
 require "./build_crystal_docs_json"
 require "./api_cards"
+require "./default_compiler_command"
 require "./index_cache"
 require "./merge_api_index_layers"
 require "./normalize_crystal_docs"
@@ -23,12 +24,12 @@ module AmberLSP::Lookup
   end
 
   class DetectCrystalAlpha
-    def initialize(@compiler_command : String = "crystal-alpha")
+    def initialize(@compiler_command : String = Lookup.default_compiler_command)
     end
 
     def perform : CrystalAlphaIdentity
       compiler_path = Process.find_executable(@compiler_command)
-      raise APIIndexBuildError.new("crystal-alpha is not available on PATH") unless compiler_path
+      raise APIIndexBuildError.new("#{@compiler_command} is not available on PATH") unless compiler_path
 
       output = run_compiler_command(compiler_path, ["--version"])
       version = output.strip
@@ -72,7 +73,7 @@ module AmberLSP::Lookup
       @root_path : String,
       @cache_root : String = APIIndexCache.default_root,
       @list_of_docs_flags_by_library : Hash(String, Array(String)) = {} of String => Array(String),
-      @compiler_command : String = "crystal-alpha",
+      @compiler_command : String = Lookup.default_compiler_command,
     )
       @root_path = File.expand_path(@root_path)
     end

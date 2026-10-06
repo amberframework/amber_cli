@@ -4,6 +4,7 @@ require "path"
 require "random/secure"
 require "set"
 require "yaml"
+require "./default_compiler_command"
 
 require "./index_models"
 require "./index_cache"
@@ -35,7 +36,7 @@ module AmberLSP::Lookup
       @project_root_path : String,
       @query : String,
       @resolution : APIResolution,
-      @compiler_command : String = "crystal-alpha",
+      @compiler_command : String = Lookup.default_compiler_command,
     )
       @project_root_path = File.expand_path(@project_root_path)
     end

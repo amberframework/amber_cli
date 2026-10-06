@@ -3,6 +3,7 @@ require "json"
 require "yaml"
 
 require "./source_models"
+require "./default_compiler_command"
 require "../cards/embedded_api_cards"
 
 module AmberLSP::Lookup
@@ -384,11 +385,12 @@ module AmberLSP::Lookup
     end
 
     private def read_crystal_version : String
+      compiler_command = Lookup.default_compiler_command
       output = IO::Memory.new
       errors = IO::Memory.new
-      status = Process.run("crystal-alpha", ["--version"], output: output, error: errors)
+      status = Process.run(compiler_command, ["--version"], output: output, error: errors)
       unless status.success?
-        raise ArgumentError.new("crystal-alpha --version failed: #{errors.to_s.strip}")
+        raise ArgumentError.new("#{compiler_command} --version failed: #{errors.to_s.strip}")
       end
 
       version_match = output.to_s.match(/\bCrystal\s+(\d+\.\d+(?:\.\d+)?(?:-[0-9A-Za-z.-]+)?)/)

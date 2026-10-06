@@ -5,6 +5,7 @@ require "./build_layered_api_index"
 require "./resolve_api_query"
 require "./verify_api_query"
 require "./extract_lookup_query_at_position"
+require "./default_compiler_command"
 
 module AmberLSP::Lookup
   struct LookupCLIOptions
@@ -89,7 +90,7 @@ module AmberLSP::Lookup
     def initialize(
       @arguments : Array(String),
       @cache_root : String = APIIndexCache.default_root,
-      @compiler_command : String = "crystal-alpha",
+      @compiler_command : String = Lookup.default_compiler_command,
       @stdout : IO = STDOUT,
       @stderr : IO = STDERR,
     )
