@@ -15,10 +15,11 @@
 #   scripts/lsp_smoke.rb --server /path/to/amber-lsp
 #   scripts/lsp_smoke.rb --timeout 20 --keep   # keep the fixture project
 #
-# Exit 0 = the violating fixture produced >= 1 diagnostic AND the clean fixture
-# produced exactly 0. Exit 1 = live-fire expectations not met. Exit 2 = could
-# not run at all (no binary, handshake failure, timeout). A timeout is never
-# reported as a pass — "I could not measure it" is not "it is clean".
+# Exit 0 = the violating fixture produced >= 1 diagnostic, the clean fixture
+# produced exactly 0, and an unsaved didChange produced its expected diagnostic.
+# Exit 1 = live-fire expectations not met. Exit 2 = could not run at all (no
+# binary, handshake failure, timeout). A timeout is never reported as a pass —
+# "I could not measure it" is not "it is clean".
 #
 # Ruby 2.6 compatible on purpose: it must run under macOS system ruby with no
 # gems, so it works anywhere the binary does.
@@ -92,10 +93,9 @@ module LSPSmoke
     "Content-Length: #{json.bytesize}\r\n\r\n#{json}"
   end
 
-  # A minimal project the LSP will actually accept: ProjectContext.detect only
-  # switches diagnostics on when shard.yml has an `amber` DEPENDENCY. Without
-  # it the server stays silent and every file looks clean — the exact false
-  # green this script exists to make impossible.
+  # A minimal project the LSP will actually accept: shard.yml names an Amber
+  # stack shard. Without stack coverage the server stays silent and every file
+  # looks clean — the exact false green this script exists to make impossible.
   def build_fixture(dir)
     FileUtils.mkdir_p(File.join(dir, "src", "controllers"))
     FileUtils.mkdir_p(File.join(dir, "spec", "controllers"))
@@ -138,6 +138,10 @@ module LSPSmoke
     root_uri = "file://#{dir}"
     bad_uri  = "file://#{dir}/src/controllers/users_controller.cr"
     good_uri = "file://#{dir}/src/controllers/posts_controller.cr"
+    good_file_path = File.join(dir, "src", "controllers", "posts_controller.cr")
+    clean_content = File.read(good_file_path)
+    unsaved_content = clean_content.sub("PostsController", "PostsHandler")
+    raise "could not prepare unsaved didChange content" if unsaved_content == clean_content
 
     messages = [
       frame("jsonrpc" => "2.0", "id" => 1, "method" => "initialize",
@@ -151,13 +155,17 @@ module LSPSmoke
       frame("jsonrpc" => "2.0", "method" => "textDocument/didOpen",
             "params" => { "textDocument" => {
               "uri" => good_uri, "languageId" => "crystal", "version" => 1,
-              "text" => File.read(File.join(dir, "src", "controllers", "posts_controller.cr"))
+              "text" => clean_content
             } }),
+      frame("jsonrpc" => "2.0", "method" => "textDocument/didChange",
+            "params" => { "textDocument" => { "uri" => good_uri, "version" => 2 },
+                          "contentChanges" => [{ "text" => unsaved_content }] }),
       frame("jsonrpc" => "2.0", "id" => 2, "method" => "shutdown"),
       frame("jsonrpc" => "2.0", "method" => "exit")
     ]
 
-    published = {}
+    published = Hash.new { |hash, uri| hash[uri] = [] }
+    published_count = 0
     initialized = false
 
     io = IO.popen([server_bin], "r+", err: File::NULL)
@@ -169,7 +177,7 @@ module LSPSmoke
       reader = FrameReader.new(io)
       deadline = Time.now + timeout
 
-      while published.size < 2 || !initialized
+      while published_count < 3 || !initialized
         raw = reader.read_frame(deadline)
         break if raw.nil?
 
@@ -177,7 +185,8 @@ module LSPSmoke
         initialized = true if msg["id"] == 1 && msg.key?("result")
         next unless msg["method"] == "textDocument/publishDiagnostics"
 
-        published[msg["params"]["uri"]] = msg
+        published[msg["params"]["uri"]] << msg
+        published_count += 1
       end
     ensure
       begin
@@ -187,7 +196,14 @@ module LSPSmoke
       end
     end
 
-    { initialized: initialized, published: published, bad_uri: bad_uri, good_uri: good_uri }
+    {
+      initialized: initialized,
+      published: published,
+      bad_uri: bad_uri,
+      good_uri: good_uri,
+      good_file_path: good_file_path,
+      disk_content_unchanged: File.read(good_file_path) == clean_content
+    }
   end
 
   def describe(diagnostics)
@@ -219,7 +235,7 @@ module LSPSmoke
 
     unless File.file?(server) && File.executable?(server)
       warn "lsp_smoke: no executable server at #{server}"
-      warn "lsp_smoke: build it first — CRYSTAL=crystal-alpha shards build amber-lsp"
+      warn "lsp_smoke: build it first — CRYSTAL=crystal-alpha shards-alpha build amber-lsp --release --no-debug"
       return EXIT_CANNOT
     end
 
@@ -237,13 +253,17 @@ module LSPSmoke
         return EXIT_CANNOT
       end
 
-      bad = result[:published][result[:bad_uri]]
-      good = result[:published][result[:good_uri]]
+      bad_notifications = result[:published][result[:bad_uri]] || []
+      good_notifications = result[:published][result[:good_uri]] || []
+      bad = bad_notifications[0]
+      good = good_notifications[0]
+      changed = good_notifications[1]
 
-      if bad.nil? || good.nil?
+      if bad.nil? || good.nil? || changed.nil?
         missing = []
         missing << "violating fixture" if bad.nil?
         missing << "clean fixture" if good.nil?
+        missing << "didChange fixture" if changed.nil?
         warn "lsp_smoke: no publishDiagnostics for #{missing.join(' and ')} within #{timeout}s."
         warn "lsp_smoke: a silent server is NOT a clean server — treating as could-not-measure."
         return EXIT_CANNOT
@@ -251,6 +271,7 @@ module LSPSmoke
 
       bad_diags = bad["params"]["diagnostics"]
       good_diags = good["params"]["diagnostics"]
+      changed_diags = changed["params"]["diagnostics"]
 
       puts "--- publishDiagnostics: VIOLATING fixture (src/controllers/users_controller.cr) ---"
       puts JSON.pretty_generate(bad)
@@ -259,6 +280,10 @@ module LSPSmoke
       puts "--- publishDiagnostics: CLEAN fixture (src/controllers/posts_controller.cr) ---"
       puts JSON.pretty_generate(good)
       puts describe(good_diags)
+      puts
+      puts "--- publishDiagnostics: UNSAVED didChange violation (posts_controller.cr) ---"
+      puts JSON.pretty_generate(changed)
+      puts describe(changed_diags)
       puts
 
       ok = true
@@ -270,9 +295,17 @@ module LSPSmoke
         warn "FAIL: clean fixture produced #{good_diags.size} diagnostic(s) (expected 0)."
         ok = false
       end
+      unless changed_diags.any? { |diagnostic| diagnostic["code"] == "amber/controller-naming" }
+        warn "FAIL: unsaved didChange content did not produce amber/controller-naming."
+        ok = false
+      end
+      unless result[:disk_content_unchanged]
+        warn "FAIL: didChange altered the clean fixture on disk."
+        ok = false
+      end
 
       if ok
-        puts "LIVE-FIRE OK: violating=#{bad_diags.size} diagnostic(s), clean=0."
+        puts "LIVE-FIRE OK: violating=#{bad_diags.size} diagnostic(s), clean=0, didChange=#{changed_diags.size} unsaved diagnostic(s), disk=unchanged."
         EXIT_OK
       else
         EXIT_FAILED
