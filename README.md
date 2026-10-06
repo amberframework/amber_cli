@@ -5,7 +5,9 @@
 
 Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.7`
 creates the supported Amber `2.0.0-beta.5` ECR web application and includes
-development, generator, database, and LSP tooling.
+development, generator, database, and LSP tooling. Its agent tooling also
+works in plain Crystal apps and shards; see
+[Agent tooling](#agent-tooling-for-any-crystal-project).
 
 Amber V2 is a beta. The release-gated path is a web application on Apple
 Silicon macOS, x86_64 Linux, or ARM64 Linux. Windows x86-64 passes the complete
@@ -159,8 +161,8 @@ SQL migration to `db/migrations/`, and the resource route to `config/routes.cr`.
 | `amber assets build` | Supported | Fingerprint `app/assets/` into generated `public/assets/` output |
 | `amber assets check` | Supported | Verify manifest, bytes, integrity, MIME, and compressed output without changing it |
 | `amber new APP --type native` | Preview | Not part of the beta platform guarantee |
-| `amber setup:lsp` | Available | Register the project-local Claude Amber LSP plugin |
-| `amber setup:agent` (`amber agent`) | Available | Install Claude Code and Codex hooks and setup metadata |
+| `amber setup:lsp` | Available | Register only the project-local Claude `amber-lsp` plugin |
+| `amber setup:agent` (`amber agent`) | Available | Set up Claude Code and Codex in any Crystal project |
 | `amber doctor` | Available | Check LSP readiness, hook trust, ignore rules, and API lookup status |
 
 Run `amber --help` or `amber COMMAND --help` for command syntax. The detailed
@@ -185,66 +187,34 @@ Report CLI, template, or binary problems at
 `crystal --version`, `amber --version`, install method, command, and complete
 output.
 
-## LSP
+## Agent tooling for any Crystal project
 
-The release archive includes `amber-lsp`. From an Amber project:
-
-```bash
-amber setup:lsp
-```
-
-This writes a tracked directory marketplace under
-`.amber/claude-marketplace/` and merges its registration into
-`.claude/settings.json`, keeping the project's existing settings. Claude Code
-loads the LSP server from that plugin after the user trusts the project folder.
-
-See the [LSP setup guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.5/docs/guides/lsp-setup.md).
-
-## AI agent setup
-
-Run these commands in an Amber project to install or refresh the agent hooks
-and check their setup:
+`amber-lsp` and `amber setup:agent` help Claude Code and Codex write Crystal
+that compiles the first time. They work in Amber V2 apps, plain Crystal apps,
+and Crystal shards. From the project root:
 
 ```bash
-amber setup:agent
-amber doctor
+amber setup:agent   # install Claude Code and Codex hooks and the amber-lsp plugin
+amber doctor        # confirm the setup, binary checksum, and agent trust
 ```
 
-`amber new` runs `amber setup:agent` automatically. Run it again after
-upgrading Amber CLI to refresh `.amber/agent_setup.json`,
-`.amber/amber-agent-hook`, `.claude/settings.json`, `.codex/hooks.json`, and the
-Claude plugin files under `.amber/claude-marketplace/`. Existing hook settings
-and instructions are merged, so setup is safe to repeat. The generated
-SessionStart hook reports whether setup is ready; when setup is incomplete, it
-asks the agent to stop and have the user run `amber setup:agent` before editing
-Crystal files. The pre-tool hook blocks Crystal writes until the `amber-lsp`
-binary meets the recorded minimum version, its checksum matches, and the LSP
-covers the project's main entry file. Install the binary with its adjacent
-`.sha256` file or the release `checksums.txt` under `share/amber_cli/`.
-
-Run `amber doctor` to check hook files, Claude workspace trust and plugin
-status, Codex project hook trust, Git ignore rules that would hide hooks from
-worktrees, and API lookup index freshness. Doctor reads the agent trust records
-without changing them. Claude and Codex may need the project and its hooks
-trusted before their project-level hooks can run.
-
-Before writing code that calls Grant, Amber, asset_pipeline, or Crystal standard library methods, list each method you will call and run `amber-lsp lookup 'Type.method'` (class method) or `amber-lsp lookup 'Type#method'` (instance method) for each one, adding `--verify` when the answer is unknown. Use exactly the signatures and return types it reports, and follow any card note it prints.
-
-Use `amber-lsp` to look up an API or get a hint for compiler output:
+The agent then looks up each library method before calling it:
 
 ```bash
-amber-lsp lookup 'Dir.mkdir_p'
-crystal-alpha build src/my_app.cr 2>&1 | amber-lsp hint
+amber-lsp lookup 'Dir.mkdir_p'      # class method
+amber-lsp lookup 'String#split'     # instance method
+crystal build src/my_app.cr 2>&1 | amber-lsp hint
 ```
 
-See the [AI assistant setup guide](docs/guides/ai-assistants.md) for the short
-project setup steps.
+Lookup answers from the project's own code, every shard in `lib/`, and the
+Crystal standard library. In Amber V2 apps, edits are also checked against the
+Amber rules. `amber new` runs `setup:agent` automatically; run it again after
+upgrading. Commit the generated `.amber/`, `.claude/settings.json`, and
+`.codex/hooks.json` so clones and worktrees share the setup.
 
-The post-edit hook formats and checks only the changed Crystal file with
-`amber-lsp --check`; the stop hook asks
-`crystal-alpha watch build` for compiler feedback, or checks the target in
-`shard.yml` with `--no-codegen` when no watcher is running. Install
-`crystal-alpha` and checksum-verified `amber-lsp` for the full loop.
+The [agent tooling guide](docs/guides/ai-assistants.md) covers trust prompts,
+what each hook does, every `amber-lsp` command, API cards for library authors,
+and troubleshooting.
 
 ## Contributing
 
