@@ -2,7 +2,7 @@ require "set"
 
 require "./index_models"
 require "./parse_api_type_name"
-require "./resolve_api_return_type"
+require "./resolve_return_types_for_api_index_methods"
 
 module AmberLSP::Lookup
   struct APIResolution
@@ -211,14 +211,7 @@ module AmberLSP::Lookup
       methods : Array(APIIndexMethod),
       receiver_type : String? = nil,
     ) : APIResolution
-      resolved_methods = methods.map do |method|
-        resolved_return_type = ResolveAPIIndexReturnType.new(
-          method.declared_return_type,
-          receiver_type,
-          method.owner,
-        ).perform
-        method.with_resolved_return_type(resolved_return_type)
-      end
+      resolved_methods = ResolveReturnTypesForAPIIndexMethods.new(methods, receiver_type).perform
       APIResolution.new(query, resolution_kind, nil, resolved_methods)
     end
 

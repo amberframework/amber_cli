@@ -89,6 +89,19 @@ describe "AmberLSP::Lookup::ResolveAPIQuery#perform" do
     )
   end
 
+  it "resolves each overload from that row's declared return type" do
+    resolution = resolve_return_type_fixture_query("Grant::Query::Builder(Post)#first")
+    entries = AmberLSP::Lookup::ResolveReturnTypesForAPIIndexMethods.new(
+      resolution.list_of_methods,
+      "Grant::Query::Builder(Post)",
+    ).perform
+
+    entries.map(&.lookup_signature).should eq([
+      "Grant::Query::Builder(Model)#first() : Post | Nil (declared: Model | ::Nil)",
+      "Grant::Query::Builder(Model)#first(n : Int32) : Array(Post) (declared: Array(Model))",
+    ])
+  end
+
   it "returns a type summary for a type-only query, including a generic base-name match" do
     result = resolve_fixture_query("FixtureAPI::Team")
     generic_result = resolve_fixture_query("Grant::Query::Builder")
