@@ -6,14 +6,14 @@ cli_version="$(sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' src/amber_cli.cr | head
 test "$shard_version" = "2.0.7"
 test "$cli_version" = "$shard_version"
 
-grep -F 'github: amberframework/amber' src/amber_cli/commands/new.cr
-grep -F 'version: 2.0.0-beta.5' src/amber_cli/commands/new.cr
-grep -F 'template: ecr' src/amber_cli/commands/new.cr
-grep -F 'model: grant' src/amber_cli/commands/new.cr
-grep -F 'database: #{database}' src/amber_cli/commands/new.cr
-grep -F 'github: crimson-knight/grant' src/amber_cli/commands/new.cr
-grep -F 'github: amberframework/asset_pipeline' src/amber_cli/commands/new.cr
-grep -F 'version: 0.37.0' src/amber_cli/commands/new.cr
+grep -F 'github: amberframework/amber' src/amber_cli/commands/new_command.cr
+grep -F 'version: 2.0.0-beta.5' src/amber_cli/commands/new_command.cr
+grep -F 'template: ecr' src/amber_cli/commands/new_command.cr
+grep -F 'model: grant' src/amber_cli/commands/new_command.cr
+grep -F 'database: #{database}' src/amber_cli/commands/new_command.cr
+grep -F 'github: crimson-knight/grant' src/amber_cli/commands/new_command.cr
+grep -F 'github: amberframework/asset_pipeline' src/amber_cli/commands/new_command.cr
+grep -F 'version: 0.37.0' src/amber_cli/commands/new_command.cr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'version: 0.37.0' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/amber' src/amber_cli/generators/native_app.cr
@@ -48,8 +48,8 @@ grep -F '[string]$FrameworkRepository = "amberframework/amber"' scripts/smoke_ge
 grep -F '"    github: $FrameworkRepository"' scripts/smoke_generated_web.ps1
 test -s src/amber_cli/templates/app/config/database.cr.ecr
 test -s src/amber_cli/templates/app/config/assets.cr.ecr
-grep -F 'Your new idea' src/amber_cli/commands/new.cr
-grep -F -- '--amber-accent: #e96918' src/amber_cli/commands/new.cr
+grep -F 'Your new idea' src/amber_cli/commands/new_command.cr
+grep -F -- '--amber-accent: #e96918' src/amber_cli/commands/new_command.cr
 grep -F 'Your new idea' src/amber_cli/templates/app/src/views/home/index.ecr.ecr
 test -s src/amber_cli/templates/app/app/assets/stylesheets/app.css
 test -s src/amber_cli/templates/app/app/assets/javascript/app.js
@@ -81,7 +81,7 @@ if grep -Ein 'amberframework/amber-cli|brew install amber-cli|brew install amber
   exit 1
 fi
 
-if grep -Eir 'crimson-knight/(amber|gemma)' src/amber_cli/templates/app src/amber_cli/commands/new.cr; then
+if grep -Eir 'crimson-knight/(amber|gemma)' src/amber_cli/templates/app src/amber_cli/commands/new_command.cr; then
   echo "supported web template contains a personal Amber or Gemma dependency" >&2
   exit 1
 fi

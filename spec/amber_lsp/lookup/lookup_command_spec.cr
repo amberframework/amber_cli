@@ -162,7 +162,7 @@ end
 private def run_lookup_cli(arguments : Array(String), cache_root : String) : Tuple(Int32, String, String)
   stdout = IO::Memory.new
   stderr = IO::Memory.new
-  code = AmberLSP::Lookup::RunLookupCommand.new(arguments, cache_root, "crystal-alpha", stdout, stderr).perform
+  code = AmberLSP::Lookup::RunLookupCommand.new(arguments, cache_root, AmberLSP::Lookup.default_compiler_command, stdout, stderr).perform
   {code, stdout.to_s, stderr.to_s}
 end
 
