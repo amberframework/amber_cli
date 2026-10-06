@@ -1,0 +1,2 @@
+callback = -> { true }
+callback.call

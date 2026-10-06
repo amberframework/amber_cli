@@ -75,6 +75,25 @@ describe AmberLSP::Lookup::RunHintCommand do
     output.to_s.should contain("Usage: amber-lsp hint [--root DIR]")
     output.to_s.should contain("compiler output from stdin")
   end
+
+  it "uses the compiled Crystal language card for a plain project" do
+    with_tempdir do |project|
+      input = IO::Memory.new("undefined method 'to_sym' for String\n")
+      output = IO::Memory.new
+      code = AmberLSP::Lookup::RunHintCommand.new(
+        ["--root", project],
+        input,
+        output,
+        IO::Memory.new,
+      ).perform
+
+      code.should eq(0)
+      output.to_s.lines.should eq([
+        "hint: Crystal String has no `to_sym`; keep values as String, or call `to_s` when converting a Symbol to String. [crystal@1.21.0]",
+        "  right: name.to_s",
+      ])
+    end
+  end
 end
 
 private def with_hint_cli_project(&)

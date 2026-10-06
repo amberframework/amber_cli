@@ -100,20 +100,22 @@ jobs:
 
     - name: Create archive
       run: |
-        mkdir -p dist
+        mkdir -p dist/package/share/amber_cli/api dist/verify
+        cp amber amber-lsp dist/package/
+        cp src/amber_lsp/cards/crystal.yml dist/package/share/amber_cli/api/crystal.yml
         if command -v sha256sum >/dev/null 2>&1; then
-          sha256sum amber amber-lsp > dist/checksums.txt
+          (cd dist/package && sha256sum amber amber-lsp > checksums.txt)
         else
-          shasum -a 256 amber amber-lsp > dist/checksums.txt
+          (cd dist/package && shasum -a 256 amber amber-lsp > checksums.txt)
         fi
-        tar -czf dist/amber_cli-${{ matrix.target }}.tar.gz amber amber-lsp -C dist checksums.txt
-        mkdir -p dist/verify
+        tar -czf dist/amber_cli-${{ matrix.target }}.tar.gz -C dist/package amber amber-lsp checksums.txt share
         tar -xzf dist/amber_cli-${{ matrix.target }}.tar.gz -C dist/verify
         if command -v sha256sum >/dev/null 2>&1; then
           (cd dist/verify && sha256sum --check checksums.txt)
         else
           (cd dist/verify && shasum -a 256 -c checksums.txt)
         fi
+        tar -tzf dist/amber_cli-${{ matrix.target }}.tar.gz | grep -Fx 'share/amber_cli/api/crystal.yml'
         
     - name: Calculate checksum
       id: checksum
