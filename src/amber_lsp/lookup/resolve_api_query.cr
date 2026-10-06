@@ -63,6 +63,13 @@ module AmberLSP::Lookup
         return found_result(query, "instance_method", methods, receiver_type(type_name, matching_types)) unless methods.empty?
       end
 
+      included_methods = included_module_instance_methods(
+        matching_types,
+        receiver_type(type_name, matching_types),
+        method_name,
+      )
+      return APIResolution.new(query, "instance_method", nil, included_methods) unless included_methods.empty?
+
       unknown_result(query)
     end
 
@@ -125,6 +132,75 @@ module AmberLSP::Lookup
         end
       end
       unique_types(list_of_ancestors)
+    end
+
+    private def included_module_instance_methods(
+      types : Array(APIIndexType),
+      receiver_type_name : String,
+      method_name : String,
+    ) : Array(APIIndexMethod)
+      methods = [] of APIIndexMethod
+      api_type_instances_for(types, receiver_type_name).each do |owner_instance|
+        owner_bindings = APITypeParameterBindings.new(
+          owner_instance.type.name,
+          owner_instance.instantiated_name,
+        )
+        owner_instance.type.list_of_included_module_names.each do |module_template_name|
+          module_instance_name = owner_bindings.substitute(module_template_name)
+          types_named(module_instance_name).each do |module_type|
+            module_bindings = APITypeParameterBindings.new(
+              module_type.name,
+              module_instance_name,
+            ).perform
+            methods_named([module_type], method_name, "instance").each do |method|
+              methods << resolve_included_module_method(method, receiver_type_name, module_bindings)
+            end
+          end
+        end
+      end
+      unique_methods(methods)
+    end
+
+    private def resolve_included_module_method(
+      method : APIIndexMethod,
+      receiver_type_name : String,
+      module_bindings : Hash(String, String),
+    ) : APIIndexMethod
+      resolved_return_type = ResolveAPIIndexReturnType.new(
+        method.declared_return_type,
+        receiver_type_name,
+        method.owner,
+        module_bindings,
+      ).perform
+      method.with_resolved_return_type(resolved_return_type)
+    end
+
+    private def api_type_instances_for(
+      types : Array(APIIndexType),
+      receiver_type_name : String,
+    ) : Array(APITypeInstance)
+      pending_instances = types.map { |type| APITypeInstance.new(type, receiver_type_name) }
+      list_of_instances = [] of APITypeInstance
+      seen_instances = Set(String).new
+      next_instance_index = 0
+
+      while instance = pending_instances[next_instance_index]?
+        next_instance_index += 1
+        instance_key = "#{instance.type.name}\0#{instance.instantiated_name}"
+        next if seen_instances.includes?(instance_key)
+
+        seen_instances.add(instance_key)
+        list_of_instances << instance
+        owner_bindings = APITypeParameterBindings.new(instance.type.name, instance.instantiated_name)
+        instance.type.list_of_ancestor_names.each do |ancestor_template_name|
+          ancestor_instance_name = owner_bindings.substitute(ancestor_template_name)
+          types_named(ancestor_instance_name).each do |ancestor_type|
+            pending_instances << APITypeInstance.new(ancestor_type, ancestor_instance_name)
+          end
+        end
+      end
+
+      list_of_instances
     end
 
     private def methods_named(types : Array(APIIndexType), method_name : String, method_kind : String) : Array(APIIndexMethod)
@@ -213,6 +289,14 @@ module AmberLSP::Lookup
     ) : APIResolution
       resolved_methods = ResolveReturnTypesForAPIIndexMethods.new(methods, receiver_type).perform
       APIResolution.new(query, resolution_kind, nil, resolved_methods)
+    end
+
+    private struct APITypeInstance
+      getter type : APIIndexType
+      getter instantiated_name : String
+
+      def initialize(@type : APIIndexType, @instantiated_name : String)
+      end
     end
 
     private def unknown_result(query : String) : APIResolution

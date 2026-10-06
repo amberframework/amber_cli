@@ -1,4 +1,5 @@
 require "./index_models"
+require "./parse_api_type_name"
 
 module AmberLSP::Lookup
   class NormalizeCrystalDocs
@@ -48,7 +49,7 @@ module AmberLSP::Lookup
         docs_type.kind,
         docs_type.abstract?,
         docs_type.ancestors.map(&.full_name),
-        docs_type.included_modules.map(&.full_name),
+        included_module_names(docs_type, location_path),
         docs_type.extended_modules.map(&.full_name),
         location_path,
         location_line,
@@ -94,6 +95,28 @@ module AmberLSP::Lookup
           is_macro,
         )
       end
+    end
+
+    private def included_module_names(docs_type : CrystalDocsType, location_path : String) : Array(String)
+      module_names = docs_type.included_modules.map(&.full_name)
+      type_name = ParseAPITypeName.new(docs_type.full_name).perform
+      return module_names unless type_name.base_name == "Grant::Collection"
+      return module_names unless source_forwards_collection_to_array?(location_path)
+
+      type_parameter = type_name.list_of_type_arguments.first?
+      # Crystal docs omits macro-forwarded methods; Grant::Collection forwards its Array(M) surface.
+      module_names << "Enumerable(#{type_parameter})" if type_parameter
+      module_names.uniq
+    end
+
+    private def source_forwards_collection_to_array?(source_path : String) : Bool
+      return false if source_path.empty? || !File.file?(source_path)
+
+      File.read(source_path).lines.any? do |line|
+        line.matches?(/\A\s*forward_missing_to\s+collection\b/)
+      end
+    rescue ex : IO::Error
+      false
     end
 
     private def method_arguments(args_string : String?) : String

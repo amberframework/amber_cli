@@ -1,0 +1,17 @@
+{
+  "repository_name": "grant",
+  "program": {
+    "kind": "module",
+    "name": "Grant",
+    "full_name": "Grant",
+    "types": [
+      {
+        "kind": "class",
+        "name": "Collection",
+        "full_name": "Grant::Collection(M)",
+        "locations": [{"filename": "src/grant/collection.cr", "line_number": 1}],
+        "instance_methods": []
+      }
+    ]
+  }
+}

@@ -55,4 +55,24 @@ describe "AmberLSP::Lookup::NormalizeCrystalDocs#perform" do
     constructors.first.source_path.should eq("/project/src/models/user.cr")
     constructors.first.source_line.should eq(5)
   end
+
+  it "indexes Enumerable methods forwarded by Grant::Collection" do
+    fixture_root = File.join(Dir.current, "spec", "fixtures", "api_lookup", "forwarded_collection")
+    fixture_path = File.join(fixture_root, "crystal_docs.json")
+    layer = AmberLSP::Lookup::NormalizeCrystalDocs.new(
+      File.read(fixture_path),
+      fixture_root,
+      "library",
+      "grant",
+      "grant-key",
+      [] of String,
+    ).perform
+
+    collection = layer.list_of_types.find { |type| type.name == "Grant::Collection(M)" }
+    if collection_type = collection
+      collection_type.list_of_included_module_names.should contain("Enumerable(M)")
+    else
+      raise Exception.new("Expected the normalized Grant::Collection type")
+    end
+  end
 end

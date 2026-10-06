@@ -89,6 +89,20 @@ describe "AmberLSP::Lookup::ResolveAPIQuery#perform" do
     )
   end
 
+  it "searches generic included modules on a type and its ancestors" do
+    direct_result = resolve_included_module_fixture_query("Grant::Collection(Post)#to_a")
+    target_result = resolve_included_module_fixture_query("Grant::AssociationCollection(User, Post)#to_a")
+    ancestor_result = resolve_included_module_fixture_query("Grant::AncestorCollection(Post)#to_a")
+
+    direct_result.list_of_methods.size.should eq(1)
+    direct_result.list_of_methods.first.owner.should eq("Enumerable(T)")
+    direct_result.list_of_methods.first.resolved_return_type.should eq("Array(Post)")
+    target_result.list_of_methods.first.resolved_return_type.should eq("Array(Post)")
+    ancestor_result.list_of_methods.size.should eq(1)
+    ancestor_result.list_of_methods.first.owner.should eq("Enumerable(T)")
+    ancestor_result.list_of_methods.first.resolved_return_type.should eq("Array(Post)")
+  end
+
   it "resolves each overload from that row's declared return type" do
     resolution = resolve_return_type_fixture_query("Grant::Query::Builder(Post)#first")
     entries = AmberLSP::Lookup::ResolveReturnTypesForAPIIndexMethods.new(
@@ -159,6 +173,19 @@ private def resolve_return_type_fixture_query(query : String) : AmberLSP::Lookup
     "/project",
     "project",
     "fixture_return_types",
+    "fixture-key",
+    [] of String,
+  ).perform
+  AmberLSP::Lookup::ResolveAPIQuery.new(query, [layer]).perform
+end
+
+private def resolve_included_module_fixture_query(query : String) : AmberLSP::Lookup::APIResolution
+  fixture_path = File.join(Dir.current, "spec", "fixtures", "api_lookup", "crystal_docs_included_modules.json")
+  layer = AmberLSP::Lookup::NormalizeCrystalDocs.new(
+    File.read(fixture_path),
+    "/project",
+    "project",
+    "fixture_included_modules",
     "fixture-key",
     [] of String,
   ).perform
