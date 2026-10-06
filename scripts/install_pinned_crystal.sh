@@ -44,6 +44,11 @@ fi
 
 bin_directory="$(dirname "$compiler_path")"
 ln -sfn crystal "$bin_directory/crystal-alpha"
+# The macOS archive keeps shards only in embedded/bin; dependency postinstall scripts call it.
+if [[ ! -x "$bin_directory/shards" ]]; then
+  shards_path="$(find "$install_root" -path '*/bin/shards' -print -quit)"
+  [[ -n "$shards_path" ]] && ln -sfn "$shards_path" "$bin_directory/shards"
+fi
 version_output="$("$bin_directory/crystal-alpha" --version)"
 if [[ "$version_output" != *"Crystal ${crystal_version} "* ]]; then
   printf 'Unexpected compiler version in verified archive: %s\n' "$version_output" >&2
