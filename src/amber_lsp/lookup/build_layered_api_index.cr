@@ -1,5 +1,7 @@
 require "digest/sha256"
+require "file_utils"
 require "process"
+require "random/secure"
 require "yaml"
 
 require "./build_crystal_docs_json"
@@ -47,6 +49,22 @@ module AmberLSP::Lookup
     end
   end
 
+  # :nodoc:
+  struct CrystalDocsWorkspace
+    getter root_path : String
+    getter entrypoint : String
+    getter crystal_cache_path : String
+    getter source_path_mappings : Hash(String, String)
+
+    def initialize(
+      @root_path : String,
+      @entrypoint : String,
+      @crystal_cache_path : String,
+      @source_path_mappings : Hash(String, String),
+    )
+    end
+  end
+
   class BuildLayeredAPIIndex
     def initialize(
       @root_path : String,
@@ -83,11 +101,6 @@ module AmberLSP::Lookup
       )
 
       locked_shards = read_locked_shards
-      if !locked_shards.empty?
-        project_crystal_path = crystal_path_for_project_libraries(identity)
-      else
-        project_crystal_path = nil
-      end
 
       manifest.dependencies.keys.sort.each do |library_name|
         next if locked_shards.has_key?(library_name)
@@ -130,8 +143,6 @@ module AmberLSP::Lookup
 
         docs_flags = docs_flags_for(library_name, list_of_docs_flags)
         layer_key = CalculateLibraryLayerKey.new(library_name, locked_shard.version, docs_flags, identity.version).perform
-        environment_overrides = {"CRYSTAL_PATH" => project_crystal_path || ""}
-
         list_of_layers << build_or_load_layer(
           cache,
           identity,
@@ -142,7 +153,7 @@ module AmberLSP::Lookup
           docs_flags,
           entrypoint,
           library_root,
-          environment_overrides,
+          {} of String => String,
         )
       end
 
@@ -222,15 +233,30 @@ module AmberLSP::Lookup
       cached_layer = cache.load_layer(layer_kind, layer_name, layer_key)
       return cached_layer if cached_layer.freshness == "fresh" || cached_layer.failure_reason
 
+      workspace_root : String? = nil
       begin
+        docs_working_directory = working_directory
+        docs_entrypoint = relative_entrypoint(entrypoint, working_directory)
+        docs_environment_overrides = environment_overrides
+        source_path_mappings = {} of String => String
+
+        if layer_kind == "library"
+          workspace = create_library_docs_workspace(source_root, entrypoint)
+          workspace_root = workspace.root_path
+          docs_working_directory = workspace.root_path
+          docs_entrypoint = workspace.entrypoint
+          docs_environment_overrides = environment_overrides.merge({"CRYSTAL_CACHE_DIR" => workspace.crystal_cache_path})
+          source_path_mappings = workspace.source_path_mappings
+        end
+
         docs_json = BuildCrystalDocsJSON.new(
           identity.executable_path,
-          working_directory,
-          relative_entrypoint(entrypoint, working_directory),
+          docs_working_directory,
+          docs_entrypoint,
           layer_name,
           "0",
           docs_flags,
-          environment_overrides,
+          docs_environment_overrides,
         ).perform
         layer = NormalizeCrystalDocs.new(
           docs_json,
@@ -239,6 +265,8 @@ module AmberLSP::Lookup
           layer_name,
           layer_key,
           docs_flags,
+          docs_working_directory,
+          source_path_mappings,
         ).perform
         cache.write_layer(layer)
         CachedAPIIndexLayer.new(layer, "fresh")
@@ -250,6 +278,43 @@ module AmberLSP::Lookup
         end
 
         CachedAPIIndexLayer.new(nil, "unavailable", failure_reason, layer_kind, layer_name, layer_key)
+      ensure
+        FileUtils.rm_rf(workspace_root) if workspace_root
+      end
+    end
+
+    private def create_library_docs_workspace(source_root : String, entrypoint : String) : CrystalDocsWorkspace
+      source_path = File.expand_path(source_root)
+      library_root = File.dirname(source_path)
+      workspace_root = ""
+
+      begin
+        workspace_parent = File.join(@cache_root, "docs-workspaces")
+        Dir.mkdir_p(workspace_parent)
+        workspace_root = File.join(workspace_parent, "#{Process.pid}-#{Random::Secure.hex(12)}")
+        Dir.mkdir_p(workspace_root)
+        project_lib_path = File.join(@root_path, "lib")
+        File.symlink(source_path, File.join(workspace_root, "src"))
+        File.symlink(project_lib_path, File.join(workspace_root, "lib"))
+
+        crystal_cache_path = File.join(workspace_root, "crystal-cache")
+        Dir.mkdir_p(crystal_cache_path)
+        source_relative_entrypoint = entrypoint.sub(source_path + "/", "")
+        workspace_entrypoint = File.join("src", source_relative_entrypoint)
+        source_path_mappings = {
+          File.join(workspace_root, "src") => source_path,
+          File.join(workspace_root, "lib") => project_lib_path,
+        }
+
+        CrystalDocsWorkspace.new(
+          workspace_root,
+          workspace_entrypoint,
+          crystal_cache_path,
+          source_path_mappings,
+        )
+      rescue ex : IO::Error
+        FileUtils.rm_rf(workspace_root) unless workspace_root.empty?
+        raise APIIndexBuildError.new("Could not create docs workspace for #{library_root}: #{ex.message}")
       end
     end
 
@@ -310,18 +375,6 @@ module AmberLSP::Lookup
       source_root
     rescue ex : IO::Error
       raise APIIndexBuildError.new("Could not locate the Crystal standard library: #{ex.message}")
-    end
-
-    private def crystal_path_for_project_libraries(identity : CrystalAlphaIdentity) : String
-      output = IO::Memory.new
-      error_output = IO::Memory.new
-      status = Process.run(identity.executable_path, ["env", "CRYSTAL_PATH"], output: output, error: error_output)
-      unless status.success?
-        raise APIIndexBuildError.new("Could not read crystal-alpha CRYSTAL_PATH: #{error_output.to_s.strip}")
-      end
-      "#{output.to_s.strip}:#{File.join(@root_path, "lib")}"
-    rescue ex : IO::Error
-      raise APIIndexBuildError.new("Could not read crystal-alpha CRYSTAL_PATH: #{ex.message}")
     end
 
     private def find_llvm_config(llvm_version : String) : String?

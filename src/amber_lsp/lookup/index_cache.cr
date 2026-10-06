@@ -53,6 +53,7 @@ module AmberLSP::Lookup
     def perform : String
       key_material = [
         "library",
+        "docs-workspace-v1",
         @library_name,
         @locked_version_or_commit,
         @docs_flags.sort.join("\0"),

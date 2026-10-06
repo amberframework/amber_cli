@@ -9,6 +9,8 @@ module AmberLSP::Lookup
       @layer_name : String,
       @layer_key : String,
       @docs_flags : Array(String),
+      @docs_working_directory : String? = nil,
+      @source_path_mappings : Hash(String, String) = {} of String => String,
     )
     end
 
@@ -103,7 +105,17 @@ module AmberLSP::Lookup
     end
 
     private def source_path(filename : String) : String
-      return filename if Path[filename].absolute?
+      base_path = @docs_working_directory || @root_path
+      expanded_path = Path[filename].absolute? ? File.expand_path(filename) : File.expand_path(filename, base_path)
+
+      @source_path_mappings.each do |workspace_path, source_path|
+        next unless expanded_path == workspace_path || expanded_path.starts_with?(workspace_path + "/")
+
+        relative_path = expanded_path == workspace_path ? "" : expanded_path[(workspace_path.size + 1)..]
+        return File.expand_path(relative_path, source_path)
+      end
+
+      return expanded_path if Path[filename].absolute?
 
       File.expand_path(filename, @root_path)
     end
