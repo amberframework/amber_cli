@@ -1,6 +1,7 @@
 require "set"
 
 require "./index_models"
+require "./resolve_api_return_type"
 
 module AmberLSP::Lookup
   struct APIResolution
@@ -54,11 +55,11 @@ module AmberLSP::Lookup
       return unknown_result(query) if matching_types.empty?
 
       methods = methods_named(matching_types, method_name, "instance")
-      return found_result(query, "instance_method", methods) unless methods.empty?
+      return found_result(query, "instance_method", methods, receiver_type(type_name, matching_types)) unless methods.empty?
 
       ancestor_types_for(matching_types).each do |ancestor_type|
         methods = methods_named([ancestor_type], method_name, "instance")
-        return found_result(query, "instance_method", methods) unless methods.empty?
+        return found_result(query, "instance_method", methods, receiver_type(type_name, matching_types)) unless methods.empty?
       end
 
       unknown_result(query)
@@ -69,19 +70,19 @@ module AmberLSP::Lookup
       return unknown_result(query) if matching_types.empty?
 
       methods = methods_named(matching_types, method_name, "class")
-      return found_result(query, "class_method", methods) unless methods.empty?
+      return found_result(query, "class_method", methods, receiver_type(type_name, matching_types)) unless methods.empty?
 
       ancestor_types = ancestor_types_for(matching_types)
       ancestor_types.each do |ancestor_type|
         methods = methods_named([ancestor_type], method_name, "class")
-        return found_result(query, "class_method", methods) unless methods.empty?
+        return found_result(query, "class_method", methods, receiver_type(type_name, matching_types)) unless methods.empty?
       end
 
       methods = extended_module_methods(matching_types + ancestor_types, method_name)
-      return found_result(query, "class_method", methods) unless methods.empty?
+      return found_result(query, "class_method", methods, receiver_type(type_name, matching_types)) unless methods.empty?
 
       macro_methods = methods_named(matching_types, method_name, "macro")
-      return found_result(query, "class_method", macro_methods) unless macro_methods.empty?
+      return found_result(query, "class_method", macro_methods, receiver_type(type_name, matching_types)) unless macro_methods.empty?
 
       unknown_result(query)
     end
@@ -206,8 +207,24 @@ module AmberLSP::Lookup
       output.to_s
     end
 
-    private def found_result(query : String, resolution_kind : String, methods : Array(APIIndexMethod)) : APIResolution
-      APIResolution.new(query, resolution_kind, nil, methods)
+    private def receiver_type(type_name : String, matching_types : Array(APIIndexType)) : String
+      normalized_name = normalize_type_name(type_name)
+      return normalized_name if normalized_name.includes?('(')
+
+      matching_types.first?.try(&.name) || normalized_name
+    end
+
+    private def found_result(
+      query : String,
+      resolution_kind : String,
+      methods : Array(APIIndexMethod),
+      receiver_type : String? = nil,
+    ) : APIResolution
+      resolved_methods = methods.map do |method|
+        resolved_return_type = ResolveAPIIndexReturnType.new(method.declared_return_type, receiver_type).perform
+        method.with_resolved_return_type(resolved_return_type)
+      end
+      APIResolution.new(query, resolution_kind, nil, resolved_methods)
     end
 
     private def unknown_result(query : String) : APIResolution

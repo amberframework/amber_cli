@@ -2,6 +2,41 @@ require "../spec_helper"
 require "../../../src/amber_lsp/lookup/normalize_crystal_docs"
 
 describe AmberLSP::Controller do
+  it "shows a receiver-resolved return type in hover markdown" do
+    with_lsp_lookup_project do |project, service|
+      fixture_path = File.join(Dir.current, "spec", "fixtures", "api_lookup", "crystal_docs_return_types.json")
+      layer = AmberLSP::Lookup::NormalizeCrystalDocs.new(
+        File.read(fixture_path),
+        project,
+        "project",
+        "fixture_return_types",
+        "fixture-key",
+        [] of String,
+      ).perform
+      service.seed(project, [AmberLSP::Lookup::CachedAPIIndexLayer.new(layer, "fresh")])
+
+      source_path = File.join(project, "src", "models", "user.cr")
+      File.write(source_path, "FixtureTypes::Post.find\n")
+      uri = "file://#{source_path}"
+      controller = AmberLSP::Controller.new(service)
+      server = AmberLSP::Server.new(IO::Memory.new, IO::Memory.new)
+      initialize_lookup_controller(controller, server, project)
+      response = controller.handle(
+        lsp_lookup_request(7, "textDocument/hover", {
+          "textDocument" => {"uri" => uri},
+          "position"     => {"line" => 0, "character" => 21},
+        }),
+        server,
+      ) || raise "Expected receiver-resolved hover response"
+      hover_response = AmberLSP::Lookup::LSPHoverResponse.from_json(response)
+      hover = hover_response.result || raise "Expected hover contents"
+
+      hover.contents.markdown_value.should contain(
+        "FixtureTypes::ClassMethods.find(id : Int64) : FixtureTypes::Post | Nil (declared: self?) (class method via extend)",
+      )
+    end
+  end
+
   it "serves workspace symbols, hover, and definitions through the controller" do
     with_lsp_lookup_project do |project, service|
       controller = AmberLSP::Controller.new(service)

@@ -118,6 +118,8 @@ describe AmberLSP::Lookup::RunLookupCommand do
       json["status"].as_s.should eq("found")
       json["freshness"].as_s.should eq("fresh")
       json["entries"].as_a.first["name"].as_s.should eq("id")
+      json["entries"].as_a.first["declared_return_type"].as_s.should eq("Int64 | ::Nil")
+      json["entries"].as_a.first["resolved_return_type"].as_s.should eq("Int64 | Nil")
       json["verification_status"].as_s.should eq("present")
       json["verification_elapsed_milliseconds"].as_i.should be >= 0
       json["card_notes"].as_a.size.should eq(1)

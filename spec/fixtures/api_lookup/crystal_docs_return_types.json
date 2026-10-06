@@ -1,0 +1,45 @@
+{
+  "repository_name": "fixture_return_types",
+  "program": {
+    "kind": "module",
+    "name": "FixtureTypes",
+    "full_name": "FixtureTypes",
+    "types": [
+      {
+        "kind": "class",
+        "name": "Post",
+        "full_name": "FixtureTypes::Post",
+        "locations": [{"filename": "src/post.cr", "line_number": 1}],
+        "extended_modules": [{"kind": "module", "name": "ClassMethods", "full_name": "FixtureTypes::ClassMethods"}],
+        "instance_methods": [
+          {
+            "name": "reload",
+            "args_string": "() : self",
+            "location": {"filename": "src/post.cr", "line_number": 5},
+            "def": {"name": "reload", "return_type": "self"}
+          },
+          {
+            "name": "id",
+            "args_string": "() : Int64 | ::Nil",
+            "location": {"filename": "src/post.cr", "line_number": 9},
+            "def": {"name": "id", "return_type": "Int64 | ::Nil"}
+          }
+        ]
+      },
+      {
+        "kind": "module",
+        "name": "ClassMethods",
+        "full_name": "FixtureTypes::ClassMethods",
+        "locations": [{"filename": "src/class_methods.cr", "line_number": 1}],
+        "instance_methods": [
+          {
+            "name": "find",
+            "args_string": "(id : Int64) : self?",
+            "location": {"filename": "src/class_methods.cr", "line_number": 4},
+            "def": {"name": "find", "return_type": "self?"}
+          }
+        ]
+      }
+    ]
+  }
+}

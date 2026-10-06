@@ -42,6 +42,17 @@ describe "AmberLSP::Lookup::ResolveAPIQuery#perform" do
     result.list_of_methods.first.owner.should eq("Grant::Query::Builder(Model)")
   end
 
+  it "resolves self and nilable return types against the queried receiver" do
+    result = resolve_return_type_fixture_query("FixtureTypes::Post.find")
+
+    entry = result.list_of_methods.first
+    entry.declared_return_type.should eq("self?")
+    entry.resolved_return_type.should eq("FixtureTypes::Post | Nil")
+    entry.lookup_signature.should eq(
+      "FixtureTypes::ClassMethods.find(id : Int64) : FixtureTypes::Post | Nil (declared: self?) (class method via extend)",
+    )
+  end
+
   it "returns a type summary for a type-only query, including a generic base-name match" do
     result = resolve_fixture_query("FixtureAPI::Team")
     generic_result = resolve_fixture_query("Grant::Query::Builder")
@@ -77,6 +88,19 @@ private def resolve_fixture_query(query : String) : AmberLSP::Lookup::APIResolut
     "/project",
     "project",
     "fixture_api",
+    "fixture-key",
+    [] of String,
+  ).perform
+  AmberLSP::Lookup::ResolveAPIQuery.new(query, [layer]).perform
+end
+
+private def resolve_return_type_fixture_query(query : String) : AmberLSP::Lookup::APIResolution
+  fixture_path = File.join(Dir.current, "spec", "fixtures", "api_lookup", "crystal_docs_return_types.json")
+  layer = AmberLSP::Lookup::NormalizeCrystalDocs.new(
+    File.read(fixture_path),
+    "/project",
+    "project",
+    "fixture_return_types",
     "fixture-key",
     [] of String,
   ).perform

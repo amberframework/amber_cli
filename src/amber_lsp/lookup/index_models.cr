@@ -105,7 +105,8 @@ module AmberLSP::Lookup
     getter name : String
     getter method_kind : String
     getter args_string : String
-    getter return_type : String
+    getter declared_return_type : String
+    getter resolved_return_type : String
     getter doc_line : String? = nil
     getter source_path : String
     getter source_line : Int32
@@ -118,14 +119,20 @@ module AmberLSP::Lookup
       @name : String,
       @method_kind : String,
       @args_string : String,
-      @return_type : String,
+      @declared_return_type : String,
       @doc_line : String?,
       @source_path : String,
       @source_line : Int32,
       @source_layer : String,
       @abstract : Bool,
       @macro : Bool,
+      resolved_return_type : String? = nil,
     )
+      @resolved_return_type = resolved_return_type || @declared_return_type
+    end
+
+    def return_type : String
+      declared_return_type
     end
 
     def as_extended_class_method : APIIndexMethod
@@ -134,13 +141,31 @@ module AmberLSP::Lookup
         name,
         "extended_class",
         args_string,
-        return_type,
+        declared_return_type,
         doc_line,
         source_path,
         source_line,
         source_layer,
         abstract?,
         macro?,
+        resolved_return_type,
+      )
+    end
+
+    def with_resolved_return_type(resolved_type : String) : APIIndexMethod
+      APIIndexMethod.new(
+        owner,
+        name,
+        method_kind,
+        args_string,
+        declared_return_type,
+        doc_line,
+        source_path,
+        source_line,
+        source_layer,
+        abstract?,
+        macro?,
+        resolved_type,
       )
     end
 
@@ -158,7 +183,9 @@ module AmberLSP::Lookup
     end
 
     def lookup_signature : String
-      "#{lookup_label} : #{return_type.gsub("::Nil", "Nil")}#{extension_annotation}"
+      signature = "#{lookup_label} : #{resolved_return_type}"
+      signature += " (declared: #{declared_return_type})" if declared_return_type != resolved_return_type
+      "#{signature}#{extension_annotation}"
     end
 
     private def lookup_argument_list : String
