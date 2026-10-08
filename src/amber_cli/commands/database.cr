@@ -104,7 +104,7 @@ module AmberCLI::Commands
         when "create"
           Micrate::Cli.create_database(url)
         when "seed"
-          Amber::CLI::Helpers.run("crystal db/seeds.cr", wait: true, shell: true)
+          Amber::CLI::Helpers.run("crystal db/seeds.cr", wait: true)
           info "Seeded database"
         when "migrate"
           Micrate::Cli.run_up(url, MIGRATIONS_DIR)
