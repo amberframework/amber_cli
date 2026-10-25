@@ -462,6 +462,7 @@ Thumbs.db
 
 # Local secrets
 .env
+.encryption_key
 /config/environments/*.local.yml
 
 # Dependencies
@@ -510,6 +511,11 @@ MAIN
     private def create_config_files(path : String, name : String)
       app_config = <<-CONFIG
 require "amber"
+
+# Initializers load first: `require "../config/*"` reaches this file before
+# config/database.cr and config/routes.cr, so settings sections registered
+# here exist before anything reads Amber.settings.
+require "./initializers/*"
 require "./assets"
 CONFIG
 

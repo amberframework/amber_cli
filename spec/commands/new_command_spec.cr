@@ -247,6 +247,55 @@ describe AmberCLI::Commands::NewCommand do
       end
     end
 
+    it "keeps the encryption key out of version control" do
+      SpecHelper.within_temp_directory do |temp_dir|
+        destination = File.join(temp_dir, "ignored_key_app")
+        command = AmberCLI::Commands::NewCommand.new("new")
+
+        command.parse_and_execute([destination, "--type=web", "--no-deps", "--skip-agent-setup"])
+
+        list_of_ignored_entries = File.read(File.join(destination, ".gitignore")).lines
+        list_of_ignored_entries.should contain(".encryption_key")
+        list_of_ignored_entries.should contain(".env")
+      end
+    end
+
+    it "requires config/initializers before any config file reads Amber.settings" do
+      SpecHelper.within_temp_directory do |temp_dir|
+        destination = File.join(temp_dir, "initializer_app")
+        command = AmberCLI::Commands::NewCommand.new("new")
+
+        command.parse_and_execute([destination, "--type=web", "--no-deps", "--skip-agent-setup"])
+
+        initializers_directory = File.join(destination, "config/initializers")
+        Dir.exists?(initializers_directory).should be_true
+        Dir.children(initializers_directory).should eq([".keep"])
+        File.read(File.join(initializers_directory, ".keep")).should be_empty
+
+        application_config = File.read(File.join(destination, "config/application.cr"))
+        initializers_position = application_config.index!(%(require "./initializers/*"))
+        (application_config.index!(%(require "amber")) < initializers_position).should be_true
+        (initializers_position < application_config.index!(%(require "./assets"))).should be_true
+
+        # The entry point and spec helper load config/ with a sorted glob, so
+        # application.cr must sort ahead of every config file that reads
+        # Amber.settings.
+        list_of_config_files = Dir.children(File.join(destination, "config"))
+          .select(&.ends_with?(".cr"))
+          .sort!
+        list_of_config_files.first.should eq("application.cr")
+        list_of_settings_readers = list_of_config_files.select do |file_name|
+          list_of_code_lines = File.read(File.join(destination, "config", file_name)).lines.reject(&.lstrip.starts_with?("#"))
+          list_of_code_lines.any?(&.includes?("Amber.settings"))
+        end
+        list_of_settings_readers.should_not be_empty
+        list_of_settings_readers.should_not contain("application.cr")
+
+        File.read(File.join(destination, "src/initializer_app.cr")).should start_with(%(require "../config/*"))
+        File.read(File.join(destination, "spec/spec_helper.cr")).should contain(%(require "../config/*"))
+      end
+    end
+
     it "leaves agent setup for a later command when --skip-agent-setup is passed" do
       SpecHelper.within_temp_directory do |temp_dir|
         destination = File.join(temp_dir, "skip_agent_app")
