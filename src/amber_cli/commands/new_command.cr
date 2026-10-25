@@ -512,9 +512,8 @@ MAIN
       app_config = <<-CONFIG
 require "amber"
 
-# Initializers load first: `require "../config/*"` reaches this file before
-# config/database.cr and config/routes.cr, so settings sections registered
-# here exist before anything reads Amber.settings.
+# Initializers load here, before config/database.cr and config/routes.cr:
+# `require "../config/*"` reaches this file first.
 require "./initializers/*"
 require "./assets"
 CONFIG

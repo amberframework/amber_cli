@@ -260,7 +260,7 @@ describe AmberCLI::Commands::NewCommand do
       end
     end
 
-    it "requires config/initializers before any config file reads Amber.settings" do
+    it "requires config/initializers before the generated config files that read Amber.settings" do
       SpecHelper.within_temp_directory do |temp_dir|
         destination = File.join(temp_dir, "initializer_app")
         command = AmberCLI::Commands::NewCommand.new("new")
