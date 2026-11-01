@@ -106,7 +106,7 @@ Publishing the release triggers the automated flow:
 3. package the tagged source and publish its archive and checksum
 
 Before pushing the tap commit, download the published
-`amber_cli-source-2.0.7.tar.gz` archive, verify its sidecar checksum, and compare
+`amber_cli-source-2.0.8.tar.gz` archive, verify its sidecar checksum, and compare
 its SHA-256 with `Formula/amber_cli.rb`. The CI-generated gzip archive can
 have different bytes from a local archive of the same commit, so update the
 formula to the published asset hash when they differ. Then run the tap smoke

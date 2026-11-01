@@ -17,7 +17,7 @@ module DoctorCommandSpecHelper
     File.write(File.join(project_root, ".claude/settings.json"), claude_settings)
     File.write(File.join(project_root, ".codex/hooks.json"), codex_settings)
     setup_manifest = AmberCLI::Agent::AgentSetupManifest.new(
-      "2.0.7",
+      "2.0.8",
       "1.0.0",
       AmberCLI::Agent::AgentSetupGuidance::GENERATED_HOOK_VERSION,
     )
@@ -153,7 +153,7 @@ describe "amber doctor" do
       Dir.mkdir_p(File.join(project_root, ".amber"))
       old_guidance = "Before using a library API you are not sure of, run `amber-lsp lookup 'Type.method'`."
       File.write(File.join(project_root, ".amber/agent_setup.json"), <<-JSON)
-      {"amber_cli_version":"2.0.7","minimum_amber_lsp_version":"1.0.0","generated_hook_version":"5"}
+      {"amber_cli_version":"2.0.8","minimum_amber_lsp_version":"1.0.0","generated_hook_version":"5"}
       JSON
       File.write(File.join(project_root, ".amber/amber-agent-hook"), "#!/bin/sh\n#{old_guidance}\n")
       File.write(File.join(project_root, "CLAUDE.md"), "<!-- amber-agent-loop:start -->\n#{old_guidance}\n<!-- amber-agent-loop:end -->\n")

@@ -46,7 +46,7 @@ grep -F 'AMBER_ENV=test crystal spec' "$script_dir/../src/amber_cli/templates/ap
 ! grep -F 'crystal-alpha' "$script_dir/../src/amber_cli/templates/app/.amber.yml.ecr"
 
 grep -F "github: amberframework/amber" "$app_path/shard.yml"
-grep -F "version: 2.0.0-beta.5" "$app_path/shard.yml"
+grep -F "commit: 21deeec92b9253e9fc7252f994fc3465da0ffd4f # v2.0.0-beta.7" "$app_path/shard.yml"
 grep -F "github: crimson-knight/grant" "$app_path/shard.yml"
 grep -F "github: amberframework/asset_pipeline" "$app_path/shard.yml"
 grep -F "version: 0.37.0" "$app_path/shard.yml"
@@ -68,7 +68,7 @@ fi
 
 if [[ -n "$framework_commit" ]]; then
   sed -i.bak -E "s#    github: amberframework/amber#    github: ${framework_repository}#" "$app_path/shard.yml"
-  sed -i.bak -E "s/    version: 2\.0\.0-beta\.[0-9]+/    commit: ${framework_commit}/" "$app_path/shard.yml"
+  sed -i.bak -E "s/    commit: 21deeec92b9253e9fc7252f994fc3465da0ffd4f( # v[^ ]+)?$/    commit: ${framework_commit}/" "$app_path/shard.yml"
   rm -f "$app_path/shard.yml.bak"
 fi
 
@@ -88,6 +88,10 @@ fi
 test -s shard.lock
 grep -F "version: 0.23.4+git.commit.da1e06161148f156dbce262a4a4efcb39cba5ba4" shard.lock
 grep -F "version: 0.14.0" shard.lock
+if [[ -z "$framework_commit" ]]; then
+  grep -F "version: 2.0.0-beta.7+git.commit.21deeec92b9253e9fc7252f994fc3465da0ffd4f" shard.lock
+  grep -F "checksum: git-tree:d7af4f30415f80e633c49c2d1ff0c32ac6ac7c1a" shard.lock
+fi
 shard_count="$(grep -cE '^  [[:alnum:]_-]+:$' shard.lock)"
 checksum_count="$(grep -cE '^    checksum: git-tree:[0-9a-f]{40}$' shard.lock)"
 test "$shard_count" -gt 0

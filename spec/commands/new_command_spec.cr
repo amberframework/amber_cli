@@ -25,6 +25,39 @@ describe AmberCLI::Commands::NewCommand do
     end
   end
 
+  describe ".minecart_lock_problem" do
+    amber_lock_entry = <<-LOCK
+    amber:
+      git: https://github.com/amberframework/amber.git
+      version: #{AmberCLI::AmberRelease::VERSION}+git.commit.#{AmberCLI::AmberRelease::COMMIT}
+      checksum: git-tree:#{AmberCLI::AmberRelease::TREE}
+  LOCK
+
+    it "accepts a lock with Amber at the pinned commit and tree" do
+      lock = "version: 2.0\nshards:\n#{amber_lock_entry}\n"
+      AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).should be_nil
+    end
+
+    it "rejects a lock whose Amber tree differs from the pinned release" do
+      other_tree = "0" * 40
+      lock = "version: 2.0\nshards:\n#{amber_lock_entry.sub(AmberCLI::AmberRelease::TREE, other_tree)}\n"
+      problem = AmberCLI::Commands::NewCommand.minecart_lock_problem(lock)
+      problem.should_not be_nil
+      problem.not_nil!.should contain(AmberCLI::AmberRelease::TREE)
+    end
+
+    it "rejects a lock with Amber at another commit" do
+      other_commit = "1" * 40
+      lock = "version: 2.0\nshards:\n#{amber_lock_entry.sub(AmberCLI::AmberRelease::COMMIT, other_commit)}\n"
+      AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).should_not be_nil
+    end
+
+    it "rejects a dependency without a git-tree checksum" do
+      lock = "version: 2.0\nshards:\n#{amber_lock_entry}\n  grant:\n    git: https://github.com/crimson-knight/grant.git\n    version: 0.23.4\n"
+      AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).not_nil!.should contain("git-tree checksum")
+    end
+  end
+
   describe "#setup_command_options" do
     it "accepts --type web (default)" do
       command = AmberCLI::Commands::NewCommand.new("new")
@@ -125,7 +158,7 @@ describe AmberCLI::Commands::NewCommand do
 
         shard = File.read(File.join(destination, "shard.yml"))
         shard.should contain("github: amberframework/amber")
-        shard.should contain("version: 2.0.0-beta.5")
+        shard.should contain("commit: 21deeec92b9253e9fc7252f994fc3465da0ffd4f # v2.0.0-beta.7")
         shard.should contain("grant:")
         shard.should contain("github: crimson-knight/grant")
         shard.should contain("commit: da1e06161148f156dbce262a4a4efcb39cba5ba4")

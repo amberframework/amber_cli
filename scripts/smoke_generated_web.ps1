@@ -43,7 +43,7 @@ $amberConfig = [System.IO.File]::ReadAllText($amberConfigPath)
 if (-not $manifest.Contains("github: amberframework/amber")) {
   throw "Generated shard.yml does not include Amber"
 }
-if (-not $manifest.Contains("version: 2.0.0-beta.5")) {
+if (-not $manifest.Contains("commit: 21deeec92b9253e9fc7252f994fc3465da0ffd4f # v2.0.0-beta.7")) {
   throw "Generated shard.yml does not pin the supported Amber beta"
 }
 if (-not $manifest.Contains("github: crimson-knight/grant")) {
@@ -74,7 +74,7 @@ if (-not $amberConfig.Contains("database: sqlite") -or -not $amberConfig.Contain
 
 if ($FrameworkCommit) {
   $releasedRepository = "    github: amberframework/amber"
-  $releasedFramework = "    version: 2.0.0-beta.5"
+  $releasedFramework = "    commit: 21deeec92b9253e9fc7252f994fc3465da0ffd4f # v2.0.0-beta.7"
   if (-not $manifest.Contains($releasedRepository)) {
     throw "Generated shard.yml does not contain the expected Amber repository"
   }
