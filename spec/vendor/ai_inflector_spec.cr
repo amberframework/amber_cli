@@ -27,6 +27,18 @@ describe AmberCLI::Vendor::Inflector::AITransformer do
       stats = AmberCLI::Vendor::Inflector::AITransformer.cache_stats
       stats[:size].should eq(0)
     end
+
+    it "handles concurrent cache access safely" do
+      AmberCLI::Vendor::Inflector::AITransformer.clear_cache
+      channel = Channel(Nil).new
+      10.times do
+        spawn do
+          AmberCLI::Vendor::Inflector::AITransformer.cache_stats
+          channel.send(nil)
+        end
+      end
+      10.times { channel.receive }
+    end
   end
 
   describe "transform_with_ai" do
