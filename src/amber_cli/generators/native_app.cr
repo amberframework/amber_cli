@@ -191,6 +191,10 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Local secrets
+.env
+.encryption_key
+
 # Build artifacts
 /tmp/
 /dist/
