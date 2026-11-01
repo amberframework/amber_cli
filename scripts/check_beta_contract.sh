@@ -3,11 +3,13 @@ set -euo pipefail
 
 shard_version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
 cli_version="$(sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' src/amber_cli.cr | head -1)"
-test "$shard_version" = "2.0.7"
+test "$shard_version" = "2.0.8"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new_command.cr
-grep -F 'version: 2.0.0-beta.5' src/amber_cli/commands/new_command.cr
+grep -F 'commit: 21deeec92b9253e9fc7252f994fc3465da0ffd4f # v2.0.0-beta.7' src/amber_cli/commands/new_command.cr
+grep -F 'COMMIT  = "21deeec92b9253e9fc7252f994fc3465da0ffd4f"' src/amber_cli/amber_release.cr
+grep -F 'TREE    = "d7af4f30415f80e633c49c2d1ff0c32ac6ac7c1a"' src/amber_cli/amber_release.cr
 grep -F 'template: ecr' src/amber_cli/commands/new_command.cr
 grep -F 'model: grant' src/amber_cli/commands/new_command.cr
 grep -F 'database: #{database}' src/amber_cli/commands/new_command.cr
@@ -17,7 +19,7 @@ grep -F 'version: 0.37.0' src/amber_cli/commands/new_command.cr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'version: 0.37.0' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/amber' src/amber_cli/generators/native_app.cr
-grep -F 'version: 2.0.0-beta.5' src/amber_cli/generators/native_app.cr
+grep -F 'commit: 21deeec92b9253e9fc7252f994fc3465da0ffd4f # v2.0.0-beta.7' src/amber_cli/generators/native_app.cr
 grep -F 'version: ~> 0.37.0' src/amber_cli/generators/native_app.cr
 if grep -F 'branch:' src/amber_cli/generators/native_app.cr; then
   echo "native app template contains a mutable dependency branch" >&2
