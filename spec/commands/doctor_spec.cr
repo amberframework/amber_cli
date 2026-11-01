@@ -61,6 +61,51 @@ module DoctorCommandSpecHelper
     File.chmod(path, 0o755)
   end
 
+  # Builds a project that is ready for Claude Code, puts a `codex` executable on
+  # PATH, writes the given Codex user configuration (nil writes none), and runs
+  # the doctor against it.
+  def self.run_doctor_for_claude_ready_project(project_root : String, codex_configuration : String?) : AmberCLI::Commands::DoctorReport
+    home_directory = File.join(project_root, "home")
+    tools_directory = File.join(project_root, "tools")
+    Dir.mkdir_p(home_directory)
+    create_agent_settings(project_root)
+
+    File.write(File.join(home_directory, ".claude.json"), {
+      "projects" => {
+        File.realpath(project_root) => {"hasTrustDialogAccepted" => true},
+      },
+    }.to_json)
+    write_executable(
+      File.join(tools_directory, "claude"),
+      "#!/bin/sh\nprintf '%s\\n' '[{\"id\":\"amber-lsp@amber\",\"enabled\":true,\"projectEnabled\":true,\"errors\":[]}]'\n",
+    )
+    write_executable(File.join(tools_directory, "codex"), "#!/bin/sh\nexit 0\n")
+    write_executable(
+      File.join(project_root, ".amber/amber-agent-hook"),
+      "#!/bin/sh\n# #{AmberCLI::Agent::AgentSetupGuidance::REQUIRED_LOOKUP_INSTRUCTION}\nprintf '%s\\n' 'Amber agent setup is ready.'\nexit 0\n",
+    )
+    lsp_path = File.join(tools_directory, "amber-lsp")
+    write_executable(
+      lsp_path,
+      "#!/bin/sh\n[ \"$1 $2\" = 'lookup Dir.mkdir_p' ] || exit 2\nprintf '%s\\n' 'Amber API index is fresh'\n",
+    )
+    if configuration = codex_configuration
+      Dir.mkdir_p(File.join(home_directory, ".codex"))
+      File.write(File.join(home_directory, ".codex/config.toml"), configuration)
+    end
+
+    previous_path = ENV["PATH"]?
+    previous_lsp = ENV["AMBER_LSP_BIN"]?
+    ENV["PATH"] = "#{tools_directory}:#{previous_path}"
+    ENV["AMBER_LSP_BIN"] = lsp_path
+    begin
+      AmberCLI::Commands::CheckAmberAgentSetupCommand.new("doctor", project_root, home_directory).perform
+    ensure
+      restore_environment("PATH", previous_path)
+      restore_environment("AMBER_LSP_BIN", previous_lsp)
+    end
+  end
+
   def self.restore_environment(name : String, value : String?) : Nil
     if value
       ENV[name] = value
@@ -276,6 +321,51 @@ describe "amber doctor" do
         DoctorCommandSpecHelper.restore_environment("AMBER_LSP_BIN", previous_lsp)
       end
       codex_settings.should contain("git rev-parse --show-toplevel")
+    end
+  end
+
+  it "passes a Claude Code project when Codex is installed but has no user configuration" do
+    SpecHelper.within_temp_directory do |project_root|
+      report = DoctorCommandSpecHelper.run_doctor_for_claude_ready_project(project_root, nil)
+      output = report.to_s
+
+      report.exit_code.should eq(0)
+      output.should contain("[SKIP] Codex has not opened #{File.realpath(project_root)}, so its hook trust is not required.")
+      output.should_not contain("[FAIL]")
+    end
+  end
+
+  it "passes a Claude Code project when Codex has only opened other projects" do
+    SpecHelper.within_temp_directory do |project_root|
+      codex_configuration = %([projects."/elsewhere/another_project"]\ntrust_level = "trusted"\n)
+      report = DoctorCommandSpecHelper.run_doctor_for_claude_ready_project(project_root, codex_configuration)
+      output = report.to_s
+
+      report.exit_code.should eq(0)
+      output.should contain("[SKIP] Codex has not opened #{File.realpath(project_root)}")
+    end
+  end
+
+  it "fails when Codex has opened the project but its hooks are not trusted" do
+    SpecHelper.within_temp_directory do |project_root|
+      codex_configuration = %([projects."#{File.realpath(project_root)}"]\ntrust_level = "trusted"\n)
+      report = DoctorCommandSpecHelper.run_doctor_for_claude_ready_project(project_root, codex_configuration)
+      output = report.to_s
+
+      report.exit_code.should eq(1)
+      output.should contain("[FAIL] Codex project hooks are not all trusted")
+    end
+  end
+
+  it "fails when Codex has trusted some of the project hooks but not all of them" do
+    SpecHelper.within_temp_directory do |project_root|
+      codex_settings_path = File.expand_path(File.join(File.realpath(project_root), ".codex/hooks.json"))
+      codex_configuration = %([hooks.state."#{codex_settings_path}:session_start:0:0"]\ntrusted_hash = "sha256:#{"a" * 64}"\n)
+      report = DoctorCommandSpecHelper.run_doctor_for_claude_ready_project(project_root, codex_configuration)
+      output = report.to_s
+
+      report.exit_code.should eq(1)
+      output.should contain("[FAIL] Codex project hooks are not all trusted")
     end
   end
 end

@@ -342,14 +342,18 @@ module AmberCLI::Commands
         return [DoctorCheck.new("FAIL", "Codex project hooks are missing; run `amber setup:agent`.")]
       end
       unless File.file?(config_path)
-        return [DoctorCheck.new("FAIL", "Codex has no trust records for project hooks; review and trust them in Codex, then run `amber doctor`.")]
+        return [codex_has_not_opened_this_project_check]
       end
 
       settings = AmberCLI::Agent::HookSettings.from_json(File.read(settings_path))
       list_of_expected_trust_keys = build_codex_agent_hook_trust_keys(settings, File.expand_path(settings_path))
       return [DoctorCheck.new("FAIL", "Codex project hooks are missing; run `amber setup:agent`.")] if list_of_expected_trust_keys.empty?
 
-      map_of_trusted_hashes = parse_codex_trusted_hashes(File.read(config_path))
+      codex_configuration = File.read(config_path)
+      map_of_trusted_hashes = parse_codex_trusted_hashes(codex_configuration)
+      unless codex_has_opened_this_project?(codex_configuration, list_of_expected_trust_keys, map_of_trusted_hashes)
+        return [codex_has_not_opened_this_project_check]
+      end
       list_of_missing_trust_keys = list_of_expected_trust_keys.reject do |key|
         hash = map_of_trusted_hashes[key]?
         hash && hash.matches?(/\Asha256:[0-9a-fA-F]{64}\z/)
@@ -387,6 +391,37 @@ module AmberCLI::Commands
         end
       end
       list_of_codex_agent_hook_trust_keys
+    end
+
+    # Codex records a `[projects."<root>"]` entry when it opens a project and a
+    # `[hooks.state."<hooks.json>:<event>:<group>:<handler>"]` entry when the user
+    # reviews a project hook. With neither, this project is used only through
+    # Claude Code, so Codex hook trust is reported for information and does not
+    # fail the doctor.
+    private def codex_has_opened_this_project?(
+      codex_configuration : String,
+      list_of_expected_trust_keys : Array(String),
+      map_of_trusted_hashes : Hash(String, String),
+    ) : Bool
+      has_hook_trust_record = list_of_expected_trust_keys.any? { |key| map_of_trusted_hashes.has_key?(key) }
+      has_hook_trust_record || parse_codex_project_paths(codex_configuration).includes?(@project_root)
+    end
+
+    private def codex_has_not_opened_this_project_check : DoctorCheck
+      DoctorCheck.new(
+        "SKIP",
+        "Codex has not opened #{@project_root}, so its hook trust is not required. To use Codex here, open the project in Codex, trust .codex/hooks.json, then run `amber doctor`.",
+      )
+    end
+
+    private def parse_codex_project_paths(configuration : String) : Array(String)
+      list_of_project_paths = [] of String
+      configuration.each_line do |line|
+        if project_section = line.match(/^\[projects\."(.*)"\]\s*(?:#.*)?$/)
+          list_of_project_paths << project_section[1]
+        end
+      end
+      list_of_project_paths
     end
 
     private def parse_codex_trusted_hashes(configuration : String) : Hash(String, String)

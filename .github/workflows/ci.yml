@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-24.04, macos-latest]
         crystal: [latest]
 
     name: Test on ${{ matrix.os }} with Crystal ${{ matrix.crystal }}
@@ -80,14 +80,14 @@ jobs:
       run: crystal spec
 
     - name: Build release binaries
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-24.04'
       run: |
         crystal build src/amber_cli.cr --release --no-debug -o amber_cli
         crystal build src/amber_lsp.cr --release --no-debug -o amber_lsp
 
     - name: Upload binary artifacts (Linux)
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-24.04'
       with:
         name: amber-cli-linux
         path: |
@@ -99,7 +99,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-24.04, macos-latest]
     
     name: Platform-specific tests on ${{ matrix.os }}
     needs: test
@@ -148,7 +148,7 @@ jobs:
 
   # Job to run integration tests
   integration:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Integration tests
     needs: test
 
