@@ -128,4 +128,5 @@ Run `amber doctor`. Each failed item names its fix. The common ones:
 | The checksum is missing or does not match | Reinstall from Homebrew or a release archive; keep `amber-lsp.sha256` next to the binary or `checksums.txt` in `share/amber_cli/`. |
 | Claude workspace trust is not accepted | Open the project in Claude Code and accept the trust prompt. |
 | Codex project hooks are not all trusted | Trust `.codex/hooks.json` in Codex. |
+| `[SKIP]` Codex has not opened this project | Nothing, if you use Claude Code only. Codex hook trust is checked once Codex has opened the project or reviewed one of its hooks. |
 | Hooks or instructions are out of date | Run `amber setup:agent`. |
