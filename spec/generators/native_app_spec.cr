@@ -20,6 +20,17 @@ describe AmberCLI::Generators::NativeApp do
       end
     end
 
+    it "keeps .env and Amber's .encryption_key out of version control" do
+      SpecHelper.within_temp_directory do |temp_dir|
+        project_path = File.join(temp_dir, "secret_app")
+        AmberCLI::Generators::NativeApp.new(project_path, "secret_app").generate
+
+        list_of_ignored_entries = File.read(File.join(project_path, ".gitignore")).lines
+        list_of_ignored_entries.should contain(".encryption_key")
+        list_of_ignored_entries.should contain(".env")
+      end
+    end
+
     it "creates shard.yml with correct dependencies" do
       SpecHelper.within_temp_directory do |temp_dir|
         project_path = File.join(temp_dir, "my_app")
