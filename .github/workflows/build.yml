@@ -19,7 +19,7 @@ jobs:
           - target: darwin-arm64
             os: macos-latest
           - target: linux-x86_64
-            os: ubuntu-latest
+            os: ubuntu-24.04
     
     steps:
     - name: Checkout code
