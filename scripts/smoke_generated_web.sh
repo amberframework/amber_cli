@@ -88,14 +88,27 @@ fi
 test -s shard.lock
 grep -F "version: 0.23.4+git.commit.da1e06161148f156dbce262a4a4efcb39cba5ba4" shard.lock
 grep -F "version: 0.14.0" shard.lock
-if [[ -z "$framework_commit" ]]; then
-  grep -F "version: 2.0.0-beta.7+git.commit.21deeec92b9253e9fc7252f994fc3465da0ffd4f" shard.lock
-  grep -F "checksum: git-tree:d7af4f30415f80e633c49c2d1ff0c32ac6ac7c1a" shard.lock
+# Each shard entry carries exactly one git-tree checksum.
+awk '
+  /^  [[:alnum:]_-]+:$/ { if (entries > 0 && checksums != 1) bad = 1; entries++; checksums = 0; next }
+  /^    checksum: git-tree:[0-9a-f]{40}$/ { checksums++ }
+  END { if (entries == 0 || checksums != 1 || bad) exit 1 }
+' shard.lock
+# The Amber entry is the repository and commit this run asked for.
+amber_entry="$(awk '/^  amber:$/ { inside = 1; next } inside && /^    / { print; next } inside { exit }' shard.lock)"
+if [[ -n "$framework_commit" ]]; then
+  expected_amber_commit="$framework_commit"
+  expected_amber_git="https://github.com/${framework_repository}.git"
+else
+  expected_amber_commit="21deeec92b9253e9fc7252f994fc3465da0ffd4f"
+  expected_amber_git="https://github.com/amberframework/amber.git"
 fi
-shard_count="$(grep -cE '^  [[:alnum:]_-]+:$' shard.lock)"
-checksum_count="$(grep -cE '^    checksum: git-tree:[0-9a-f]{40}$' shard.lock)"
-test "$shard_count" -gt 0
-test "$checksum_count" -eq "$shard_count"
+grep -qxF "    git: ${expected_amber_git}" <<<"$amber_entry"
+grep -qE "^    version: [^ ]+\+git\.commit\.${expected_amber_commit}$" <<<"$amber_entry"
+if [[ -z "$framework_commit" ]]; then
+  grep -qxF "    version: 2.0.0-beta.7+git.commit.21deeec92b9253e9fc7252f994fc3465da0ffd4f" <<<"$amber_entry"
+  grep -qxF "    checksum: git-tree:d7af4f30415f80e633c49c2d1ff0c32ac6ac7c1a" <<<"$amber_entry"
+fi
 "$cli_path" assets build
 "$cli_path" assets check
 "$crystal_command" spec

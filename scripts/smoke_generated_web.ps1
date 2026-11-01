@@ -101,10 +101,34 @@ try {
     Invoke-Checked -Command "minecart" -Arguments @("install", "--frozen", "--skip-ai-docs")
   }
   $lock = [System.IO.File]::ReadAllText((Join-Path $appPath "shard.lock"))
-  $shardCount = [regex]::Matches($lock, '(?m)^  [A-Za-z0-9_-]+:$').Count
-  $checksumCount = [regex]::Matches($lock, '(?m)^    checksum: git-tree:[0-9a-f]{40}$').Count
-  if ($shardCount -eq 0 -or $checksumCount -ne $shardCount) {
+  $entries = @([regex]::Split($lock, '(?m)^(?=  [A-Za-z0-9_-]+:\r?$)') | Where-Object { $_ -match '^  [A-Za-z0-9_-]+:' })
+  if ($entries.Count -eq 0) {
     throw "Minecart lock is missing a git-tree checksum for a dependency"
+  }
+  foreach ($entry in $entries) {
+    if ([regex]::Matches($entry, '(?m)^    checksum: git-tree:[0-9a-f]{40}\r?$').Count -ne 1) {
+      throw "Minecart lock is missing a git-tree checksum for a dependency"
+    }
+  }
+  $amberEntry = $entries | Where-Object { $_ -match '^  amber:' } | Select-Object -First 1
+  if (-not $amberEntry) {
+    throw "Minecart did not lock Amber"
+  }
+  if ($FrameworkCommit) {
+    $expectedAmberCommit = $FrameworkCommit
+    $expectedAmberGit = "https://github.com/$FrameworkRepository.git"
+  } else {
+    $expectedAmberCommit = "21deeec92b9253e9fc7252f994fc3465da0ffd4f"
+    $expectedAmberGit = "https://github.com/amberframework/amber.git"
+  }
+  if ($amberEntry -notmatch "(?m)^    git: $([regex]::Escape($expectedAmberGit))\r?$") {
+    throw "Minecart locked Amber from a repository other than $expectedAmberGit"
+  }
+  if ($amberEntry -notmatch "(?m)^    version: \S+\+git\.commit\.$expectedAmberCommit\r?$") {
+    throw "Minecart locked Amber at a commit other than $expectedAmberCommit"
+  }
+  if (-not $FrameworkCommit -and $amberEntry -notmatch '(?m)^    checksum: git-tree:d7af4f30415f80e633c49c2d1ff0c32ac6ac7c1a\r?$') {
+    throw "Minecart locked Amber with a tree other than d7af4f30415f80e633c49c2d1ff0c32ac6ac7c1a"
   }
   Invoke-Checked -Command $cliPath -Arguments @("assets", "build")
   Invoke-Checked -Command $cliPath -Arguments @("assets", "check")

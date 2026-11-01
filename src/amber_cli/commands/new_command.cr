@@ -286,20 +286,18 @@ module AmberCLI::Commands
     end
 
     # Describes what is wrong with a generated application's `shard.lock`, or
-    # returns nil when every dependency carries a git-tree checksum and Amber
-    # is locked at `AmberRelease::COMMIT` with the tree `AmberRelease::TREE`.
+    # returns nil when each dependency entry carries exactly one git-tree
+    # checksum and Amber is locked at `AmberRelease::COMMIT` with the tree
+    # `AmberRelease::TREE`.
     def self.minecart_lock_problem(lock : String) : String?
-      lines = lock.lines.map(&.chomp)
-      dependency_count = lines.count { |line| /^  [^\s:]+:$/.matches?(line) }
-      checksum_count = lines.count { |line| /^    checksum: git-tree:[0-9a-f]{40}$/.matches?(line) }
-      if dependency_count == 0 || checksum_count != dependency_count
+      entries = lock_entries(lock)
+      if entries.empty? || entries.values.any? { |entry_lines| entry_lines.count { |line| /^    checksum: git-tree:[0-9a-f]{40}$/.matches?(line) } != 1 }
         return "Minecart did not lock every dependency with a git-tree checksum"
       end
 
-      amber_entry_start = lines.index("  amber:")
-      return "Minecart did not lock Amber" unless amber_entry_start
+      amber_entry = entries["amber"]?
+      return "Minecart did not lock Amber" unless amber_entry
 
-      amber_entry = lines[(amber_entry_start + 1)..].take_while(&.starts_with?("    "))
       expected_version = "    version: #{AmberRelease::VERSION}+git.commit.#{AmberRelease::COMMIT}"
       expected_checksum = "    checksum: git-tree:#{AmberRelease::TREE}"
       unless amber_entry.includes?(expected_version) && amber_entry.includes?(expected_checksum)
@@ -308,6 +306,23 @@ module AmberCLI::Commands
       end
 
       nil
+    end
+
+    # Groups a `shard.lock` into its entries: each shard name maps to the
+    # indented lines that follow it.
+    private def self.lock_entries(lock : String) : Hash(String, Array(String))
+      entries = {} of String => Array(String)
+      current_entry_lines : Array(String)? = nil
+      lock.each_line(chomp: true) do |line|
+        if entry_name = line.match(/^  ([^\s:]+):$/).try(&.[1])
+          current_entry_lines = entries[entry_name] = [] of String
+        elsif line.starts_with?("    ")
+          current_entry_lines.try(&.<<(line))
+        else
+          current_entry_lines = nil
+        end
+      end
+      entries
     end
 
     private def create_project_structure(path : String, name : String)

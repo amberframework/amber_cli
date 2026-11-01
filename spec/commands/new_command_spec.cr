@@ -43,7 +43,7 @@ describe AmberCLI::Commands::NewCommand do
       lock = "version: 2.0\nshards:\n#{amber_lock_entry.sub(AmberCLI::AmberRelease::TREE, other_tree)}\n"
       problem = AmberCLI::Commands::NewCommand.minecart_lock_problem(lock)
       problem.should_not be_nil
-      problem.not_nil!.should contain(AmberCLI::AmberRelease::TREE)
+      problem.to_s.should contain(AmberCLI::AmberRelease::TREE)
     end
 
     it "rejects a lock with Amber at another commit" do
@@ -52,9 +52,15 @@ describe AmberCLI::Commands::NewCommand do
       AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).should_not be_nil
     end
 
+    it "rejects a lock where one entry has two checksums and another has none" do
+      amber_with_two_checksums = amber_lock_entry + "\n    checksum: git-tree:#{AmberCLI::AmberRelease::TREE}"
+      lock = "version: 2.0\nshards:\n#{amber_with_two_checksums}\n  grant:\n    git: https://github.com/crimson-knight/grant.git\n    version: 0.23.4\n"
+      AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).to_s.should contain("git-tree checksum")
+    end
+
     it "rejects a dependency without a git-tree checksum" do
       lock = "version: 2.0\nshards:\n#{amber_lock_entry}\n  grant:\n    git: https://github.com/crimson-knight/grant.git\n    version: 0.23.4\n"
-      AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).not_nil!.should contain("git-tree checksum")
+      AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).to_s.should contain("git-tree checksum")
     end
   end
 
@@ -158,7 +164,7 @@ describe AmberCLI::Commands::NewCommand do
 
         shard = File.read(File.join(destination, "shard.yml"))
         shard.should contain("github: amberframework/amber")
-        shard.should contain("commit: 21deeec92b9253e9fc7252f994fc3465da0ffd4f # v2.0.0-beta.7")
+        shard.should contain("commit: #{AmberCLI::AmberRelease::COMMIT} # v#{AmberCLI::AmberRelease::VERSION}")
         shard.should contain("grant:")
         shard.should contain("github: crimson-knight/grant")
         shard.should contain("commit: da1e06161148f156dbce262a4a4efcb39cba5ba4")
