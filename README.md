@@ -15,6 +15,8 @@ generated-app smoke in CI, but has no release archive yet. See
 [Generator support](docs/GENERATOR_SUPPORT.md) before relying
 on authentication, API-resource, or native output.
 
+**New to Amber V2? Start with the [onboarding guide](docs/ONBOARDING.md).** It goes from a bare machine to an app with verified dependencies and the rules active.
+
 ## Install
 
 Prerequisites: Homebrew 7 or newer and Git. The formula installs Crystal,
