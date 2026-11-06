@@ -118,17 +118,17 @@ dependencies:
   # Amber Framework V2 (patterns only, NO HTTP server for native apps)
   amber:
     github: amberframework/amber
-    commit: 21deeec92b9253e9fc7252f994fc3465da0ffd4f # v2.0.0-beta.7
+    commit: 34a93352eaa89501d24e2b9ff90b058209a22720 # v2.0.0-beta.9
 
   # Grant ORM (ActiveRecord-style, replaces Granite in V2)
   grant:
     github: crimson-knight/grant
-    commit: da1e06161148f156dbce262a4a4efcb39cba5ba4
+    commit: 6c9da3c8180e612f76ff9ad9c76242a0402ce6d9
 
   # Asset Pipeline (cross-platform UI: AppKit, UIKit, Android Views)
   asset_pipeline:
     github: amberframework/asset_pipeline
-    version: ~> 0.37.0
+    version: ~> 0.37.1
 
   # Audio recording, playback, and transcription
   crystal-audio:

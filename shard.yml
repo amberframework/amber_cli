@@ -1,5 +1,5 @@
 name: amber_cli
-version: 2.0.8
+version: 2.0.9
 
 authors:
   - crimson-knight <crimsonknightstudios@gmail.com>
@@ -19,7 +19,7 @@ dependencies:
   # Stable static-asset compiler used by the CLI and generated applications.
   asset_pipeline:
     github: amberframework/asset_pipeline
-    version: 0.37.0
+    version: 0.37.1
 
   micrate:
     github: amberframework/micrate

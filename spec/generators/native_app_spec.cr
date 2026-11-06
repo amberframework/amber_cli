@@ -44,12 +44,12 @@ describe AmberCLI::Generators::NativeApp do
         shard_content.should contain("github: amberframework/amber")
         shard_content.should contain("commit: #{AmberCLI::AmberRelease::COMMIT} # v#{AmberCLI::AmberRelease::VERSION}")
         shard_content.should contain("github: crimson-knight/grant")
-        shard_content.should contain("commit: da1e06161148f156dbce262a4a4efcb39cba5ba4")
+        shard_content.should contain("commit: 6c9da3c8180e612f76ff9ad9c76242a0402ce6d9")
         File.exists?(File.join(project_path, "shard.lock")).should be_false
 
         # Must have the released asset_pipeline with cross-platform UI support
         shard_content.should contain("asset_pipeline:")
-        shard_content.should contain("version: ~> 0.37.0")
+        shard_content.should contain("version: ~> 0.37.1")
 
         # Release manifests must be reproducible; no mutable dependency branches.
         shard_content.should_not contain("branch:")

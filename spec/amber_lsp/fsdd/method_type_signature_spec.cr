@@ -27,6 +27,19 @@ describe AmberLSP::Rules::FSDD::MethodTypeSignatureRule do
       diagnostics[0].message.should contain("missing return type")
     end
 
+    it "stays quiet on a controller action with no parameters" do
+      rule = AmberLSP::Rules::FSDD::MethodTypeSignatureRule.new
+      diagnostics = rule.check("/app/src/controllers/home_controller.cr", "def index\nend\n")
+      diagnostics.should be_empty
+    end
+
+    it "flags an untyped parameter in a controller file" do
+      rule = AmberLSP::Rules::FSDD::MethodTypeSignatureRule.new
+      diagnostics = rule.check("/app/src/controllers/home_controller.cr", "def lookup(id)\nend\n")
+      diagnostics.size.should eq(1)
+      diagnostics[0].message.should contain("untyped parameter")
+    end
+
     it "stays quiet on a fully typed method" do
       rule = AmberLSP::Rules::FSDD::MethodTypeSignatureRule.new
       diagnostics = rule.check("src/models/user.cr", "def baz(x : Int32) : String\nend\n")

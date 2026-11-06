@@ -57,6 +57,36 @@ def analyze_tenancy_fixture_source(
   analyzer.analyze(file_path, content)
 end
 
+describe "the always mode" do
+  it "runs a pack's rules in a project with no detected tenancy" do
+    with_tempdir do |root|
+      File.write(File.join(root, "shard.yml"), "name: plain_app\nversion: 0.1.0\n")
+      pack_path = File.join(root, "lib", "amber", ".amber-lsp", "packs", "amber_v2.yml")
+      Dir.mkdir_p(File.dirname(pack_path))
+      File.write(pack_path, <<-YAML)
+        pack: amber/v2
+        library: amber
+        version: 1.0.0
+        modes:
+          always:
+            context: Build it this way.
+        rules:
+          - id: amber/narrow-nil
+            modes: [always]
+            severity: warning
+            applies_to: ["src/**"]
+            message: Narrow it.
+            check:
+              kind: line_regex
+              pattern: 'not_nil!'
+        YAML
+
+      diagnostics = analyze_tenancy_fixture_source(root, "src/models/note.cr", "x.not_nil!\n")
+      diagnostics.map(&.code).should contain("amber/narrow-nil")
+    end
+  end
+end
+
 def has_tenancy_diagnostic_code?(diagnostics : Array(AmberLSP::Rules::Diagnostic), code : String) : Bool
   diagnostics.any? { |diagnostic| diagnostic.code == code }
 end

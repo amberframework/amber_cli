@@ -3,8 +3,8 @@
 [![GitHub release](https://img.shields.io/github/release/amberframework/amber_cli.svg)](https://github.com/amberframework/amber_cli/releases)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://amberframework.github.io/amber_cli/)
 
-Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.8`
-creates the supported Amber `2.0.0-beta.7` ECR web application and includes
+Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.9`
+creates the supported Amber `2.0.0-beta.9` ECR web application and includes
 development, generator, database, and LSP tooling. Its agent tooling also
 works in plain Crystal apps and shards; see
 [Agent tooling](#agent-tooling-for-any-crystal-project).
@@ -39,13 +39,13 @@ are selected by the installed core catalog, not pinned by this tap.
 
 ### Direct release archive
 
-The CLI `2.0.8` release has `darwin-arm64`, `linux-x86_64`, and
+The CLI `2.0.9` release has `darwin-arm64`, `linux-x86_64`, and
 `linux-arm64` binary archives. A direct archive does not install Minecart or
 the native dependencies, so Homebrew is the beginner path. Windows x86-64 has
 no release archive.
 
 ```bash
-version=v2.0.8
+version=v2.0.9
 platform=darwin-arm64
 asset="amber_cli-${platform}.tar.gz"
 
@@ -56,6 +56,7 @@ tar -xzf "${asset}"
 install -m 0755 amber amber-lsp /usr/local/bin/
 install -d -m 0755 /usr/local/share/amber_cli/api
 install -m 0644 share/amber_cli/api/crystal.yml /usr/local/share/amber_cli/api/
+install -m 0644 checksums.txt /usr/local/share/amber_cli/
 amber --version
 ```
 
@@ -67,7 +68,7 @@ with `sudo` if `/usr/local` is not writable.
 ```bash
 amber new my_app --type web -y
 cd my_app
-minecart install --frozen --skip-ai-docs
+minecart install --frozen
 amber assets check
 crystal spec
 crystal build src/my_app.cr -o bin/my_app
@@ -76,19 +77,18 @@ amber watch
 
 `amber new` runs Minecart by default. It writes exact root dependency pins,
 a `shard.lock` with Git tree checksums, `.minecart-policy.yml`, and `.claude/`
-assistant files, then installs the Claude Code and Codex hooks and prints an
+assistant files, plus each dependency's guides, then installs the Claude Code and Codex hooks and prints an
 `amber doctor` summary. Commit the generated files. With `--no-deps`, the first
 Minecart install and assistant setup are deliberately deferred; run `minecart
-install --strict-pinning --skip-ai-docs` and `minecart assistant init
---skip-ai-docs` before frozen installs. Pass `--skip-agent-setup` to generate
+install --strict-pinning` and `minecart assistant init` before frozen installs. Pass `--skip-agent-setup` to generate
 the app without the agent files.
 `amber watch` recompiles assets before the application whenever an ECR template
 or a file under `app/assets/` changes. Open <http://127.0.0.1:3000>.
 
 The web template is deliberately small:
 
-- Amber from `amberframework/amber`, pinned to `2.0.0-beta.7` by commit
-  (`21deeec92b9253e9fc7252f994fc3465da0ffd4f`), with its git tree (`d7af4f30415f80e633c49c2d1ff0c32ac6ac7c1a`) checked in `shard.lock`
+- Amber from `amberframework/amber`, pinned to `2.0.0-beta.9` by commit
+  (`34a93352eaa89501d24e2b9ff90b058209a22720`), with its git tree (`f1e7332d02229aec58ab5303ade7fc6c9d14fcee`) checked in `shard.lock`
 - ECR views (Slang and Kilt are not supported in Amber V2)
 - typed development, test, and production YAML
 - branded homepage, controller spec, and fingerprinted CSS, JavaScript, SVG,
@@ -220,7 +220,7 @@ and troubleshooting.
 ## Contributing
 
 ```bash
-minecart install --frozen --skip-ai-docs
+minecart install --frozen
 crystal-alpha tool format --check src spec
 crystal-alpha spec
 ```

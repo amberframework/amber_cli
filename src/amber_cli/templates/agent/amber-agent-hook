@@ -657,6 +657,10 @@ PLAIN_CRYSTAL_LOOKUP_GUIDANCE
         cat <<'AMBER_LOOKUP_GUIDANCE'
 __AMBER_LOOKUP_INSTRUCTION__
 AMBER_LOOKUP_GUIDANCE
+        session_lsp=$(resolve_lsp 2>/dev/null || :)
+        if [ -n "$session_lsp" ]; then
+          "$session_lsp" context 2>/dev/null || :
+        fi
       fi
     else
       print_setup_refusal

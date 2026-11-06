@@ -54,6 +54,10 @@ module AmberLSP::Rules::FSDD
           has_return_type = !!(/\s*:\s*\w/.match(after_paren))
           has_untyped_params = untyped_params?(params_str)
         else
+          # A controller action has no parameters and Amber's router consumes its
+          # result, so render, redirect and halt! can share one action.
+          next if file_path.includes?("/controllers/") || file_path.starts_with?("controllers/")
+
           # No parens: "def foo : ReturnType" or "def foo" (no params)
           has_return_type = !!(/\s*:\s*\w/.match(rest))
         end

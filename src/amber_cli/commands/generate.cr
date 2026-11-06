@@ -305,7 +305,7 @@ RETRIES
 #   #{class_name}.new.enqueue(delay: 5.minutes)
 #   #{class_name}.new.enqueue(queue: "critical")
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.7/docs/guides/background-jobs.md
+# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.9/docs/guides/background-jobs.md
 class #{class_name} < Amber::Jobs::Job
   include JSON::Serializable
 
@@ -403,7 +403,7 @@ METHOD
 #     .subject("Welcome!")
 #     .deliver
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.7/docs/guides/mailer.md
+# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.9/docs/guides/mailer.md
 class #{class_name}Mailer < Amber::Mailer::Base
   def initialize(@user_name : String, @user_email : String)
   end
@@ -609,7 +609,7 @@ SPEC
 # Clients subscribe to this channel through a ClientSocket.
 # Messages sent to this channel are handled by `handle_message`.
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.7/docs/guides/websockets.md
+# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.9/docs/guides/websockets.md
 class #{class_name}Channel < Amber::WebSockets::Channel
   # Called when a client subscribes to this channel.
   # Use this for authorization or sending initial state.
@@ -640,7 +640,7 @@ CHANNEL
 # Configure in config/routes.cr:
 #   websocket "/#{file_name}", #{class_name}Socket
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.7/docs/guides/websockets.md
+# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.9/docs/guides/websockets.md
 struct #{class_name}Socket < Amber::WebSockets::ClientSocket
   channel "#{file_name}:*", #{class_name}Channel
 
@@ -903,12 +903,12 @@ SCHEMA
       template_ext = detect_template_extension
 
       schema_field_assignments = fields.map do |field_name, _|
-        suffix = field_required?(field_name) ? ".not_nil!" : ""
+        suffix = field_required?(field_name) ? " || raise(ArgumentError.new(\"#{field_name} is required\"))" : ""
         "    #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
       end.join("\n")
 
       update_field_assignments = fields.map do |field_name, _|
-        suffix = field_required?(field_name) ? ".not_nil!" : ""
+        suffix = field_required?(field_name) ? " || raise(ArgumentError.new(\"#{field_name} is required\"))" : ""
         "      #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
       end.join("\n")
 
@@ -1217,12 +1217,12 @@ SQL
 
     private def api_controller_template
       schema_field_assignments = fields.map do |field_name, _|
-        suffix = field_required?(field_name) ? ".not_nil!" : ""
+        suffix = field_required?(field_name) ? " || raise(ArgumentError.new(\"#{field_name} is required\"))" : ""
         "      #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
       end.join("\n")
 
       update_field_assignments = fields.map do |field_name, _|
-        suffix = field_required?(field_name) ? ".not_nil!" : ""
+        suffix = field_required?(field_name) ? " || raise(ArgumentError.new(\"#{field_name} is required\"))" : ""
         "        #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
       end.join("\n")
 
