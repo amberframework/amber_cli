@@ -7,8 +7,8 @@ shards:
 
   asset_pipeline:
     git: https://github.com/amberframework/asset_pipeline.git
-    version: 0.37.0
-    checksum: git-tree:47c884c51cc63e62d04056bc160ab6c329e1946c
+    version: 0.37.1
+    checksum: git-tree:630a4c72a746f391ed5956b16f4839328f01be93
 
   backtracer:
     git: https://github.com/sija/backtracer.cr.git

@@ -20,6 +20,8 @@ module AmberLSP::LibraryRulePacks
 
     def mode_detected?(mode_name : String) : Bool
       case mode_name
+      when "always"
+        true
       when "row"
         @uses_row_tenancy
       when "schema"

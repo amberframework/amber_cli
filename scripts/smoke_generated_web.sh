@@ -46,11 +46,11 @@ grep -F 'AMBER_ENV=test crystal spec' "$script_dir/../src/amber_cli/templates/ap
 ! grep -F 'crystal-alpha' "$script_dir/../src/amber_cli/templates/app/.amber.yml.ecr"
 
 grep -F "github: amberframework/amber" "$app_path/shard.yml"
-grep -F "commit: 21deeec92b9253e9fc7252f994fc3465da0ffd4f # v2.0.0-beta.7" "$app_path/shard.yml"
+grep -F "commit: 34a93352eaa89501d24e2b9ff90b058209a22720 # v2.0.0-beta.9" "$app_path/shard.yml"
 grep -F "github: crimson-knight/grant" "$app_path/shard.yml"
 grep -F "github: amberframework/asset_pipeline" "$app_path/shard.yml"
-grep -F "version: 0.37.0" "$app_path/shard.yml"
-grep -F "commit: da1e06161148f156dbce262a4a4efcb39cba5ba4" "$app_path/shard.yml"
+grep -F "version: 0.37.1" "$app_path/shard.yml"
+grep -F "commit: 6c9da3c8180e612f76ff9ad9c76242a0402ce6d9" "$app_path/shard.yml"
 grep -F "github: crystal-lang/crystal-sqlite3" "$app_path/shard.yml"
 grep -F "template: ecr" "$app_path/.amber.yml"
 grep -F "database: sqlite" "$app_path/.amber.yml"
@@ -68,7 +68,7 @@ fi
 
 if [[ -n "$framework_commit" ]]; then
   sed -i.bak -E "s#    github: amberframework/amber#    github: ${framework_repository}#" "$app_path/shard.yml"
-  sed -i.bak -E "s/    commit: 21deeec92b9253e9fc7252f994fc3465da0ffd4f( # v[^ ]+)?$/    commit: ${framework_commit}/" "$app_path/shard.yml"
+  sed -i.bak -E "s/    commit: 34a93352eaa89501d24e2b9ff90b058209a22720( # v[^ ]+)?$/    commit: ${framework_commit}/" "$app_path/shard.yml"
   rm -f "$app_path/shard.yml.bak"
 fi
 
@@ -81,12 +81,12 @@ grep -F 'require_exact: true' .minecart-policy.yml
 ! grep -F "shard.lock" .gitignore
 "$cli_path" assets check
 if [[ -n "$framework_commit" ]]; then
-  minecart install --strict-pinning --skip-ai-docs
+  minecart install --strict-pinning
 else
-  minecart install --frozen --skip-ai-docs
+  minecart install --frozen
 fi
 test -s shard.lock
-grep -F "version: 0.23.4+git.commit.da1e06161148f156dbce262a4a4efcb39cba5ba4" shard.lock
+grep -F "version: 0.23.4+git.commit.6c9da3c8180e612f76ff9ad9c76242a0402ce6d9" shard.lock
 grep -F "version: 0.14.0" shard.lock
 # Each shard entry carries exactly one git-tree checksum.
 awk '
@@ -100,14 +100,14 @@ if [[ -n "$framework_commit" ]]; then
   expected_amber_commit="$framework_commit"
   expected_amber_git="https://github.com/${framework_repository}.git"
 else
-  expected_amber_commit="21deeec92b9253e9fc7252f994fc3465da0ffd4f"
+  expected_amber_commit="34a93352eaa89501d24e2b9ff90b058209a22720"
   expected_amber_git="https://github.com/amberframework/amber.git"
 fi
 grep -qxF "    git: ${expected_amber_git}" <<<"$amber_entry"
 grep -qE "^    version: [^ ]+\+git\.commit\.${expected_amber_commit}$" <<<"$amber_entry"
 if [[ -z "$framework_commit" ]]; then
-  grep -qxF "    version: 2.0.0-beta.7+git.commit.21deeec92b9253e9fc7252f994fc3465da0ffd4f" <<<"$amber_entry"
-  grep -qxF "    checksum: git-tree:d7af4f30415f80e633c49c2d1ff0c32ac6ac7c1a" <<<"$amber_entry"
+  grep -qxF "    version: 2.0.0-beta.9+git.commit.34a93352eaa89501d24e2b9ff90b058209a22720" <<<"$amber_entry"
+  grep -qxF "    checksum: git-tree:f1e7332d02229aec58ab5303ade7fc6c9d14fcee" <<<"$amber_entry"
 fi
 "$cli_path" assets build
 "$cli_path" assets check

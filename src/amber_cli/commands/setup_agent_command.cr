@@ -158,6 +158,8 @@ module AmberCLI::Commands
       `crystal-alpha tool format`. The installed hooks hold the watcher during
       edits, check each changed file, and build when the agent stops.
       #{required_lookup_instruction}
+      Each dependency's guides are in `.claude/skills/<shard>--*`; read them before
+      using that library for the first time.
       The SessionStart hook reports whether setup is complete. When setup is
       missing, stop and tell the user to run `amber setup:agent` before editing
       Crystal files.

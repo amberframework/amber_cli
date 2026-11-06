@@ -43,7 +43,7 @@ $amberConfig = [System.IO.File]::ReadAllText($amberConfigPath)
 if (-not $manifest.Contains("github: amberframework/amber")) {
   throw "Generated shard.yml does not include Amber"
 }
-if (-not $manifest.Contains("commit: 21deeec92b9253e9fc7252f994fc3465da0ffd4f # v2.0.0-beta.7")) {
+if (-not $manifest.Contains("commit: 34a93352eaa89501d24e2b9ff90b058209a22720 # v2.0.0-beta.9")) {
   throw "Generated shard.yml does not pin the supported Amber beta"
 }
 if (-not $manifest.Contains("github: crimson-knight/grant")) {
@@ -55,7 +55,7 @@ if (-not $manifest.Contains("github: crystal-lang/crystal-sqlite3")) {
 if (-not $manifest.Contains("github: amberframework/asset_pipeline")) {
   throw "Generated shard.yml does not include Asset Pipeline"
 }
-if (-not $manifest.Contains("version: 0.37.0")) {
+if (-not $manifest.Contains("version: 0.37.1")) {
   throw "Generated shard.yml does not pin the supported Asset Pipeline release"
 }
 if (-not (Test-Path (Join-Path $appPath ".claude/CLAUDE.md"))) {
@@ -74,7 +74,7 @@ if (-not $amberConfig.Contains("database: sqlite") -or -not $amberConfig.Contain
 
 if ($FrameworkCommit) {
   $releasedRepository = "    github: amberframework/amber"
-  $releasedFramework = "    commit: 21deeec92b9253e9fc7252f994fc3465da0ffd4f # v2.0.0-beta.7"
+  $releasedFramework = "    commit: 34a93352eaa89501d24e2b9ff90b058209a22720 # v2.0.0-beta.9"
   if (-not $manifest.Contains($releasedRepository)) {
     throw "Generated shard.yml does not contain the expected Amber repository"
   }
@@ -96,9 +96,9 @@ Push-Location $appPath
 try {
   Invoke-Checked -Command $cliPath -Arguments @("assets", "check")
   if ($FrameworkCommit) {
-    Invoke-Checked -Command "minecart" -Arguments @("install", "--strict-pinning", "--skip-ai-docs")
+    Invoke-Checked -Command "minecart" -Arguments @("install", "--strict-pinning")
   } else {
-    Invoke-Checked -Command "minecart" -Arguments @("install", "--frozen", "--skip-ai-docs")
+    Invoke-Checked -Command "minecart" -Arguments @("install", "--frozen")
   }
   $lock = [System.IO.File]::ReadAllText((Join-Path $appPath "shard.lock"))
   $entries = @([regex]::Split($lock, '(?m)^(?=  [A-Za-z0-9_-]+:\r?$)') | Where-Object { $_ -match '^  [A-Za-z0-9_-]+:' })
@@ -118,7 +118,7 @@ try {
     $expectedAmberCommit = $FrameworkCommit
     $expectedAmberGit = "https://github.com/$FrameworkRepository.git"
   } else {
-    $expectedAmberCommit = "21deeec92b9253e9fc7252f994fc3465da0ffd4f"
+    $expectedAmberCommit = "34a93352eaa89501d24e2b9ff90b058209a22720"
     $expectedAmberGit = "https://github.com/amberframework/amber.git"
   }
   if ($amberEntry -notmatch "(?m)^    git: $([regex]::Escape($expectedAmberGit))\r?$") {
@@ -127,8 +127,8 @@ try {
   if ($amberEntry -notmatch "(?m)^    version: \S+\+git\.commit\.$expectedAmberCommit\r?$") {
     throw "Minecart locked Amber at a commit other than $expectedAmberCommit"
   }
-  if (-not $FrameworkCommit -and $amberEntry -notmatch '(?m)^    checksum: git-tree:d7af4f30415f80e633c49c2d1ff0c32ac6ac7c1a\r?$') {
-    throw "Minecart locked Amber with a tree other than d7af4f30415f80e633c49c2d1ff0c32ac6ac7c1a"
+  if (-not $FrameworkCommit -and $amberEntry -notmatch '(?m)^    checksum: git-tree:f1e7332d02229aec58ab5303ade7fc6c9d14fcee\r?$') {
+    throw "Minecart locked Amber with a tree other than f1e7332d02229aec58ab5303ade7fc6c9d14fcee"
   }
   Invoke-Checked -Command $cliPath -Arguments @("assets", "build")
   Invoke-Checked -Command $cliPath -Arguments @("assets", "check")

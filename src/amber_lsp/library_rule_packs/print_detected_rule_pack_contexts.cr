@@ -26,7 +26,11 @@ module AmberLSP::LibraryRulePacks
         append_detected_mode_contexts(list_of_output_lines, rule_pack, project_state)
       end
 
-      STDOUT.puts(list_of_output_lines.join('\n')) unless list_of_output_lines.empty?
+      if list_of_output_lines.empty?
+        STDOUT.puts("No library rule packs apply to this project.")
+      else
+        STDOUT.puts(list_of_output_lines.join('\n'))
+      end
       0
     rescue ex : ArgumentError | YAML::ParseException | IO::Error
       Log.error(exception: ex) do

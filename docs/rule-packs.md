@@ -47,6 +47,9 @@ model. Schema mode comes from a `Grant::SchemaTenant.with(...)` call or a
 `schema_tenant_excluded` macro in a class body. Comments and string contents do
 not count as declarations, and an unparsable source file is skipped.
 
+A mode named `always` is active in every project that has the shard installed.
+Amber's own pack uses it. An older `amber-lsp` that does not know a mode skips it.
+
 Rules run only when one of their listed modes is detected. Context blocks are
 printed by `amber-lsp context [--root DIR]` for detected modes. There is no
 shard.yml feature declaration or evidence-without-declaration warning. The

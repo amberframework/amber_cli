@@ -4,8 +4,8 @@ module AmberCLI
   # its checksum. A release of Amber CLI that moves to a new Amber release
   # changes all three together.
   module AmberRelease
-    VERSION = "2.0.0-beta.7"
-    COMMIT  = "21deeec92b9253e9fc7252f994fc3465da0ffd4f"
-    TREE    = "d7af4f30415f80e633c49c2d1ff0c32ac6ac7c1a"
+    VERSION = "2.0.0-beta.9"
+    COMMIT  = "34a93352eaa89501d24e2b9ff90b058209a22720"
+    TREE    = "f1e7332d02229aec58ab5303ade7fc6c9d14fcee"
   end
 end
