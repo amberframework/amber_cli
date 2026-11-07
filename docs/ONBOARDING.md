@@ -157,7 +157,7 @@ dependencies:
 
 ```bash
 minecart update mica
-grep -A2 '^  mica:' shard.lock   # checksum: sha256-v2:f13de354cf66409ccbc1e975f08b23e230620fc895309d057b7ba79aa07ce4e4
+grep -A3 '^  mica:' shard.lock   # checksum: sha256-v2:f13de354cf66409ccbc1e975f08b23e230620fc895309d057b7ba79aa07ce4e4
 ```
 
 Then register it in `config/initializers/request_body_parsers.cr`:
@@ -196,7 +196,7 @@ dependencies:
 
 ```bash
 minecart update amber
-grep -A2 '^  amber:' shard.lock   # checksum: sha256-v2:8d354db3b41625db0362162a34836fe10a8b11a378f3837d34cc6bbcece1cb94
+grep -A3 '^  amber:' shard.lock   # checksum: sha256-v2:8d354db3b41625db0362162a34836fe10a8b11a378f3837d34cc6bbcece1cb94
 amber setup:agent
 ```
 
