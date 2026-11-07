@@ -215,6 +215,11 @@ describe AmberCLI::Commands::NewCommand do
         config = YAML.parse(File.read(File.join(destination, "config/environments/development.yml")))
         config["server"]["port"].as_i.should eq(3000)
         config["database"]["url"].as_s.should contain("sqlite3:")
+        %w[development test].each do |environment_name|
+          session_config = YAML.parse(File.read(File.join(destination, "config/environments/#{environment_name}.yml")))["session"]
+          session_config["store"].as_s.should eq("signed_cookie")
+          session_config["expires"].as_i.should eq(1_209_600)
+        end
 
         routes = File.read(File.join(destination, "config/routes.cr"))
         routes.should contain("pipeline :static")

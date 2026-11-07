@@ -682,9 +682,15 @@ database:
 
 session:
   key: "#{name}.session"
+  # signed_cookie keeps the session in the visitor's cookie: tamper-proof, readable by
+  # the visitor, about 4 KB, and nothing is held on the server. encrypted_cookie also
+  # hides it from the visitor. adapter keeps sessions on the server through `adapter`.
   store: "signed_cookie"
+  # Used only when store is adapter: memory (at most 10,000 sessions per process) or redis.
   adapter: "memory"
-  expires: 0
+  # Seconds a session lasts after its last change (two weeks). 0 makes cookie sessions
+  # end when the browser closes and lets server-side sessions live until evicted.
+  expires: 1209600
 
 logging:
   severity: "#{severity}"
