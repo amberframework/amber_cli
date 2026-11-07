@@ -44,13 +44,15 @@ describe AmberCLI::Commands::NewCommand do
       AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).should be_nil
     end
 
-    it "rejects a lock whose Amber checksum differs from the pinned release" do
-      other_checksum = "sha256-v2:#{"0" * 64}"
-      lock = "version: 2.0\nshards:\n#{amber_lock_entry.sub(AmberCLI::AmberRelease::CHECKSUM, other_checksum)}\n"
-      problem = AmberCLI::Commands::NewCommand.minecart_lock_problem(lock)
-      problem.should_not be_nil
-      problem.to_s.should contain(AmberCLI::AmberRelease::CHECKSUM)
-    end
+    {% unless flag?(:win32) %}
+      it "rejects a lock whose Amber checksum differs from the pinned release" do
+        other_checksum = "sha256-v2:#{"0" * 64}"
+        lock = "version: 2.0\nshards:\n#{amber_lock_entry.sub(AmberCLI::AmberRelease::CHECKSUM, other_checksum)}\n"
+        problem = AmberCLI::Commands::NewCommand.minecart_lock_problem(lock)
+        problem.should_not be_nil
+        problem.to_s.should contain(AmberCLI::AmberRelease::CHECKSUM)
+      end
+    {% end %}
 
     it "rejects a lock with Amber at another commit" do
       other_commit = "1" * 40

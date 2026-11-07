@@ -2,7 +2,9 @@
 
 This guide is the consumer smoke test for Amber CLI `2.0.10` and Amber
 `2.0.0-beta.10`. It is expected to pass on Apple Silicon macOS, x86_64 Linux,
-and ARM64 Linux. Windows x86-64 runs the complete generated-app smoke in CI.
+and ARM64 Linux. Windows x86-64 runs the complete generated-app smoke in CI. A
+`shard.lock` written on Windows records different `sha256-v2:` values from one
+written on macOS or Linux, so a team on both needs a lock for each.
 
 ## 1. Verify the toolchain
 

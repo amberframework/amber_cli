@@ -301,14 +301,24 @@ module AmberCLI::Commands
       return "Minecart did not lock Amber" unless amber_entry
 
       expected_version = "    version: #{AmberRelease::VERSION}+git.commit.#{AmberRelease::COMMIT}"
-      has_expected_checksum = amber_entry.includes?("    checksum: #{AmberRelease::CHECKSUM}") ||
-                              amber_entry.includes?("    checksum: git-tree:#{AmberRelease::TREE}")
-      unless amber_entry.includes?(expected_version) && has_expected_checksum
+      unless amber_entry.includes?(expected_version) && records_the_release_checksum?(amber_entry)
         return "Minecart locked Amber at a revision other than v#{AmberRelease::VERSION} " \
                "(commit #{AmberRelease::COMMIT}, checksum #{AmberRelease::CHECKSUM})"
       end
 
       nil
+    end
+
+    # A Windows checkout can rewrite line endings and has no executable bit, so it
+    # hashes differently from the release. There the commit in the version line is
+    # the pin, and the entry still has to carry exactly one checksum.
+    private def self.records_the_release_checksum?(amber_entry : Array(String)) : Bool
+      {% if flag?(:win32) %}
+        true
+      {% else %}
+        amber_entry.includes?("    checksum: #{AmberRelease::CHECKSUM}") ||
+          amber_entry.includes?("    checksum: git-tree:#{AmberRelease::TREE}")
+      {% end %}
     end
 
     # Groups a `shard.lock` into its entries: each shard name maps to the

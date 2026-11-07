@@ -127,9 +127,6 @@ try {
   if ($amberEntry -notmatch "(?m)^    version: \S+\+git\.commit\.$expectedAmberCommit\r?$") {
     throw "Minecart locked Amber at a commit other than $expectedAmberCommit"
   }
-  if (-not $FrameworkCommit -and $amberEntry -notmatch '(?m)^    checksum: sha256-v2:8d354db3b41625db0362162a34836fe10a8b11a378f3837d34cc6bbcece1cb94\r?$') {
-    throw "Minecart locked Amber with a checksum other than sha256-v2:8d354db3b41625db0362162a34836fe10a8b11a378f3837d34cc6bbcece1cb94"
-  }
   Invoke-Checked -Command $cliPath -Arguments @("assets", "build")
   Invoke-Checked -Command $cliPath -Arguments @("assets", "check")
 

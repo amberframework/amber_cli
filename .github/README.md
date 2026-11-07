@@ -63,7 +63,7 @@ This directory contains the GitHub Actions workflows for the Amber CLI project, 
 ## Caching Strategy
 
 The workflows use GitHub Actions caching to speed up builds:
-- **Shard cache**: Caches `~/.cache/shards` and `./lib` based on `shard.lock` hash
+- **Shard cache**: Caches `~/.cache/shards` based on `shard.lock` hash. `./lib` stays out of it, because Minecart stops on a shard in `lib/` that `shard.lock` does not pin, and an older cache can restore one
 - **OS-specific**: Separate caches for each operating system
 
 ## Usage

@@ -11,7 +11,8 @@ works in plain Crystal apps and shards; see
 
 Amber V2 is a beta. The release-gated path is a web application on Apple
 Silicon macOS, x86_64 Linux, or ARM64 Linux. Windows x86-64 passes the complete
-generated-app smoke in CI, but has no release archive yet. See
+generated-app smoke in CI, but has no release archive yet, and its `shard.lock`
+checksums differ from those written on macOS and Linux. See
 [Generator support](docs/GENERATOR_SUPPORT.md) before relying
 on authentication, API-resource, or native output.
 
