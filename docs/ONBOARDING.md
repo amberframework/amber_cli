@@ -29,7 +29,7 @@ brew tap amberframework/amber_cli
 brew trust --tap amberframework/amber_cli
 tap_path="$(brew --repo amberframework/amber_cli)"
 git -C "$tap_path" fetch origin
-git -C "$tap_path" checkout --detach 018819c6340135c7b0d5b9767640e8ff9ad23491
+git -C "$tap_path" checkout --detach 8493998f2c5524fdfa72246ed0ce08a3883d6c90
 HOMEBREW_NO_AUTO_UPDATE=1 brew install amberframework/amber_cli/amber_cli
 ```
 
@@ -90,6 +90,9 @@ Teammates who clone the app run one command to install exactly what the lock say
 ```bash
 minecart install --frozen
 ```
+
+Everyone on the team uses Minecart 2025.11.25.9 or newer, the version these steps
+install. An older Minecart reports a checksum mismatch on this `shard.lock`.
 
 ## 4. See the rules work
 
@@ -154,6 +157,7 @@ dependencies:
 
 ```bash
 minecart update mica
+grep -A2 '^  mica:' shard.lock   # checksum: sha256-v2:f13de354cf66409ccbc1e975f08b23e230620fc895309d057b7ba79aa07ce4e4
 ```
 
 Then register it in `config/initializers/request_body_parsers.cr`:
@@ -195,6 +199,10 @@ minecart update amber
 grep -A2 '^  amber:' shard.lock   # checksum: sha256-v2:8d354db3b41625db0362162a34836fe10a8b11a378f3837d34cc6bbcece1cb94
 amber setup:agent
 ```
+
+`git-tree:` entries already in your lock keep verifying, and Minecart prints a
+notice about them. Minecart 2025.11.25.9 stops on a folder in `lib/` that
+`shard.lock` does not pin, and names it. Remove that folder and install again.
 
 Then read the
 [beta.10 release notes](https://github.com/amberframework/amber/blob/v2.0.0-beta.10/RELEASE_NOTES_V2_BETA10.md).
