@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
-$minecartCommit = "0ffac921c68774ea143aeaa83c369d0a38c2d3e5"
-$minecartTree = "f0e8a69bffe22afd0cee9b24994bde629384f093"
+$minecartCommit = "ec4ec4d4434a92308f99de11ac907fc8a21e7a79"
+$minecartTree = "dd6c0d1cfdfe1c1b78dd515a3117088b31416f2e"
 $installRoot = Join-Path $env:RUNNER_TEMP "amber-pinned-minecart"
 
 New-Item -ItemType Directory -Force $installRoot | Out-Null
@@ -24,7 +24,7 @@ try {
   & crystal build src/shards.cr -o bin/minecart.exe
   if ($LASTEXITCODE -ne 0) { throw "Minecart build failed" }
   $minecartVersion = (& ./bin/minecart.exe --version).Trim()
-  if ($minecartVersion -notlike "Minecart 2025.11.25.8*") {
+  if ($minecartVersion -notlike "Minecart 2025.11.25.9*") {
     throw "Built Minecart version did not match the pin: $minecartVersion"
   }
 } finally {

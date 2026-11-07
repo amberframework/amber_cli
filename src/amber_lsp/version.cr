@@ -5,8 +5,9 @@ module AmberLSP
   # Minecart is preferred; shards-alpha or shards answers when Minecart is not installed.
   RELEASE = {{ `minecart version "#{__DIR__}/../.." 2>/dev/null || shards-alpha version "#{__DIR__}/../.." 2>/dev/null || shards version "#{__DIR__}/../.."`.chomp.stringify.downcase }}
 
-  # The git commit the binary was built from, or "unknown" outside a git checkout.
-  BUILD_COMMIT = {{ `git -C "#{__DIR__}" rev-parse --short=12 HEAD 2>/dev/null || echo unknown`.chomp.stringify }}
+  # The commit the binary was built from. A build from a source archive has no git
+  # checkout, so the Homebrew formula names its release commit in AMBER_CLI_BUILD_COMMIT.
+  BUILD_COMMIT = {{ env("AMBER_CLI_BUILD_COMMIT") || `git -C "#{__DIR__}" rev-parse --short=12 HEAD 2>/dev/null || echo unknown`.chomp.stringify }}
 
   # Printed by `amber-lsp --help`. With no arguments amber-lsp runs the language server on stdin.
   USAGE = <<-TEXT

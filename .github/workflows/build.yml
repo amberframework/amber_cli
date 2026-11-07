@@ -46,7 +46,6 @@ jobs:
       with:
         path: |
           ~/.cache/shards
-          ./lib
         key: ${{ runner.os }}-shards-${{ hashFiles('shard.lock') }}
         restore-keys: |
           ${{ runner.os }}-shards-

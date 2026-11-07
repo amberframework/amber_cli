@@ -3,15 +3,16 @@
 [![GitHub release](https://img.shields.io/github/release/amberframework/amber_cli.svg)](https://github.com/amberframework/amber_cli/releases)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://amberframework.github.io/amber_cli/)
 
-Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.9`
-creates the supported Amber `2.0.0-beta.9` ECR web application and includes
+Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.10`
+creates the supported Amber `2.0.0-beta.10` ECR web application and includes
 development, generator, database, and LSP tooling. Its agent tooling also
 works in plain Crystal apps and shards; see
 [Agent tooling](#agent-tooling-for-any-crystal-project).
 
 Amber V2 is a beta. The release-gated path is a web application on Apple
 Silicon macOS, x86_64 Linux, or ARM64 Linux. Windows x86-64 passes the complete
-generated-app smoke in CI, but has no release archive yet. See
+generated-app smoke in CI, but has no release archive yet, and its `shard.lock`
+checksums differ from those written on macOS and Linux. See
 [Generator support](docs/GENERATOR_SUPPORT.md) before relying
 on authentication, API-resource, or native output.
 
@@ -41,13 +42,13 @@ are selected by the installed core catalog, not pinned by this tap.
 
 ### Direct release archive
 
-The CLI `2.0.9` release has `darwin-arm64`, `linux-x86_64`, and
+The CLI `2.0.10` release has `darwin-arm64`, `linux-x86_64`, and
 `linux-arm64` binary archives. A direct archive does not install Minecart or
 the native dependencies, so Homebrew is the beginner path. Windows x86-64 has
 no release archive.
 
 ```bash
-version=v2.0.9
+version=v2.0.10
 platform=darwin-arm64
 asset="amber_cli-${platform}.tar.gz"
 
@@ -78,7 +79,7 @@ amber watch
 ```
 
 `amber new` runs Minecart by default. It writes exact root dependency pins,
-a `shard.lock` with Git tree checksums, `.minecart-policy.yml`, and `.claude/`
+a `shard.lock` with SHA-256 checksums, `.minecart-policy.yml`, and `.claude/`
 assistant files, plus each dependency's guides, then installs the Claude Code and Codex hooks and prints an
 `amber doctor` summary. Commit the generated files. With `--no-deps`, the first
 Minecart install and assistant setup are deliberately deferred; run `minecart
@@ -89,8 +90,8 @@ or a file under `app/assets/` changes. Open <http://127.0.0.1:3000>.
 
 The web template is deliberately small:
 
-- Amber from `amberframework/amber`, pinned to `2.0.0-beta.9` by commit
-  (`34a93352eaa89501d24e2b9ff90b058209a22720`), with its git tree (`f1e7332d02229aec58ab5303ade7fc6c9d14fcee`) checked in `shard.lock`
+- Amber from `amberframework/amber`, pinned to `2.0.0-beta.10` by commit
+  (`d291e0930dd22b14a2d10f75a9de063abb0e64e4`), with its checksum (`sha256-v2:8d354db3b41625db0362162a34836fe10a8b11a378f3837d34cc6bbcece1cb94`) checked in `shard.lock`
 - ECR views (Slang and Kilt are not supported in Amber V2)
 - typed development, test, and production YAML
 - branded homepage, controller spec, and fingerprinted CSS, JavaScript, SVG,

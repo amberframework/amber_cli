@@ -43,7 +43,7 @@ $amberConfig = [System.IO.File]::ReadAllText($amberConfigPath)
 if (-not $manifest.Contains("github: amberframework/amber")) {
   throw "Generated shard.yml does not include Amber"
 }
-if (-not $manifest.Contains("commit: 34a93352eaa89501d24e2b9ff90b058209a22720 # v2.0.0-beta.9")) {
+if (-not $manifest.Contains("commit: d291e0930dd22b14a2d10f75a9de063abb0e64e4 # v2.0.0-beta.10")) {
   throw "Generated shard.yml does not pin the supported Amber beta"
 }
 if (-not $manifest.Contains("github: crimson-knight/grant")) {
@@ -74,7 +74,7 @@ if (-not $amberConfig.Contains("database: sqlite") -or -not $amberConfig.Contain
 
 if ($FrameworkCommit) {
   $releasedRepository = "    github: amberframework/amber"
-  $releasedFramework = "    commit: 34a93352eaa89501d24e2b9ff90b058209a22720 # v2.0.0-beta.9"
+  $releasedFramework = "    commit: d291e0930dd22b14a2d10f75a9de063abb0e64e4 # v2.0.0-beta.10"
   if (-not $manifest.Contains($releasedRepository)) {
     throw "Generated shard.yml does not contain the expected Amber repository"
   }
@@ -103,11 +103,11 @@ try {
   $lock = [System.IO.File]::ReadAllText((Join-Path $appPath "shard.lock"))
   $entries = @([regex]::Split($lock, '(?m)^(?=  [A-Za-z0-9_-]+:\r?$)') | Where-Object { $_ -match '^  [A-Za-z0-9_-]+:' })
   if ($entries.Count -eq 0) {
-    throw "Minecart lock is missing a git-tree checksum for a dependency"
+    throw "Minecart lock is missing a checksum for a dependency"
   }
   foreach ($entry in $entries) {
-    if ([regex]::Matches($entry, '(?m)^    checksum: git-tree:[0-9a-f]{40}\r?$').Count -ne 1) {
-      throw "Minecart lock is missing a git-tree checksum for a dependency"
+    if ([regex]::Matches($entry, '(?m)^    checksum: sha256-v2:[0-9a-f]{64}\r?$').Count -ne 1) {
+      throw "Minecart lock is missing a checksum for a dependency"
     }
   }
   $amberEntry = $entries | Where-Object { $_ -match '^  amber:' } | Select-Object -First 1
@@ -118,7 +118,7 @@ try {
     $expectedAmberCommit = $FrameworkCommit
     $expectedAmberGit = "https://github.com/$FrameworkRepository.git"
   } else {
-    $expectedAmberCommit = "34a93352eaa89501d24e2b9ff90b058209a22720"
+    $expectedAmberCommit = "d291e0930dd22b14a2d10f75a9de063abb0e64e4"
     $expectedAmberGit = "https://github.com/amberframework/amber.git"
   }
   if ($amberEntry -notmatch "(?m)^    git: $([regex]::Escape($expectedAmberGit))\r?$") {
@@ -126,9 +126,6 @@ try {
   }
   if ($amberEntry -notmatch "(?m)^    version: \S+\+git\.commit\.$expectedAmberCommit\r?$") {
     throw "Minecart locked Amber at a commit other than $expectedAmberCommit"
-  }
-  if (-not $FrameworkCommit -and $amberEntry -notmatch '(?m)^    checksum: git-tree:f1e7332d02229aec58ab5303ade7fc6c9d14fcee\r?$') {
-    throw "Minecart locked Amber with a tree other than f1e7332d02229aec58ab5303ade7fc6c9d14fcee"
   }
   Invoke-Checked -Command $cliPath -Arguments @("assets", "build")
   Invoke-Checked -Command $cliPath -Arguments @("assets", "check")

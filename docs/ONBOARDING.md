@@ -2,8 +2,8 @@
 
 This page takes a new developer from a bare machine to an Amber V2 app with
 checksum-verified dependencies, and with editor and coding-assistant rules active
-from the first edit. It covers Amber CLI 2.0.9, Amber 2.0.0-beta.9 and Minecart
-2025.11.25.8 on Apple Silicon macOS and Linux.
+from the first edit. It covers Amber CLI 2.0.10, Amber 2.0.0-beta.10 and Minecart
+2025.11.25.9 on Apple Silicon macOS and Linux.
 
 ## What you get
 
@@ -13,7 +13,7 @@ from the first edit. It covers Amber CLI 2.0.9, Amber 2.0.0-beta.9 and Minecart
 | `amber-lsp` | Language server, API lookup and rule checks | Same formula |
 | `minecart` | Installs dependencies and verifies their checksums | Dependency of the formula |
 | Crystal | Compiles the app | Dependency of the formula |
-| Amber 2.0.0-beta.9 | The framework, its rule pack and its guides | Pinned in each new app |
+| Amber 2.0.0-beta.10 | The framework, its rule pack and its guides | Pinned in each new app |
 | Grant | The ORM and its tenancy rule pack | Pinned in each new app |
 | Asset Pipeline | CSS, JavaScript and image assets | Pinned in each new app |
 | micrate | Database migrations | Built into `amber database` |
@@ -36,9 +36,9 @@ HOMEBREW_NO_AUTO_UPDATE=1 brew install amberframework/amber_cli/amber_cli
 Check the result:
 
 ```bash
-amber --version      # Amber CLI v2.0.9
-amber-lsp --version  # amber-lsp 1.0.0 (amber_cli 2.0.9, ...)
-minecart --version   # Minecart 2025.11.25.8
+amber --version      # Amber CLI v2.0.10
+amber-lsp --version  # amber-lsp 1.0.0 (amber_cli 2.0.10, ...)
+minecart --version   # Minecart 2025.11.25.9
 ```
 
 ### Optional: the Crystal Alpha compiler
@@ -61,7 +61,7 @@ cd my_app
 amber doctor
 ```
 
-`amber new` pins every dependency, writes a `shard.lock` with Git tree checksums,
+`amber new` pins every dependency, writes a `shard.lock` with SHA-256 checksums,
 installs the assistant guides and connects Claude Code and Codex to `amber-lsp`.
 SQLite is the default database, and it needs no server. Pass `-d pg` or `-d mysql`
 to choose another.
@@ -187,14 +187,14 @@ Pin the release's commit and move the lock:
 dependencies:
   amber:
     github: amberframework/amber
-    commit: 34a93352eaa89501d24e2b9ff90b058209a22720 # v2.0.0-beta.9
+    commit: d291e0930dd22b14a2d10f75a9de063abb0e64e4 # v2.0.0-beta.10
 ```
 
 ```bash
 minecart update amber
-grep -A2 '^  amber:' shard.lock   # checksum: git-tree:f1e7332d02229aec58ab5303ade7fc6c9d14fcee
+grep -A2 '^  amber:' shard.lock   # checksum: sha256-v2:8d354db3b41625db0362162a34836fe10a8b11a378f3837d34cc6bbcece1cb94
 amber setup:agent
 ```
 
 Then read the
-[beta.9 release notes](https://github.com/amberframework/amber/blob/v2.0.0-beta.9/RELEASE_NOTES_V2_BETA9.md).
+[beta.10 release notes](https://github.com/amberframework/amber/blob/v2.0.0-beta.10/RELEASE_NOTES_V2_BETA10.md).
