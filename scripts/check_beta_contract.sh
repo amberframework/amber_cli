@@ -3,13 +3,14 @@ set -euo pipefail
 
 shard_version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
 cli_version="$(sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' src/amber_cli.cr | head -1)"
-test "$shard_version" = "2.0.9"
+test "$shard_version" = "2.0.10"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new_command.cr
-grep -F 'commit: 34a93352eaa89501d24e2b9ff90b058209a22720 # v2.0.0-beta.9' src/amber_cli/commands/new_command.cr
-grep -F 'COMMIT  = "34a93352eaa89501d24e2b9ff90b058209a22720"' src/amber_cli/amber_release.cr
-grep -F 'TREE    = "f1e7332d02229aec58ab5303ade7fc6c9d14fcee"' src/amber_cli/amber_release.cr
+grep -F 'commit: d291e0930dd22b14a2d10f75a9de063abb0e64e4 # v2.0.0-beta.10' src/amber_cli/commands/new_command.cr
+grep -F 'COMMIT  = "d291e0930dd22b14a2d10f75a9de063abb0e64e4"' src/amber_cli/amber_release.cr
+grep -F 'TREE    = "fb4574c6b15b60357abd43ed0a1a8d7a0957e574"' src/amber_cli/amber_release.cr
+grep -F 'CHECKSUM = "sha256-v2:8d354db3b41625db0362162a34836fe10a8b11a378f3837d34cc6bbcece1cb94"' src/amber_cli/amber_release.cr
 grep -F 'template: ecr' src/amber_cli/commands/new_command.cr
 grep -F 'model: grant' src/amber_cli/commands/new_command.cr
 grep -F 'database: #{database}' src/amber_cli/commands/new_command.cr
@@ -19,7 +20,7 @@ grep -F 'version: 0.37.1' src/amber_cli/commands/new_command.cr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'version: 0.37.1' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/amber' src/amber_cli/generators/native_app.cr
-grep -F 'commit: 34a93352eaa89501d24e2b9ff90b058209a22720 # v2.0.0-beta.9' src/amber_cli/generators/native_app.cr
+grep -F 'commit: d291e0930dd22b14a2d10f75a9de063abb0e64e4 # v2.0.0-beta.10' src/amber_cli/generators/native_app.cr
 grep -F 'version: ~> 0.37.1' src/amber_cli/generators/native_app.cr
 if grep -F 'branch:' src/amber_cli/generators/native_app.cr; then
   echo "native app template contains a mutable dependency branch" >&2

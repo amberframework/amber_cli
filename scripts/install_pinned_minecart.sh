@@ -2,10 +2,10 @@
 set -euo pipefail
 
 # The source commit is verified by its Git tree before it can run the web smoke.
-minecart_commit=0ffac921c68774ea143aeaa83c369d0a38c2d3e5
-minecart_tree=f0e8a69bffe22afd0cee9b24994bde629384f093
+minecart_commit=ec4ec4d4434a92308f99de11ac907fc8a21e7a79
+minecart_tree=dd6c0d1cfdfe1c1b78dd515a3117088b31416f2e
 minecart_repository="${MINECART_SOURCE_REPOSITORY:-https://github.com/crimson-knight/shards.git}"
-minecart_source_ref="${MINECART_SOURCE_REF:-refs/tags/v2025.11.25.8}"
+minecart_source_ref="${MINECART_SOURCE_REF:-refs/tags/v2025.11.25.9}"
 install_root="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/amber-pinned-minecart"
 
 mkdir -p "$install_root"
@@ -27,8 +27,8 @@ fi
 make -C "$install_root" bin/minecart bin/shards-alpha CRYSTAL="$CRYSTAL"
 test -x "$install_root/bin/minecart"
 test -x "$install_root/bin/shards-alpha"
-"$install_root/bin/minecart" --version | grep -F "Minecart 2025.11.25.8"
-"$install_root/bin/shards-alpha" --version | grep -F "Minecart 2025.11.25.8"
+"$install_root/bin/minecart" --version | grep -F "Minecart 2025.11.25.9"
+"$install_root/bin/shards-alpha" --version | grep -F "Minecart 2025.11.25.9"
 
 if [[ -n "${GITHUB_PATH:-}" ]]; then
   echo "$install_root/bin" >> "$GITHUB_PATH"

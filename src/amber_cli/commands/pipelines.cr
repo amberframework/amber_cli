@@ -86,8 +86,9 @@ module AmberCLI::Commands
       parse_routes
       print_pipelines
     rescue ex
-      if ex.message && ex.message.not_nil!.includes?("Could not parse")
-        error ex.message.not_nil!
+      message = ex.message
+      if message && message.includes?("Could not parse")
+        error message
         exit!(error: true)
       else
         error "Not valid project root directory."

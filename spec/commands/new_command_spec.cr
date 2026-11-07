@@ -30,7 +30,7 @@ describe AmberCLI::Commands::NewCommand do
     amber:
       git: https://github.com/amberframework/amber.git
       version: #{AmberCLI::AmberRelease::VERSION}+git.commit.#{AmberCLI::AmberRelease::COMMIT}
-      checksum: git-tree:#{AmberCLI::AmberRelease::TREE}
+      checksum: #{AmberCLI::AmberRelease::CHECKSUM}
   LOCK
 
     it "accepts a lock with Amber at the pinned commit and tree" do
@@ -38,12 +38,18 @@ describe AmberCLI::Commands::NewCommand do
       AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).should be_nil
     end
 
-    it "rejects a lock whose Amber tree differs from the pinned release" do
-      other_tree = "0" * 40
-      lock = "version: 2.0\nshards:\n#{amber_lock_entry.sub(AmberCLI::AmberRelease::TREE, other_tree)}\n"
+    it "accepts the git-tree checksum an older Minecart records" do
+      older_entry = amber_lock_entry.sub(AmberCLI::AmberRelease::CHECKSUM, "git-tree:#{AmberCLI::AmberRelease::TREE}")
+      lock = "version: 2.0\nshards:\n#{older_entry}\n"
+      AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).should be_nil
+    end
+
+    it "rejects a lock whose Amber checksum differs from the pinned release" do
+      other_checksum = "sha256-v2:#{"0" * 64}"
+      lock = "version: 2.0\nshards:\n#{amber_lock_entry.sub(AmberCLI::AmberRelease::CHECKSUM, other_checksum)}\n"
       problem = AmberCLI::Commands::NewCommand.minecart_lock_problem(lock)
       problem.should_not be_nil
-      problem.to_s.should contain(AmberCLI::AmberRelease::TREE)
+      problem.to_s.should contain(AmberCLI::AmberRelease::CHECKSUM)
     end
 
     it "rejects a lock with Amber at another commit" do
@@ -55,12 +61,12 @@ describe AmberCLI::Commands::NewCommand do
     it "rejects a lock where one entry has two checksums and another has none" do
       amber_with_two_checksums = amber_lock_entry + "\n    checksum: git-tree:#{AmberCLI::AmberRelease::TREE}"
       lock = "version: 2.0\nshards:\n#{amber_with_two_checksums}\n  grant:\n    git: https://github.com/crimson-knight/grant.git\n    version: 0.23.4\n"
-      AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).to_s.should contain("git-tree checksum")
+      AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).to_s.should contain("exactly one checksum")
     end
 
-    it "rejects a dependency without a git-tree checksum" do
+    it "rejects a dependency without a checksum" do
       lock = "version: 2.0\nshards:\n#{amber_lock_entry}\n  grant:\n    git: https://github.com/crimson-knight/grant.git\n    version: 0.23.4\n"
-      AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).to_s.should contain("git-tree checksum")
+      AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).to_s.should contain("exactly one checksum")
     end
   end
 
@@ -182,7 +188,7 @@ describe AmberCLI::Commands::NewCommand do
         readme.should contain("minecart install --frozen")
         readme.should_not contain("--skip-ai-docs")
         readme.should contain("crystal spec")
-        readme.should contain("git-tree:")
+        readme.should contain("sha256-v2:")
         readme.should_not contain("shards install")
 
         amber_config_template = File.read(File.expand_path("../../src/amber_cli/templates/app/.amber.yml.ecr", __DIR__))

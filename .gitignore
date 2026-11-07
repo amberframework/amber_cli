@@ -32,3 +32,6 @@ Thumbs.db
 /dist/
 
 # The CLI is a distributed executable; commit shard.lock for reproducible builds.
+
+# Lookup cache the specs write
+.luna/

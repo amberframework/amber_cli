@@ -54,6 +54,6 @@ class <%= class_name %>Controller < ApplicationController
   end
 
   private def set_<%= @name %>
-    @<%= @name %> = current_<%= @name %>.not_nil!
+    @<%= @name %> = current_<%= @name %> || raise(ArgumentError.new("Sign in before this action."))
   end
 end
