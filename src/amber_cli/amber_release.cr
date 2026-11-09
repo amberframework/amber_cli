@@ -5,9 +5,9 @@ module AmberCLI
   # them together.
   module AmberRelease
     VERSION = "2.0.0-beta.10"
-    COMMIT  = "d291e0930dd22b14a2d10f75a9de063abb0e64e4"
-    TREE    = "fb4574c6b15b60357abd43ed0a1a8d7a0957e574"
+    COMMIT  = "d775841a0af43bf512f1c9b704906fccdf8863f7"
+    TREE    = "e06f26daef02a30e91114b2c71224920e0c097de"
     # What Minecart 2025.11.25.9 and newer record for this tree in `shard.lock`.
-    CHECKSUM = "sha256-v2:8d354db3b41625db0362162a34836fe10a8b11a378f3837d34cc6bbcece1cb94"
+    CHECKSUM = "sha256-v2:e1099a4f7a25db316b2abdf80f999a2753a0fcc056834f3abe6d9b5a88ae945d"
   end
 end
