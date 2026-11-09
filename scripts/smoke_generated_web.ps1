@@ -43,19 +43,19 @@ $amberConfig = [System.IO.File]::ReadAllText($amberConfigPath)
 if (-not $manifest.Contains("github: amberframework/amber")) {
   throw "Generated shard.yml does not include Amber"
 }
-if (-not $manifest.Contains("commit: d291e0930dd22b14a2d10f75a9de063abb0e64e4 # v2.0.0-beta.10")) {
+if (-not $manifest.Contains("commit: d775841a0af43bf512f1c9b704906fccdf8863f7 # 2.0.0-beta.10 on v2-dev")) {
   throw "Generated shard.yml does not pin the supported Amber beta"
 }
 if (-not $manifest.Contains("github: crimson-knight/grant")) {
   throw "Generated shard.yml does not include Grant"
 }
-if (-not $manifest.Contains("github: crystal-lang/crystal-sqlite3")) {
-  throw "Generated shard.yml does not include SQLite"
+if ($manifest.Contains("crystal-sqlite3")) {
+  throw "Generated shard.yml lists a SQLite driver; Grant owns it"
 }
 if (-not $manifest.Contains("github: amberframework/asset_pipeline")) {
   throw "Generated shard.yml does not include Asset Pipeline"
 }
-if (-not $manifest.Contains("version: 0.37.1")) {
+if (-not $manifest.Contains("commit: ac630a4c948080bf45e9b1e66451c48da9a69349 # 0.37.1")) {
   throw "Generated shard.yml does not pin the supported Asset Pipeline release"
 }
 if (-not (Test-Path (Join-Path $appPath ".claude/CLAUDE.md"))) {
@@ -74,7 +74,7 @@ if (-not $amberConfig.Contains("database: sqlite") -or -not $amberConfig.Contain
 
 if ($FrameworkCommit) {
   $releasedRepository = "    github: amberframework/amber"
-  $releasedFramework = "    commit: d291e0930dd22b14a2d10f75a9de063abb0e64e4 # v2.0.0-beta.10"
+  $releasedFramework = "    commit: d775841a0af43bf512f1c9b704906fccdf8863f7 # 2.0.0-beta.10 on v2-dev"
   if (-not $manifest.Contains($releasedRepository)) {
     throw "Generated shard.yml does not contain the expected Amber repository"
   }
@@ -118,7 +118,7 @@ try {
     $expectedAmberCommit = $FrameworkCommit
     $expectedAmberGit = "https://github.com/$FrameworkRepository.git"
   } else {
-    $expectedAmberCommit = "d291e0930dd22b14a2d10f75a9de063abb0e64e4"
+    $expectedAmberCommit = "d775841a0af43bf512f1c9b704906fccdf8863f7"
     $expectedAmberGit = "https://github.com/amberframework/amber.git"
   }
   if ($amberEntry -notmatch "(?m)^    git: $([regex]::Escape($expectedAmberGit))\r?$") {

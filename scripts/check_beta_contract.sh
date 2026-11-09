@@ -7,18 +7,18 @@ test "$shard_version" = "2.0.10"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new_command.cr
-grep -F 'commit: d291e0930dd22b14a2d10f75a9de063abb0e64e4 # v2.0.0-beta.10' src/amber_cli/commands/new_command.cr
-grep -F 'COMMIT  = "d291e0930dd22b14a2d10f75a9de063abb0e64e4"' src/amber_cli/amber_release.cr
-grep -F 'TREE    = "fb4574c6b15b60357abd43ed0a1a8d7a0957e574"' src/amber_cli/amber_release.cr
-grep -F 'CHECKSUM = "sha256-v2:8d354db3b41625db0362162a34836fe10a8b11a378f3837d34cc6bbcece1cb94"' src/amber_cli/amber_release.cr
+grep -F 'commit: #{AmberRelease::COMMIT} # #{AmberRelease::VERSION} on v2-dev' src/amber_cli/commands/new_command.cr
+grep -F 'COMMIT  = "d775841a0af43bf512f1c9b704906fccdf8863f7"' src/amber_cli/amber_release.cr
+grep -F 'TREE    = "e06f26daef02a30e91114b2c71224920e0c097de"' src/amber_cli/amber_release.cr
+grep -F 'CHECKSUM = "sha256-v2:e1099a4f7a25db316b2abdf80f999a2753a0fcc056834f3abe6d9b5a88ae945d"' src/amber_cli/amber_release.cr
 grep -F 'template: ecr' src/amber_cli/commands/new_command.cr
 grep -F 'model: grant' src/amber_cli/commands/new_command.cr
 grep -F 'database: #{database}' src/amber_cli/commands/new_command.cr
 grep -F 'github: crimson-knight/grant' src/amber_cli/commands/new_command.cr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/commands/new_command.cr
-grep -F 'version: 0.37.1' src/amber_cli/commands/new_command.cr
+grep -F 'commit: ac630a4c948080bf45e9b1e66451c48da9a69349 # 0.37.1' src/amber_cli/commands/new_command.cr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/templates/app/shard.yml.ecr
-grep -F 'version: 0.37.1' src/amber_cli/templates/app/shard.yml.ecr
+grep -F 'commit: ac630a4c948080bf45e9b1e66451c48da9a69349 # 0.37.1' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/amber' src/amber_cli/generators/native_app.cr
 grep -F 'commit: d291e0930dd22b14a2d10f75a9de063abb0e64e4 # v2.0.0-beta.10' src/amber_cli/generators/native_app.cr
 grep -F 'version: ~> 0.37.1' src/amber_cli/generators/native_app.cr

@@ -15,24 +15,16 @@ targets:
 dependencies:
   amber:
     github: amberframework/amber
-    commit: d291e0930dd22b14a2d10f75a9de063abb0e64e4 # v2.0.0-beta.10
+    commit: d775841a0af43bf512f1c9b704906fccdf8863f7 # 2.0.0-beta.10 on v2-dev
   grant:
     github: crimson-knight/grant
-    commit: 6c9da3c8180e612f76ff9ad9c76242a0402ce6d9
+    commit: 623c4bcad284fcee000244c8b26651f925e23ceb # 0.23.4
   asset_pipeline:
     github: amberframework/asset_pipeline
-    version: 0.37.1
-<% case @database
-when "pg" -%>
-  pg:
-    github: will/crystal-pg
-    version: 0.30.0
-<% when "mysql" -%>
+    commit: ac630a4c948080bf45e9b1e66451c48da9a69349 # 0.37.1
+<%# Grant ships its own Postgres and SQLite drivers; only MySQL needs a shard. -%>
+<% if @database == "mysql" -%>
   mysql:
     github: crimson-knight/crystal-mysql
-    commit: c061324dcef89a200a7a3f86a59b2ebf03f83602
-<% else -%>
-  sqlite3:
-    github: crystal-lang/crystal-sqlite3
-    version: 0.23.0
+    commit: c061324dcef89a200a7a3f86a59b2ebf03f83602 # 0.17.0
 <% end -%>

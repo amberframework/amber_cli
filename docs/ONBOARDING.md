@@ -191,12 +191,12 @@ Pin the release's commit and move the lock:
 dependencies:
   amber:
     github: amberframework/amber
-    commit: d291e0930dd22b14a2d10f75a9de063abb0e64e4 # v2.0.0-beta.10
+    commit: d775841a0af43bf512f1c9b704906fccdf8863f7 # 2.0.0-beta.10 on v2-dev
 ```
 
 ```bash
 minecart update amber
-grep -A3 '^  amber:' shard.lock   # checksum: sha256-v2:8d354db3b41625db0362162a34836fe10a8b11a378f3837d34cc6bbcece1cb94
+grep -A3 '^  amber:' shard.lock   # checksum: sha256-v2:e1099a4f7a25db316b2abdf80f999a2753a0fcc056834f3abe6d9b5a88ae945d
 amber setup:agent
 ```
 

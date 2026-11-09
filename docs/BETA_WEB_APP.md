@@ -35,11 +35,11 @@ grep -E '^(template|database|model):' .amber.yml
 ```
 
 The dependency must be `amberframework/amber` at commit
-`d291e0930dd22b14a2d10f75a9de063abb0e64e4` (`v2.0.0-beta.10`); the
+`d775841a0af43bf512f1c9b704906fccdf8863f7` (`2.0.0-beta.10` on `v2-dev`); the
 template must be `ecr`, the database must be `sqlite`, and the model layer must
-be `grant`. `shard.yml` must include Grant, Asset Pipeline, and
-`crystal-sqlite3`, but it must not include Gemma, Slang, PostgreSQL, or MySQL
-unless you selected that database.
+be `grant`. `shard.yml` must include Grant and Asset Pipeline pinned by commit,
+and no database driver shard unless you selected MySQL. Grant ships its own
+Postgres and SQLite drivers.
 
 The first page carries a compact version of Amber's V2 visual language: warm
 paper colors, a fingerprinted SVG crystal, editorial heading scale, status

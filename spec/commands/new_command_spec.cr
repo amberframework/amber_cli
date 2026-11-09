@@ -172,15 +172,16 @@ describe AmberCLI::Commands::NewCommand do
 
         shard = File.read(File.join(destination, "shard.yml"))
         shard.should contain("github: amberframework/amber")
-        shard.should contain("commit: #{AmberCLI::AmberRelease::COMMIT} # v#{AmberCLI::AmberRelease::VERSION}")
+        shard.should contain("commit: #{AmberCLI::AmberRelease::COMMIT} # #{AmberCLI::AmberRelease::VERSION} on v2-dev")
         shard.should contain("grant:")
         shard.should contain("github: crimson-knight/grant")
-        shard.should contain("commit: 6c9da3c8180e612f76ff9ad9c76242a0402ce6d9")
+        shard.should contain("commit: 623c4bcad284fcee000244c8b26651f925e23ceb")
         shard.should contain("asset_pipeline:")
         shard.should contain("github: amberframework/asset_pipeline")
-        shard.should contain("version: 0.37.1")
+        shard.should contain("commit: ac630a4c948080bf45e9b1e66451c48da9a69349")
         shard.should_not contain("version: ~> 0.37.1")
-        shard.should contain("github: crystal-lang/crystal-sqlite3")
+        shard.should_not contain("crystal-sqlite3")
+        shard.should_not contain("crystal-pg")
         shard.should_not contain("slang")
 
         File.exists?(File.join(destination, "shard.lock")).should be_false
@@ -203,7 +204,8 @@ describe AmberCLI::Commands::NewCommand do
 
         database_config = File.read(File.join(destination, "config/database.cr"))
         database_config.should contain(%(require "grant/adapter/sqlite"))
-        database_config.should contain(%(name: "primary"))
+        database_config.should contain(%(database: "primary"))
+        database_config.should contain("Grant::ConnectionRegistry.establish_connection")
         database_config.should contain(%(ENV["DATABASE_URL"]? || Amber.settings.database_url))
 
         application_config = File.read(File.join(destination, "config/application.cr"))
@@ -312,6 +314,88 @@ describe AmberCLI::Commands::NewCommand do
       end
     end
 
+    describe "tuned defaults" do
+      it "pins Grant's own drivers and lists no database driver shard for Postgres" do
+        SpecHelper.within_temp_directory do |temp_dir|
+          destination = File.join(temp_dir, "tuned_pg")
+          AmberCLI::Commands::NewCommand.new("new").parse_and_execute([destination, "--type=web", "--no-deps", "--skip-agent-setup", "-d", "pg"])
+
+          shard = File.read(File.join(destination, "shard.yml"))
+          shard.should_not contain("crystal-pg")
+
+          production = YAML.parse(File.read(File.join(destination, "config/environments/production.yml")))
+          production["database"]["url"].as_s.should eq("postgres:///tuned_pg_production?host=/var/run/postgresql")
+          File.read(File.join(destination, "README.md")).should contain("DATABASE_URL")
+        end
+      end
+
+      it "keeps the mysql shard pinned to the version Grant locks" do
+        SpecHelper.within_temp_directory do |temp_dir|
+          destination = File.join(temp_dir, "tuned_mysql")
+          AmberCLI::Commands::NewCommand.new("new").parse_and_execute([destination, "--type=web", "--no-deps", "--skip-agent-setup", "-d", "mysql"])
+
+          shard = File.read(File.join(destination, "shard.yml"))
+          shard.should contain("github: crimson-knight/crystal-mysql")
+          shard.should contain("commit: c061324dcef89a200a7a3f86a59b2ebf03f83602")
+        end
+      end
+
+      it "generates a sized pool, the SQLite page cache and production defaults" do
+        SpecHelper.within_temp_directory do |temp_dir|
+          destination = File.join(temp_dir, "tuned_sqlite")
+          AmberCLI::Commands::NewCommand.new("new").parse_and_execute([destination, "--type=web", "--no-deps", "--skip-agent-setup"])
+
+          database_config = File.read(File.join(destination, "config/database.cr"))
+          database_config.should contain(%(ENV["DB_POOL_SIZE"]? || "4"))
+          database_config.should contain("pool_size: connections_in_pool")
+          database_config.should contain(%({"cache_size" => "-8000"}))
+
+          production = YAML.parse(File.read(File.join(destination, "config/environments/production.yml")))
+          production["database"]["url"].as_s.should eq("sqlite3:./db/tuned_sqlite_production.db")
+          production["session"]["expires"].as_i.should eq(1_209_600)
+          production["static"]["headers"]["Cache-Control"].as_s.should eq("no-cache")
+
+          routes = File.read(File.join(destination, "config/routes.cr"))
+          lean_block = routes[routes.index!("pipeline :lean_read do")...routes.index!("pipeline :web do")]
+          lean_block.should contain("Amber::Pipe::Error.new")
+          lean_block.should contain("Amber::Pipe::SecurityHeaders.new")
+          lean_block.should_not contain("Session")
+          routes.should contain("plug Amber::Pipe::Logger.new unless Amber.env.production?")
+          routes.should_not contain("plug Amber::Pipe::Logger.new\n")
+          routes.should contain("plug CompressedResponsePipe.new")
+          routes.should contain(%(get "/", HomeController, :index))
+          routes.index!("routes :lean_read do").should be < routes.index!(%(get "/", HomeController))
+
+          pipe = File.read(File.join(destination, "src/pipes/compressed_response_pipe.cr"))
+          pipe.should contain("HTTP::CompressHandler.new")
+          pipe.should contain(%("Vary", "Accept-Encoding"))
+
+          page_cache_config = File.read(File.join(destination, "config/initializers/page_cache.cr"))
+          page_cache_config.should contain("config.use_memory_cache")
+          page_cache_config.should contain(%(ENV["PAGE_CACHE_MB"]? || "32"))
+
+          main = File.read(File.join(destination, "src/tuned_sqlite.cr"))
+          main.index!("Components::StatelessView.warm_all").should be < main.index!("Amber::Server.start")
+
+          File.read(File.join(destination, "src/components/site_header.cr")).should contain("struct SiteHeader < Components::StatelessView")
+          File.read(File.join(destination, "src/components/site_footer.cr")).should contain("struct SiteFooter < Components::StatelessView")
+          layout = File.read(File.join(destination, "src/views/layouts/application.ecr"))
+          layout.should contain("SiteHeader.new.cached_html")
+          layout.should contain("SiteFooter.new.cached_html")
+
+          home = File.read(File.join(destination, "src/controllers/home_controller.cr"))
+          home.should contain("Components::Cache.page_cache.answer")
+
+          File.read(File.join(destination, "db/seeds.cr")).should contain(%(require "../src/pipes/**"))
+
+          readme = File.read(File.join(destination, "README.md"))
+          %w[DB_POOL_SIZE PAGE_CACHE_MB lean_read CompressedResponsePipe per-visitor process_count].each do |phrase|
+            readme.should contain(phrase)
+          end
+        end
+      end
+    end
+
     it "requires config/initializers before the generated config files that read Amber.settings" do
       SpecHelper.within_temp_directory do |temp_dir|
         destination = File.join(temp_dir, "initializer_app")
@@ -321,7 +405,7 @@ describe AmberCLI::Commands::NewCommand do
 
         initializers_directory = File.join(destination, "config/initializers")
         Dir.exists?(initializers_directory).should be_true
-        Dir.children(initializers_directory).should eq([".keep"])
+        Dir.children(initializers_directory).sort.should eq([".keep", "page_cache.cr"])
         File.read(File.join(initializers_directory, ".keep")).should be_empty
 
         application_config = File.read(File.join(destination, "config/application.cr"))

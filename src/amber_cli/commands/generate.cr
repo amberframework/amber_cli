@@ -79,6 +79,9 @@ module AmberCLI::Commands
 
     DEFAULT_AUTH_MODEL_NAME = "User"
 
+    WEB_ROUTES_ANCHOR       = "  routes :web do"
+    LEAN_READ_ROUTES_ANCHOR = "  routes :lean_read do"
+
     getter generator_type : String = ""
     getter name : String = ""
     getter fields : Array(Tuple(String, String)) = [] of Tuple(String, String)
@@ -854,6 +857,7 @@ SPEC
       generate_scaffold_schema
       generate_controller_for_scaffold
       generate_views
+      generate_scaffold_components
       add_resource_route
 
       success "Scaffold #{class_name} generated successfully!"
@@ -917,23 +921,55 @@ class #{controller_name} < ApplicationController
   schema :create, #{class_name}Schema
   schema :update, #{class_name}Schema
 
-  @#{plural_variable_name} = [] of #{class_name}
+  # Rows on one page of the list. Pagination keeps a page's cost and size bounded.
+  ROWS_PER_PAGE = 25
+
+  # A larger page number reads as the first page, so a query cannot ask for a huge offset.
+  MAXIMUM_PAGE_NUMBER = 1_000_000
+
+  LIST_PAGE_KEY_PREFIX = "#{plural_name}:page:"
+
+  @#{variable_name}_rows = [] of String
+  @#{variable_name}_details = ""
+  @page_number = 1
+  @has_next_page = false
   @#{variable_name} = #{class_name}.new
   @errors = [] of Amber::Schema::Error
 
+  # Everything built inside `Components::Cache.page_cache.answer` is the same for every
+  # visitor, and the page cache holds exactly that. To mark a page per-visitor (a name,
+  # a flash message, a form with a CSRF token), move its route to `routes :web` in
+  # config/routes.cr and replace its `answer` block with a plain `render`. Nothing is
+  # stored for that page then.
   def index
-    @#{plural_variable_name} = #{class_name}.order(id: :desc).to_a
-    render("index.#{template_ext}")
+    page_number = requested_page_number
+    Components::Cache.page_cache.answer(context, list_page_key(page_number)) do |build|
+      first_row = (page_number - 1) * ROWS_PER_PAGE
+      list_of_#{plural_variable_name} = #{class_name}.order(id: :desc).limit(ROWS_PER_PAGE + 1).offset(first_row).to_a
+      @page_number = page_number
+      @has_next_page = list_of_#{plural_variable_name}.size > ROWS_PER_PAGE
+      @#{variable_name}_rows = list_of_#{plural_variable_name}.first(ROWS_PER_PAGE).map do |#{variable_name}|
+        row = #{class_name}Row.new(#{variable_name})
+        build.fragment(row.cache_key) { row.to_s }
+      end
+      render("index.#{template_ext}")
+    end
   end
 
   def show
-    if #{variable_name} = #{class_name}.find(params[:id])
+    record_id = params[:id].to_i64?
+    return redirect_to("/#{plural_name}") unless record_id
+
+    Components::Cache.page_cache.answer(context, show_page_key(record_id)) do |build|
+      #{variable_name} = #{class_name}.find!(record_id)
       @#{variable_name} = #{variable_name}
+      details = #{class_name}Details.new(#{variable_name})
+      @#{variable_name}_details = build.fragment(details.cache_key) { details.to_s }
       render("show.#{template_ext}")
-    else
-      flash[:danger] = "#{class_name} not found"
-      redirect_to "/#{plural_name}"
     end
+  rescue Grant::Querying::NotFound
+    # This route has no session, so there is no flash message to carry.
+    redirect_to("/#{plural_name}")
   end
 
   def new
@@ -947,6 +983,7 @@ class #{controller_name} < ApplicationController
 #{schema_field_assignments}
 
     if #{variable_name}.save
+      clear_pages_after_create
       flash[:success] = "#{class_name} created successfully"
       redirect_to "/#{plural_name}/\#{#{variable_name}.id}"
     else
@@ -972,6 +1009,7 @@ class #{controller_name} < ApplicationController
 #{update_field_assignments}
 
       if #{variable_name}.save
+        clear_pages_after_update(#{variable_name})
         flash[:success] = "#{class_name} updated successfully"
         redirect_to "/#{plural_name}/\#{#{variable_name}.id}"
       else
@@ -987,7 +1025,9 @@ class #{controller_name} < ApplicationController
 
   def destroy
     if #{variable_name} = #{class_name}.find(params[:id])
+      list_page_number = list_page_number_of(#{variable_name})
       #{variable_name}.destroy
+      clear_pages_after_destroy(#{variable_name}, list_page_number)
       flash[:success] = "#{class_name} deleted successfully"
     else
       flash[:danger] = "#{class_name} not found"
@@ -1021,8 +1061,68 @@ class #{controller_name} < ApplicationController
       super
     end
   end
+
+  # A new row moves every row below it, so every list page changes.
+  private def clear_pages_after_create : Nil
+    Components::Cache.page_cache.clear_pages_numbered_from(LIST_PAGE_KEY_PREFIX, 1)
+  end
+
+  # An edited row changes its own page and one row of one list page.
+  private def clear_pages_after_update(#{variable_name} : #{class_name}) : Nil
+    page_cache = Components::Cache.page_cache
+    page_cache.clear_fragments(fragment_keys_of(#{variable_name}))
+    page_cache.clear_pages([show_page_key(#{variable_name}.id), list_page_key(list_page_number_of(#{variable_name}))])
+  end
+
+  # The rows after a deleted row move up a page, and the page before it may lose its next link.
+  private def clear_pages_after_destroy(#{variable_name} : #{class_name}, list_page_number : Int32) : Nil
+    page_cache = Components::Cache.page_cache
+    page_cache.clear_fragments(fragment_keys_of(#{variable_name}))
+    page_cache.clear_pages([show_page_key(#{variable_name}.id)])
+    page_cache.clear_pages_numbered_from(LIST_PAGE_KEY_PREFIX, Math.max(list_page_number - 1, 1))
+  end
+
+  private def fragment_keys_of(#{variable_name} : #{class_name}) : Array(String)
+    [#{class_name}Row.new(#{variable_name}).cache_key, #{class_name}Details.new(#{variable_name}).cache_key]
+  end
+
+  private def show_page_key(record_id : Int64?) : String
+    "#{variable_name}:\#{record_id}"
+  end
+
+  private def list_page_key(page_number : Int32) : String
+    "\#{LIST_PAGE_KEY_PREFIX}\#{page_number}"
+  end
+
+  # Rows are newest first, so the rows newer than this one set which page it sits on.
+  private def list_page_number_of(#{variable_name} : #{class_name}) : Int32
+    newer_rows = #{class_name}.where(:id, :gt, #{variable_name}.id).size
+    (newer_rows // ROWS_PER_PAGE).to_i32 + 1
+  end
+
+  private def requested_page_number : Int32
+    page_number = request.query_params["page"]?.to_s.to_i? || 1
+    page_number.in?(1..MAXIMUM_PAGE_NUMBER) ? page_number : 1
+  end
 end
 CONTROLLER
+    end
+
+    # An update must show on the next read of a page that was already stored.
+    private def cached_page_update_spec(changed_field : Tuple(String, String)?, updated_hash : String) : String
+      return "" unless changed_field
+
+      <<-SPEC
+
+    it "shows the change on the next read of a stored page" do
+      saved = create_sample_#{variable_name}
+      get("/#{plural_name}/\#{saved.id}")
+      get("/#{plural_name}/\#{saved.id}")
+      headers = csrf_headers("/#{plural_name}/\#{saved.id}/edit")
+      put("/#{plural_name}/\#{saved.id}", body: HTTP::Params.encode(#{updated_hash}), headers: headers)
+      get("/#{plural_name}/\#{saved.id}").body.should contain("Updated")
+    end
+SPEC
     end
 
     private def scaffold_spec_template
@@ -1057,7 +1157,9 @@ end
 describe #{controller_name} do
   before_each do
     #{class_name}.clear
-#{parent_clear_source}  end
+#{parent_clear_source}    # These specs save records directly, so the page cache needs clearing by hand.
+    Components::Cache.configure(&.use_memory_cache)
+  end
 
   describe "GET /#{plural_name}" do
     it "responds successfully" do
@@ -1119,6 +1221,7 @@ describe #{controller_name} do
       assert_response_redirect(response)
 #{update_check}
     end
+#{cached_page_update_spec(changed_field, updated_hash)}
   end
 
   describe "DELETE /#{plural_name}/:id" do
@@ -1132,6 +1235,51 @@ describe #{controller_name} do
   end
 end
 SPEC
+    end
+
+    # Row and detail views are stateless views, so record values leave them escaped.
+    private def generate_scaffold_components
+      create_file("src/components/#{file_name}_row.cr", scaffold_component_source("Row", "_row", "row"))
+      create_file("src/components/#{file_name}_details.cr", scaffold_component_source("Details", "_details", "details"))
+
+      create_file("src/views/#{file_name}/_row.ecr", row_view_source)
+      create_file("src/views/#{file_name}/_details.ecr", details_view_source)
+    end
+
+    private def scaffold_component_source(suffix : String, view_name : String, key_prefix : String) : String
+      <<-COMPONENT
+struct #{class_name}#{suffix} < Components::StatelessView
+  def initialize(@#{variable_name} : #{class_name})
+  end
+
+  def cache_key : String
+    "#{key_prefix}:#{variable_name}:\#{@#{variable_name}.id}"
+  end
+
+  ECR.def_to_s "src/views/#{file_name}/#{view_name}.ecr"
+end
+COMPONENT
+    end
+
+    private def row_view_source : String
+      <<-VIEW
+<tr>
+  <td><%= @#{variable_name}.id %></td>
+#{fields.map { |field_name, _| "  <td><%= escape_text(@#{variable_name}.#{field_name}) %></td>" }.join("\n")}
+  <td>
+    <a href="/#{plural_name}/<%= @#{variable_name}.id %>">Show</a>
+    <a href="/#{plural_name}/<%= @#{variable_name}.id %>/edit">Edit</a>
+  </td>
+</tr>
+VIEW
+    end
+
+    private def details_view_source : String
+      <<-VIEW
+<dl>
+#{fields.map { |field_name, _| "  <dt>#{field_name.camelcase}</dt>\n  <dd><%= escape_text(@#{variable_name}.#{field_name}) %></dd>" }.join("\n")}
+</dl>
+VIEW
     end
 
     private def generate_views
@@ -1761,6 +1909,9 @@ SPEC
       end.join(",\n")
 
       field_sql = column_definitions.empty? ? "" : "#{column_definitions},\n"
+      foreign_key_indexes = fields.select { |_, field_type| field_type == "reference" }.join do |field_name, _|
+        "CREATE INDEX IF NOT EXISTS index_#{table_name}_on_#{field_name} ON #{table_name} (#{field_name});\n"
+      end
 
       <<-SQL
 -- +micrate Up
@@ -1770,7 +1921,7 @@ CREATE TABLE IF NOT EXISTS #{table_name} (
 #{field_sql}  created_at TIMESTAMP,
   updated_at TIMESTAMP
 );
-
+#{foreign_key_indexes}
 -- +micrate Down
 DROP TABLE IF EXISTS #{table_name};
 SQL
@@ -1817,18 +1968,20 @@ VIEW
     </tr>
   </thead>
   <tbody>
-    <% @#{plural_variable_name}.each do |#{variable_name}| %>
-      <tr>
-        <td><%= #{variable_name}.id %></td>
-#{fields.map { |f, _| "        <td><%= #{variable_name}.#{f} %></td>" }.join("\n")}
-        <td>
-          <a href="/#{plural_name}/<%= #{variable_name}.id %>">Show</a>
-          <a href="/#{plural_name}/<%= #{variable_name}.id %>/edit">Edit</a>
-        </td>
-      </tr>
+    <% @#{variable_name}_rows.each do |row| %>
+      <%= row %>
     <% end %>
   </tbody>
 </table>
+
+<nav>
+  <% if @page_number > 1 %>
+    <a href="/#{plural_name}?page=<%= @page_number - 1 %>">Newer</a>
+  <% end %>
+  <% if @has_next_page %>
+    <a href="/#{plural_name}?page=<%= @page_number + 1 %>">Older</a>
+  <% end %>
+</nav>
 VIEW
       end
     end
@@ -1848,9 +2001,7 @@ VIEW
         <<-VIEW
 <h1>#{class_name}</h1>
 
-<dl>
-#{fields.map { |f, _| "  <dt>#{f.camelcase}</dt>\n  <dd><%= @#{variable_name}.#{f} %></dd>" }.join("\n")}
-</dl>
+<%= @#{variable_name}_details %>
 
 <a href="/#{plural_name}">Back</a>
 <a href="/#{plural_name}/<%= @#{variable_name}.id %>/edit">Edit</a>
@@ -2198,8 +2349,18 @@ SUPPORT
       end
     end
 
+    # Public reads go on the lean pipeline; everything else keeps the session pipes.
     private def add_resource_route
-      add_routes(["    resources \"/#{plural_name}\", #{controller_name}"])
+      routes_path = "config/routes.cr"
+      if File.exists?(routes_path) && File.read(routes_path).includes?(LEAN_READ_ROUTES_ANCHOR)
+        add_routes([
+          "    get \"/#{plural_name}\", #{controller_name}, :index",
+          "    get \"/#{plural_name}/:id\", #{controller_name}, :show, constraints: {\"id\" => :numeric}",
+        ], LEAN_READ_ROUTES_ANCHOR)
+        add_routes(["    resources \"/#{plural_name}\", #{controller_name}, except: [:index, :show]"])
+      else
+        add_routes(["    resources \"/#{plural_name}\", #{controller_name}"])
+      end
     end
 
     private def add_api_route
@@ -2234,7 +2395,7 @@ SUPPORT
       end
     end
 
-    private def add_routes(route_lines : Array(String))
+    private def add_routes(route_lines : Array(String), anchor : String = WEB_ROUTES_ANCHOR)
       routes_path = "config/routes.cr"
       unless File.exists?(routes_path)
         warning "Could not add routes because #{routes_path} does not exist."
@@ -2242,7 +2403,6 @@ SUPPORT
       end
 
       content = File.read(routes_path)
-      anchor = "  routes :web do"
       unless content.includes?(anchor)
         warning "Could not find the web routes block in #{routes_path}."
         return
