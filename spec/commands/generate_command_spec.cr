@@ -139,10 +139,74 @@ describe AmberCLI::Commands::GenerateCommand do
       AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["scaffold", "Pet", "name:string"])
       AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["api", "Toy", "name:string"])
 
-      File.read("src/controllers/pet_controller.cr").should contain("Pet.order(id: :desc).to_a")
+      File.read("src/controllers/pet_controller.cr").should contain("Pet.order(id: :desc).limit(ROWS_PER_PAGE + 1)")
       File.read("src/controllers/pet_controller.cr").should_not contain("Pet.all.to_a")
       File.read("src/controllers/api/toy_controller.cr").should contain("Toy.order(id: :desc).to_a")
       File.read("src/controllers/api/toy_controller.cr").should_not contain("Toy.all.to_a")
+    end
+  end
+
+  it "answers scaffold reads from the page cache and clears exactly what a write changed" do
+    SpecHelper.within_temp_directory do
+      File.write(".amber.yml", "template: ecr\ndatabase: sqlite\nmodel: grant\n")
+
+      AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["scaffold", "Pet", "name:string:required", "adopted:bool"])
+
+      controller = File.read("src/controllers/pet_controller.cr")
+      controller.should contain(%(page_cache.answer(context, list_page_key(page_number))))
+      controller.should contain(%(page_cache.answer(context, show_page_key(record_id))))
+      controller.should contain("clear_pages_after_create")
+      controller.should contain("clear_pages_after_update(pet)")
+      controller.should contain("clear_pages_after_destroy(pet, list_page_number)")
+      controller.should contain("clear_pages_numbered_from")
+      controller.should contain("clear_fragments(fragment_keys_of(pet))")
+      controller.should contain("per-visitor")
+
+      row = File.read("src/views/pet/_row.ecr")
+      row.should contain("escape_text(@pet.name)")
+      row.should contain("escape_text(@pet.adopted)")
+      File.read("src/views/pet/_details.ecr").should contain("escape_text(@pet.name)")
+      File.read("src/components/pet_row.cr").should contain("struct PetRow < Components::StatelessView")
+      File.read("src/components/pet_details.cr").should contain(%("details:pet:\#{@pet.id}"))
+
+      spec = File.read("spec/controllers/pet_controller_spec.cr")
+      spec.should contain("Components::Cache.configure(&.use_memory_cache)")
+      spec.should contain("shows the change on the next read of a stored page")
+    end
+  end
+
+  it "puts scaffold reads on the lean read routes of a tuned application" do
+    SpecHelper.within_temp_directory do
+      File.write(".amber.yml", "template: ecr\ndatabase: sqlite\nmodel: grant\n")
+      Dir.mkdir_p("config")
+      File.write("config/routes.cr", <<-CRYSTAL)
+      Amber::Server.configure do
+        routes :lean_read do
+        end
+
+        routes :web do
+        end
+      end
+      CRYSTAL
+
+      AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["scaffold", "Pet", "name:string"])
+
+      routes = File.read("config/routes.cr")
+      routes.should contain(%(get "/pets", PetController, :index))
+      routes.should contain(%(get "/pets/:id", PetController, :show, constraints: {"id" => :numeric}))
+      routes.should contain(%(resources "/pets", PetController, except: [:index, :show]))
+      routes.index!(%(get "/pets", PetController)).should be < routes.index!("routes :web do")
+    end
+  end
+
+  it "indexes the foreign key column of a reference field" do
+    SpecHelper.within_temp_directory do
+      File.write(".amber.yml", "template: ecr\ndatabase: sqlite\nmodel: grant\n")
+
+      AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["scaffold", "Comment", "post:reference"])
+
+      migration = File.read(Dir.glob("db/migrations/*_create_comments.sql").first)
+      migration.should contain("CREATE INDEX IF NOT EXISTS index_comments_on_post_id ON comments (post_id);")
     end
   end
 
