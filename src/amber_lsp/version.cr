@@ -16,10 +16,11 @@ module AmberLSP
     amber-lsp lookup QUERY        look up a Crystal API: Type.method, Type#method, or Type
     amber-lsp hint                read compiler output on stdin and print matching API card hints
     amber-lsp --check FILE.cr     check one file with the Amber V2 rules
+    amber-lsp check [--since REF] [--all] [--carried-in PATH]... [--format text|json|github] [--advisory] [--root DIR] [PATH...]
     amber-lsp context [--root DIR] print the library rule packs detected for this project
     amber-lsp --version           print the build: version, amber_cli release, commit
 
-  Add --help after lookup, hint, or context for its options.
+  Add --help after lookup, hint, check, or context for its options.
   Guide: https://github.com/amberframework/amber_cli/blob/main/docs/guides/ai-assistants.md
   TEXT
 

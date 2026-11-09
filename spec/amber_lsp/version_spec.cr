@@ -3,7 +3,7 @@ require "./spec_helper"
 describe AmberLSP do
   describe "USAGE" do
     it "names every command-line mode" do
-      ["lookup QUERY", "hint", "--check FILE.cr", "context", "--version"].each do |mode|
+      ["lookup QUERY", "hint", "--check FILE.cr", "check", "context", "--version"].each do |mode|
         AmberLSP::USAGE.should contain("amber-lsp #{mode}")
       end
     end

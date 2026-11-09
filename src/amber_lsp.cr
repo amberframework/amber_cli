@@ -19,6 +19,7 @@ require "./amber_lsp/rules/specs/*"
 require "./amber_lsp/rules/sockets/*"
 require "./amber_lsp/rules/fsdd/*"
 require "./amber_lsp/rules/custom_rule"
+require "./amber_lsp/rules/library"
 require "./amber_lsp/document_store"
 require "./amber_lsp/project_context"
 require "./amber_lsp/configuration"
@@ -41,6 +42,7 @@ require "./amber_lsp/analyze_file_with_coverage"
 require "./amber_lsp/controller"
 require "./amber_lsp/server"
 require "./amber_lsp/check_file_for_diagnostics"
+require "./amber_lsp/library_lint"
 require "./amber_lsp/lookup/build_layered_api_index"
 require "./amber_lsp/lookup/resolve_api_query"
 require "./amber_lsp/lookup/answer_api_query"
@@ -58,6 +60,8 @@ elsif ARGV.first? == "lookup"
   exit AmberLSP::Lookup::RunLookupCommand.new(ARGV[1..].to_a).perform
 elsif ARGV.first? == "hint"
   exit AmberLSP::Lookup::RunHintCommand.new(ARGV[1..].to_a).perform
+elsif ARGV.first? == "check"
+  exit AmberLSP::LibraryLint::RunLibraryLintCheck.new(ARGV[1..].to_a).perform
 elsif ARGV[0]? == "--check"
   file_path = ARGV[1]?
   unless file_path

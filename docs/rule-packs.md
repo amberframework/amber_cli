@@ -149,3 +149,87 @@ Run `amber-lsp context [--root DIR]` to print the context blocks for detected
 pack modes. It prints nothing when no mode is detected. Exit status is 0 for
 successful context inspection; invalid command arguments or an unreadable
 project return nonzero.
+
+## Library lint command
+
+The command-only library rules run through `amber-lsp check`. They use a
+separate list from `RuleRegistry`, so the editor keeps its existing diagnostic
+set.
+
+```text
+amber-lsp check [--since REF] [--all] [--carried-in PATH]... [--format text|json|github] [--advisory] [--root DIR] [PATH...]
+```
+
+The default paths are `src` and `spec`; directories are scanned recursively
+for `*.cr` files. `--root` selects the project root. `--since REF` compares the
+working tree with `git merge-base REF HEAD` and keeps findings on added lines.
+`--all` reports all file-level findings. Changed-method collars run with
+`--since`, where the changed line overlaps the method body.
+
+The command loads rule enablement and severity from `.amber-lsp.yml`. It accepts
+the existing `rules` mapping and `exclude_patterns`. A carried-in path is
+scanned even when an exclusion covers it; within that path, the command keeps
+the four carry-in-safe rules: `library/swallowed-rescue`,
+`library/unchecked-cast`, `library/unsynchronized-class-variable`, and
+`library/disabled-certificate-verification`.
+
+```yaml
+rules:
+  library/typed-raise:
+    enabled: false
+  library/vague-internal-name:
+    severity: information
+exclude_patterns:
+  - src/generated/**/*.cr
+```
+
+Findings use the rule's configured severity. `warning` and `error` are
+classified as blocking; `information` and `hint` are advisory. The `--advisory`
+option returns exit status 0 while keeping every finding and its classification
+in the output. Without it, blocking findings return 1. Successful checks return
+0; invalid arguments and failed git commands return 2.
+
+`--format text` prints `PATH:LINE:COLUMN [classification] rule: message` and
+the final blocking/advisory counts. `--format json` prints a JSON object with
+`issues` (`path`, `line`, `column`, `classification`, `rule`, and `message`),
+`blocking_count`, and `advisory_count`. `--format github` prints one GitHub
+warning annotation per finding followed by the same counts line.
+
+### Rule list
+
+| Rule | Reports | Default classification |
+|---|---|---|
+| `library/typed-raise` | Receiverless `raise` calls with string literals or interpolations. | Blocking |
+| `library/environment-read` | Calls through the `ENV` path. | Blocking |
+| `library/stdlib-reopen` | Top-level definitions reopening configured core types. | Blocking |
+| `library/log-setup` | `Log.setup`, `Log.setup_from_env`, and global `Log` setup calls. | Blocking |
+| `library/process-output` | Receiverless `puts`, `print`, `printf`, `p`, and `pp` calls. | Blocking |
+| `library/swallowed-rescue` | Untyped or `Exception` rescue clauses that swallow failures or replace them without preserving the cause. | Blocking |
+| `library/unchecked-cast` | `.as(T)` casts to named types. | Blocking |
+| `library/unsynchronized-class-variable` | Collection-valued class variables in files without `Mutex` or `Atomic`. | Blocking |
+| `library/disabled-certificate-verification` | Paths ending in `VerifyMode::NONE`. | Blocking |
+| `library/public-return-type` | Documented public methods without explicit return types, with lifecycle and `:nodoc:` exemptions. | Blocking |
+| `library/vague-internal-name` | Vague local names, block parameters, and private method parameters. | Advisory |
+| `library/collared-spec` | Method behavior describes without a golden case and both boundary contexts. | Blocking |
+| `library/public-method-has-spec` | Public methods with arguments and no matching `describe` selector. | Blocking |
+| `library/spec-without-assertion` | `it` blocks without a recognized assertion call. | Blocking |
+| `library/changed-method-collar` | Changed behavior methods whose public entry point lacks collared coverage. | Blocking |
+
+### Collared specs and private callers
+
+A method behavior describe has a direct golden `it` or ordinary `context`, a
+context beginning `at the boundary`, and a context beginning
+`just past the boundary` with an expected-failure assertion. The expected
+failure calls include `expect_raises`, `should_not`, `be_nil`, `be_false`, and
+`be_empty`. A valid `# collar: none, <reason>` comment immediately above the
+describe or changed method records a deliberate exemption.
+
+For changed private or protected methods, `library/changed-method-collar`
+builds a call index from every `src/**/*.cr` file. Reopened types merge by
+fully qualified name. A no-receiver or `self` call connects methods on the
+same type. The rule walks private and protected callers until it reaches public
+methods that belong to the documented public type. At least one reachable
+public caller needs a matching collared describe. A public `initialize` uses
+the `describe ".new"` selector. If no public caller exists in the type, the
+finding names that condition and directs the collar to the nearest public entry
+point.
