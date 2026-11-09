@@ -97,7 +97,7 @@ module AmberCLI::Commands
 
     private def process_commands(commands)
       commands.each do |command|
-        url = database_url
+        url = self.class.connection_url_for_migrations(database_url)
         case command
         when "drop"
           Micrate::Cli.drop_database(url)
@@ -167,6 +167,21 @@ module AmberCLI::Commands
       else
         "pg" # default
       end
+    end
+
+    # The crystal-pg 0.29 driver this CLI links takes the socket file as `host`, while a
+    # generated application's database URL names the socket directory, as libpq does.
+    def self.connection_url_for_migrations(url : String) : String
+      return url unless url.starts_with?("postgres")
+
+      parsed = URI.parse(url)
+      params = parsed.query_params
+      host = params["host"]?
+      return url unless host && host.starts_with?('/') && !host.includes?(".s.PGSQL.")
+
+      params["host"] = File.join(host, ".s.PGSQL.#{parsed.port || 5432}")
+      parsed.query_params = params
+      parsed.to_s
     end
 
     private def database_url : String
