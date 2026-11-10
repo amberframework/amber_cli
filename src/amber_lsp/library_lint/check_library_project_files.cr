@@ -34,7 +34,7 @@ module AmberLSP::LibraryLint
         next unless @configuration.rule_enabled?(rule.id)
 
         list_of_included_paths.each do |relative_path|
-          next if carried_in_path?(relative_path) && !CARRIED_IN_RULE_IDS.includes?(rule.id)
+          next unless rule_checks_path?(rule, relative_path)
 
           source_code = File.read(File.join(@root_path, relative_path))
           rule.check(relative_path, source_code).each do |diagnostic|
@@ -75,6 +75,20 @@ module AmberLSP::LibraryLint
       @list_of_exclusion_patterns.any? do |pattern|
         PathMatchesExclusionPattern.new(relative_path, pattern).perform?
       end
+    end
+
+    private def rule_checks_path?(rule : AmberLSP::Rules::BaseRule, relative_path : String) : Bool
+      return CARRIED_IN_RULE_IDS.includes?(rule.id) if carried_in_path?(relative_path)
+
+      rule.applies_to.any? { |pattern| path_matches_rule_pattern?(relative_path, pattern) }
+    end
+
+    # The registry matches `src/**` anywhere in an absolute editor path. These
+    # paths are root-relative, so the prefix has to sit at the start.
+    private def path_matches_rule_pattern?(relative_path : String, pattern : String) : Bool
+      return relative_path.starts_with?(pattern.rchop("**")) if pattern.ends_with?("**")
+
+      AmberLSP::Rules::RuleRegistry.file_matches_pattern?(relative_path, pattern)
     end
 
     private def carried_in_path?(relative_path : String) : Bool

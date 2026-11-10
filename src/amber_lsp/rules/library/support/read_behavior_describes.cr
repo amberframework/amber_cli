@@ -17,10 +17,15 @@ module AmberLSP::Rules::Library::Support
         syntax_tree = ParseCrystalSource.new(source_code).perform
         next unless syntax_tree
 
-        describe_calls = CollectBehaviorDescribes.new(syntax_tree).perform
-        describe_calls.each do |describe_call|
+        describe_collector = CollectBehaviorDescribes.new(syntax_tree)
+        describe_collector.perform.each do |describe_call|
           if selector = ReadBehaviorSelector.new(describe_call).perform
-            list_of_describes << BehaviorDescribe.new(selector, source_code, describe_call)
+            list_of_describes << BehaviorDescribe.new(
+              selector,
+              source_code,
+              describe_call,
+              describe_collector.owner_type_name_for(describe_call),
+            )
           end
         end
       end

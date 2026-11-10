@@ -15,7 +15,12 @@ module AmberLSP::Rules::Library::Support
     # Reads working-tree additions since the merge base of *reference* and HEAD.
     def perform : GitChangedLines
       merge_base = run_git("merge-base", [@reference, "HEAD"]).strip
-      diff_text = run_git("diff", ["--unified=0", "--no-color", merge_base])
+      # --relative keeps paths root-relative when the root is below the git top
+      # level, and the explicit prefixes hold up against a user's diff settings.
+      diff_text = run_git(
+        "diff",
+        ["--relative", "--src-prefix=a/", "--dst-prefix=b/", "--no-ext-diff", "--unified=0", "--no-color", merge_base],
+      )
       parse_added_lines(diff_text)
       self
     end
@@ -48,7 +53,7 @@ module AmberLSP::Rules::Library::Support
       error_buffer = IO::Memory.new
       status = Process.run(
         "git",
-        [command_name] + command_arguments,
+        ["-c", "core.quotePath=false", command_name] + command_arguments,
         chdir: @root_path,
         output: output_buffer,
         error: error_buffer,
@@ -67,7 +72,8 @@ module AmberLSP::Rules::Library::Support
       current_path : String? = nil
       diff_text.each_line do |diff_line|
         if diff_line.starts_with?("+++ b/")
-          current_path = diff_line.lchop("+++ b/")
+          # Git ends the header with a tab when the path contains a space.
+          current_path = diff_line.lchop("+++ b/").rstrip('\t')
           current_path = nil if current_path == "/dev/null"
           next
         end

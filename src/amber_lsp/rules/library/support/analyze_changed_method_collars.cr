@@ -92,7 +92,7 @@ module AmberLSP::Rules::Library::Support
       method_definition : MethodDefinition,
       list_of_behavior_describes : ListOfBehaviorDescribes,
     ) : String?
-      list_of_matching_describes = matching_describes(method_definition.selector, list_of_behavior_describes)
+      list_of_matching_describes = matching_describes(method_definition, list_of_behavior_describes)
       return "Method #{method_definition.selector} has no matching describe" if list_of_matching_describes.empty?
       return if any_describe_has_collar?(list_of_matching_describes)
 
@@ -109,7 +109,7 @@ module AmberLSP::Rules::Library::Support
       return "Changed method #{method_definition.selector} has no public caller in this type; #{NO_PUBLIC_CALLER_MESSAGE}" if list_of_public_callers.empty?
 
       return if list_of_public_callers.any? do |caller_definition|
-                  any_describe_has_collar?(matching_describes(caller_definition.selector, list_of_behavior_describes))
+                  any_describe_has_collar?(matching_describes(caller_definition, list_of_behavior_describes))
                 end
 
       list_of_caller_names = [] of String
@@ -117,7 +117,7 @@ module AmberLSP::Rules::Library::Support
       list_of_public_callers.each do |caller_definition|
         selector = caller_definition.selector
         list_of_caller_names << selector unless list_of_caller_names.includes?(selector)
-        list_of_matching_describes = matching_describes(selector, list_of_behavior_describes)
+        list_of_matching_describes = matching_describes(caller_definition, list_of_behavior_describes)
         if list_of_matching_describes.empty?
           missing_parts = [
             "Add a matching describe for #{selector}",
@@ -166,10 +166,13 @@ module AmberLSP::Rules::Library::Support
     end
 
     private def matching_describes(
-      selector : String,
+      method_definition : MethodDefinition,
       list_of_behavior_describes : ListOfBehaviorDescribes,
     ) : ListOfBehaviorDescribes
-      list_of_behavior_describes.select(&.selector.==(selector))
+      list_of_behavior_describes.select do |behavior_describe|
+        behavior_describe.selector == method_definition.selector &&
+          behavior_describe.covers_owner?(method_definition.owner_type_name)
+      end
     end
 
     private def any_describe_has_collar?(list_of_describes : ListOfBehaviorDescribes) : Bool
