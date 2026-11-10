@@ -27,6 +27,8 @@ require "../../src/amber_lsp/analyzer"
 require "../../src/amber_lsp/analyze_file_with_coverage"
 require "../../src/amber_lsp/controller"
 require "../../src/amber_lsp/server"
+require "../../src/amber_lsp/rules/library"
+require "../../src/amber_lsp/library_lint"
 
 def with_tempdir(&)
   dir = File.join(Dir.tempdir, "amber_lsp_test_#{Random::Secure.hex(8)}")
