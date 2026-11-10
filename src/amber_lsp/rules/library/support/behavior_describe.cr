@@ -19,10 +19,13 @@ module AmberLSP::Rules::Library::Support
 
     # Returns whether this describe can cover a method on *method_owner_type_name*.
     #
-    # A describe with no enclosing type could cover any owner, and a short name
-    # such as `Widget` covers `Sample::Widget`.
+    # A describe with no enclosing type could cover any owner. An unqualified
+    # name such as `Widget` covers `Sample::Widget`; a qualified name covers only
+    # the type it names.
     def covers_owner?(method_owner_type_name : String) : Bool
       return true unless describe_owner = @owner_type_name
+
+      return describe_owner == method_owner_type_name if describe_owner.includes?("::")
 
       describe_owner == method_owner_type_name ||
         method_owner_type_name.ends_with?("::#{describe_owner}")

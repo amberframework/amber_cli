@@ -30,6 +30,10 @@ private def build_widget_source(changed_expression : String) : String
   "module Sample\n  class Widget\n    def process(value : Int32) : Int32\n      if value > 0\n        #{changed_expression}\n      else\n        0\n      end\n    end\n  end\nend\n"
 end
 
+private def build_longer_namespace_widget_source(changed_expression : String) : String
+  "module Other\n  module Sample\n    class Widget\n      def process(value : Int32) : Int32\n        if value > 0\n          #{changed_expression}\n        else\n          0\n        end\n      end\n    end\n  end\nend\n"
+end
+
 private def run_collar_check(owner_declaration : String) : String
   run_collar_check_with_spec(build_owner_spec(owner_declaration))
 end
@@ -123,6 +127,17 @@ describe AmberLSP::Rules::Library::Support::AnalyzeChangedMethodCollars do
         run_collar_check("Widget").should_not contain("library/changed-method-collar")
       end
 
+      it "accepts an unqualified name for a deeper namespace" do
+        _exit_code, output, _error_output = run_library_lint_with_git_changes(
+          {
+            "src/widget.cr"       => build_longer_namespace_widget_source("value"),
+            "spec/widget_spec.cr" => build_owner_spec("Widget"),
+          },
+          {"src/widget.cr" => build_longer_namespace_widget_source("value + 1")},
+        )
+        output.should_not contain("library/changed-method-collar")
+      end
+
       it "accepts a string naming the type" do
         run_collar_check(%("Sample::Widget")).should_not contain("library/changed-method-collar")
       end
@@ -152,6 +167,17 @@ describe AmberLSP::Rules::Library::Support::AnalyzeChangedMethodCollars do
 
       it "reports a wrong owner written with a leading global scope" do
         run_collar_check(%("::Other::Sample::Widget")).should contain("library/changed-method-collar")
+      end
+
+      it "reports a qualified describe that is only a suffix of the method's owner" do
+        _exit_code, output, _error_output = run_library_lint_with_git_changes(
+          {
+            "src/widget.cr"       => build_longer_namespace_widget_source("value"),
+            "spec/widget_spec.cr" => build_owner_spec("Sample::Widget"),
+          },
+          {"src/widget.cr" => build_longer_namespace_widget_source("value + 1")},
+        )
+        output.should contain("library/changed-method-collar")
       end
 
       it "reports a type sharing only a name suffix" do
