@@ -391,6 +391,9 @@ module AmberCLI::Commands
       info "Created project structure"
     end
 
+    # INTEGRATION PINS (beta.11): Grant and asset_pipeline point at the heads of
+    # crimson-knight/grant#73 and amberframework/asset_pipeline#25. Before this
+    # branch merges they become the commits of those shards' release tags.
     private def create_shard_yml(path : String, name : String)
       shard_content = <<-SHARD
 name: #{name}
@@ -410,13 +413,13 @@ targets:
 dependencies:
   amber:
     github: amberframework/amber
-    commit: #{AmberRelease::COMMIT} # #{AmberRelease::VERSION} on v2-dev
+    commit: #{AmberRelease::COMMIT} # #{AmberRelease::VERSION}, fix/1425-respond-with-named-tuple (amberframework/amber#1451)
   grant:
     github: crimson-knight/grant
-    commit: 623c4bcad284fcee000244c8b26651f925e23ceb # 0.23.4
+    commit: fe59cbc5b409f67035cf4383e7293c60674ddb3e # 0.24.0, grant-regex-free-default-path (crimson-knight/grant#73)
   asset_pipeline:
     github: amberframework/asset_pipeline
-    commit: ac630a4c948080bf45e9b1e66451c48da9a69349 # 0.37.1
+    commit: abbef01db50e2d4a91b09b5356c0f9309347a8fd # 0.38.0, regex-free-default-require (amberframework/asset_pipeline#25)
 #{database_shard_dependency}
 SHARD
 

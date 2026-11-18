@@ -7,18 +7,18 @@ test "$shard_version" = "2.0.10"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new_command.cr
-grep -F 'commit: #{AmberRelease::COMMIT} # #{AmberRelease::VERSION} on v2-dev' src/amber_cli/commands/new_command.cr
-grep -F 'COMMIT  = "d775841a0af43bf512f1c9b704906fccdf8863f7"' src/amber_cli/amber_release.cr
-grep -F 'TREE    = "e06f26daef02a30e91114b2c71224920e0c097de"' src/amber_cli/amber_release.cr
-grep -F 'CHECKSUM = "sha256-v2:e1099a4f7a25db316b2abdf80f999a2753a0fcc056834f3abe6d9b5a88ae945d"' src/amber_cli/amber_release.cr
+grep -F 'commit: #{AmberRelease::COMMIT} # #{AmberRelease::VERSION}, fix/1425-respond-with-named-tuple (amberframework/amber#1451)' src/amber_cli/commands/new_command.cr
+grep -F 'COMMIT  = "43a361419514b49388d5716c97e5b95d170ba5a8"' src/amber_cli/amber_release.cr
+grep -F 'TREE    = "332d04b4e88fc045f4b0784157eea21e33297b42"' src/amber_cli/amber_release.cr
+grep -F 'CHECKSUM = "sha256-v2:f58fc614bc2c719985a1ca0bae9a206c75d57a42ef75fe8781116d45b9e88ba7"' src/amber_cli/amber_release.cr
 grep -F 'template: ecr' src/amber_cli/commands/new_command.cr
 grep -F 'model: grant' src/amber_cli/commands/new_command.cr
 grep -F 'database: #{database}' src/amber_cli/commands/new_command.cr
 grep -F 'github: crimson-knight/grant' src/amber_cli/commands/new_command.cr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/commands/new_command.cr
-grep -F 'commit: ac630a4c948080bf45e9b1e66451c48da9a69349 # 0.37.1' src/amber_cli/commands/new_command.cr
+grep -F 'commit: abbef01db50e2d4a91b09b5356c0f9309347a8fd # 0.38.0, regex-free-default-require (amberframework/asset_pipeline#25)' src/amber_cli/commands/new_command.cr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/templates/app/shard.yml.ecr
-grep -F 'commit: ac630a4c948080bf45e9b1e66451c48da9a69349 # 0.37.1' src/amber_cli/templates/app/shard.yml.ecr
+grep -F 'commit: abbef01db50e2d4a91b09b5356c0f9309347a8fd # 0.38.0, regex-free-default-require (amberframework/asset_pipeline#25)' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/amber' src/amber_cli/generators/native_app.cr
 grep -F 'commit: d291e0930dd22b14a2d10f75a9de063abb0e64e4 # v2.0.0-beta.10' src/amber_cli/generators/native_app.cr
 grep -F 'version: ~> 0.37.1' src/amber_cli/generators/native_app.cr
@@ -43,6 +43,8 @@ if grep -F '#   schema = #{class_name}Schema.new(data)' src/amber_cli/commands/g
 fi
 
 grep -F 'scripts/smoke_generated_web.sh ./amber' .github/workflows/release.yml
+test -x scripts/check_generated_app_linkage.sh
+grep -F 'scripts/check_generated_app_linkage.sh ./amber' .github/workflows/ci.yml
 if grep -R -F 'AMBER_CANDIDATE_FRAMEWORK' .github/workflows; then
   echo "CI workflows must test the published framework emitted by the template" >&2
   exit 1

@@ -12,16 +12,17 @@ targets:
   {{snake_case}}:
     main: src/{{snake_case}}.cr
 
+<%# INTEGRATION PINS (beta.11): these commits are the heads of amberframework/amber#1451, crimson-knight/grant#73 and amberframework/asset_pipeline#25; they become release-tag commits before merge. -%>
 dependencies:
   amber:
     github: amberframework/amber
-    commit: d775841a0af43bf512f1c9b704906fccdf8863f7 # 2.0.0-beta.10 on v2-dev
+    commit: 43a361419514b49388d5716c97e5b95d170ba5a8 # 2.0.0-beta.10, fix/1425-respond-with-named-tuple (amberframework/amber#1451)
   grant:
     github: crimson-knight/grant
-    commit: 623c4bcad284fcee000244c8b26651f925e23ceb # 0.23.4
+    commit: fe59cbc5b409f67035cf4383e7293c60674ddb3e # 0.24.0, grant-regex-free-default-path (crimson-knight/grant#73)
   asset_pipeline:
     github: amberframework/asset_pipeline
-    commit: ac630a4c948080bf45e9b1e66451c48da9a69349 # 0.37.1
+    commit: abbef01db50e2d4a91b09b5356c0f9309347a8fd # 0.38.0, regex-free-default-require (amberframework/asset_pipeline#25)
 <%# Grant ships its own Postgres and SQLite drivers; only MySQL needs a shard. -%>
 <% if @database == "mysql" -%>
   mysql:
