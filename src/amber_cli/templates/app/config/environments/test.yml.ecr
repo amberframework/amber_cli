@@ -17,14 +17,18 @@ when "mysql" -%>
 
 session:
   key: <%= @name %>.session
-  # signed_cookie keeps the session in the visitor's cookie: tamper-proof, readable by
-  # the visitor, about 4 KB, and nothing is held on the server. encrypted_cookie also
-  # hides it from the visitor. adapter keeps sessions on the server through `adapter`.
+  # Amber 2.0.0-beta.11 keeps every session on the server, in `adapter`, whichever store
+  # is named here; the cookie carries only the encrypted session id. It accepts
+  # signed_cookie, encrypted_cookie and redis. Once amberframework/amber#1455 is
+  # released, signed_cookie and encrypted_cookie keep the session in the visitor's
+  # cookie with nothing held on the server, and store: adapter becomes valid.
   store: signed_cookie
-  # Used only when store is adapter: memory (at most 10,000 sessions per process) or redis.
+  # memory, or an adapter the app registers with Amber::Adapters::AdapterFactory.
+  # The memory adapter has no size limit in beta.11; amber#1455 caps it at
+  # session.max_memory_sessions (10,000 by default).
   adapter: memory
-  # Seconds a session lasts after its last change (two weeks). 0 makes cookie sessions
-  # end when the browser closes and lets server-side sessions live until evicted.
+  # Seconds a session lasts after its last change (two weeks). 0 makes the cookie end
+  # when the browser closes; a server-side session with 0 never expires.
   expires: 1209600
 
 logging:
