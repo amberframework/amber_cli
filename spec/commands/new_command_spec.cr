@@ -355,6 +355,13 @@ describe AmberCLI::Commands::NewCommand do
           production["session"]["expires"].as_i.should eq(1_209_600)
           production["static"]["headers"]["Cache-Control"].as_s.should eq("no-cache")
 
+          AmberCLI::Commands::NewCommand::GC_INITIAL_HEAP_MIB.should be > 0
+          %w[development test production].each do |environment_name|
+            environment = YAML.parse(File.read(File.join(destination, "config/environments/#{environment_name}.yml")))
+            environment["server"]["gc_initial_heap_mib"].as_i.should eq(AmberCLI::Commands::NewCommand::GC_INITIAL_HEAP_MIB)
+          end
+          File.read(File.join(destination, "README.md")).should contain("server.gc_initial_heap_mib")
+
           routes = File.read(File.join(destination, "config/routes.cr"))
           lean_block = routes[routes.index!("pipeline :lean_read do")...routes.index!("pipeline :web do")]
           lean_block.should contain("Amber::Pipe::Error.new")

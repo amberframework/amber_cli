@@ -40,6 +40,12 @@ module AmberCLI::Commands
     VALID_DATABASES = %w[pg mysql sqlite]
     VALID_TEMPLATES = %w[ecr]
 
+    # Starting garbage-collector heap, in MiB, written to `server.gc_initial_heap_mib`
+    # in every generated environment file. 16 MiB is the smallest starting heap that
+    # kept POST p50 at or below beta.10 in a generated app (4 and 8 MiB did not); it
+    # adds about 8 MiB of peak memory on a small JSON route.
+    GC_INITIAL_HEAP_MIB = 16
+
     getter database : String = "sqlite"
     getter template : String = "ecr"
     getter app_type : String = "web"
@@ -504,6 +510,10 @@ only the error and security-header pipes. Forms and anything else that needs a
 session stay on the `web` pipeline, with the session, flash and CSRF pipes. To
 give a page a session, move its route to `routes :web`.
 
+The garbage collector starts with a #{GC_INITIAL_HEAP_MIB} MiB heap (`server.gc_initial_heap_mib`
+in `config/environments/*.yml`, or `AMBER_SERVER_GC_INITIAL_HEAP_MIB`), so a busy server
+does not collect over and over while its heap grows. 0 keeps the collector's own size.
+
 Production writes no per-request log line. The edge proxy keeps access logs. The
 `Amber::Pipe::Logger` lines in `config/routes.cr` show where to turn it back on.
 
@@ -784,6 +794,9 @@ server:
   host: #{host}
   port: 3000
   secret_key_base: "#{secret}"
+  # The garbage collector starts with this much heap (MiB), so a busy server does not
+  # collect over and over while its heap grows. 0 keeps the collector's own few hundred KiB.
+  gc_initial_heap_mib: #{GC_INITIAL_HEAP_MIB}
 
 database:
   url: "#{database_url}"
