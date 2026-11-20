@@ -29,7 +29,7 @@ brew tap amberframework/amber_cli
 brew trust --tap amberframework/amber_cli
 tap_path="$(brew --repo amberframework/amber_cli)"
 git -C "$tap_path" fetch origin
-git -C "$tap_path" checkout --detach 8493998f2c5524fdfa72246ed0ce08a3883d6c90
+git -C "$tap_path" checkout --detach fbf686efde5a8f43b7a6edb2b89ffc4a65acaa93
 HOMEBREW_NO_AUTO_UPDATE=1 brew install amberframework/amber_cli/amber_cli
 ```
 
