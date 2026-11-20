@@ -42,7 +42,7 @@ describe AmberCLI::Generators::NativeApp do
         # Must have amber (patterns only)
         shard_content.should contain("amber:")
         shard_content.should contain("github: amberframework/amber")
-        shard_content.should contain("commit: d291e0930dd22b14a2d10f75a9de063abb0e64e4 # v2.0.0-beta.10")
+        shard_content.should contain("commit: f987f1bb19b789f8f14b000b6ee00ed496fe6cbb # v2.0.0-beta.11")
         shard_content.should contain("github: crimson-knight/grant")
         shard_content.should contain("commit: 6c9da3c8180e612f76ff9ad9c76242a0402ce6d9")
         File.exists?(File.join(project_path, "shard.lock")).should be_false

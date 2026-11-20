@@ -1,7 +1,7 @@
 # Amber V2 Beta Web App
 
-This guide is the consumer smoke test for Amber CLI `2.0.10` and Amber
-`2.0.0-beta.10`. It is expected to pass on Apple Silicon macOS, x86_64 Linux,
+This guide is the consumer smoke test for Amber CLI `2.0.11` and Amber
+`2.0.0-beta.11`. It is expected to pass on Apple Silicon macOS, x86_64 Linux,
 and ARM64 Linux. Windows x86-64 runs the complete generated-app smoke in CI. A
 `shard.lock` written on Windows records different `sha256-v2:` values from one
 written on macOS or Linux, so a team on both needs a lock for each.
@@ -14,7 +14,7 @@ minecart --version
 amber --version
 ```
 
-Crystal must be at least 1.20 and earlier than 2.0. Amber CLI must be 2.0.10 or
+Crystal must be at least 1.20 and earlier than 2.0. Amber CLI must be 2.0.11 or
 newer.
 
 ## 2. Generate the web app
@@ -35,7 +35,7 @@ grep -E '^(template|database|model):' .amber.yml
 ```
 
 The dependency must be `amberframework/amber` at commit
-`d775841a0af43bf512f1c9b704906fccdf8863f7` (`2.0.0-beta.10` on `v2-dev`); the
+`f987f1bb19b789f8f14b000b6ee00ed496fe6cbb` (`v2.0.0-beta.11`); the
 template must be `ecr`, the database must be `sqlite`, and the model layer must
 be `grant`. `shard.yml` must include Grant and Asset Pipeline pinned by commit,
 and no database driver shard unless you selected MySQL. Grant ships its own
