@@ -1,5 +1,5 @@
 require "../core/base_command"
-require "../amber_release"
+require "../pinned_releases"
 require "../generators/native_app"
 require "../static_assets"
 require "./setup_agent_command"
@@ -295,35 +295,44 @@ module AmberCLI::Commands
 
     # Describes what is wrong with a generated application's `shard.lock`, or
     # returns nil when each dependency entry carries exactly one checksum and
-    # Amber is locked at `AmberRelease::COMMIT` with `AmberRelease::CHECKSUM`,
-    # or `AmberRelease::TREE` from a Minecart older than 2025.11.25.9.
+    # every release in `LIST_OF_PINNED_RELEASES` (Amber, Grant, asset_pipeline)
+    # is locked at its commit with its `sha256-v2:` checksum, or with its
+    # `git-tree:` checksum from a Minecart older than 2025.11.25.9.
     def self.minecart_lock_problem(lock : String) : String?
       entries = lock_entries(lock)
       if entries.empty? || entries.values.any? { |entry_lines| entry_lines.count { |line| LOCK_CHECKSUM_LINE.matches?(line) } != 1 }
         return "Minecart did not lock every dependency with exactly one checksum"
       end
 
-      amber_entry = entries["amber"]?
-      return "Minecart did not lock Amber" unless amber_entry
-
-      expected_version = "    version: #{AmberRelease::VERSION}+git.commit.#{AmberRelease::COMMIT}"
-      unless amber_entry.includes?(expected_version) && records_the_release_checksum?(amber_entry)
-        return "Minecart locked Amber at a revision other than v#{AmberRelease::VERSION} " \
-               "(commit #{AmberRelease::COMMIT}, checksum #{AmberRelease::CHECKSUM})"
+      LIST_OF_PINNED_RELEASES.each do |release|
+        if problem = pinned_release_problem(entries, release)
+          return problem
+        end
       end
 
       nil
     end
 
+    private def self.pinned_release_problem(entries : Hash(String, Array(String)), release : PinnedRelease) : String?
+      entry_lines = entries[release.shard_name]?
+      return "Minecart did not lock #{release.display_name}" unless entry_lines
+
+      expected_version = "    version: #{release.version}+git.commit.#{release.commit}"
+      return nil if entry_lines.includes?(expected_version) && records_the_release_checksum?(entry_lines, release)
+
+      "Minecart locked #{release.display_name} at a revision other than v#{release.version} " \
+      "(commit #{release.commit}, checksum #{release.checksum})"
+    end
+
     # A Windows checkout can rewrite line endings and has no executable bit, so it
     # hashes differently from the release. There the commit in the version line is
     # the pin, and the entry still has to carry exactly one checksum.
-    private def self.records_the_release_checksum?(amber_entry : Array(String)) : Bool
+    private def self.records_the_release_checksum?(entry_lines : Array(String), release : PinnedRelease) : Bool
       {% if flag?(:win32) %}
         true
       {% else %}
-        amber_entry.includes?("    checksum: #{AmberRelease::CHECKSUM}") ||
-          amber_entry.includes?("    checksum: git-tree:#{AmberRelease::TREE}")
+        entry_lines.includes?("    checksum: #{release.checksum}") ||
+          entry_lines.includes?("    checksum: git-tree:#{release.tree}")
       {% end %}
     end
 
@@ -416,13 +425,13 @@ targets:
 dependencies:
   amber:
     github: amberframework/amber
-    commit: #{AmberRelease::COMMIT} # #{AmberRelease::VERSION} on v2-dev
+    commit: #{AmberRelease::COMMIT} # v#{AmberRelease::VERSION}
   grant:
     github: crimson-knight/grant
-    commit: 623c4bcad284fcee000244c8b26651f925e23ceb # 0.23.4
+    commit: #{GrantRelease::COMMIT} # v#{GrantRelease::VERSION}
   asset_pipeline:
     github: amberframework/asset_pipeline
-    commit: ac630a4c948080bf45e9b1e66451c48da9a69349 # 0.37.1
+    commit: #{AssetPipelineRelease::COMMIT} # v#{AssetPipelineRelease::VERSION}
 #{database_shard_dependency}
 SHARD
 
@@ -493,7 +502,7 @@ server database. Set `DATABASE_URL` to override the environment YAML URL.
 ## Production configuration
 
 Set at least `AMBER_SERVER_SECRET_KEY_BASE`. See the
-[Amber V2 beta guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.10/docs/beta-installation.md).
+[Amber V2 beta guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.11/docs/beta-installation.md).
 
 ## What is on by default
 

@@ -31,6 +31,8 @@ command -v minecart >/dev/null 2>&1 || { echo "Minecart is required to generate 
 
 rm -rf "$output_directory"
 mkdir -p "$output_directory"
+# The script changes into the app, so keep the output directory absolute.
+output_directory="$(cd "$output_directory" && pwd)"
 app_path="$output_directory/linkage_probe"
 server_pid=""
 

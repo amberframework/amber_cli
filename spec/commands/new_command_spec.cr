@@ -33,21 +33,62 @@ describe AmberCLI::Commands::NewCommand do
       checksum: #{AmberCLI::AmberRelease::CHECKSUM}
   LOCK
 
-    it "accepts a lock with Amber at the pinned commit and tree" do
-      lock = "version: 2.0\nshards:\n#{amber_lock_entry}\n"
+    grant_lock_entry = <<-LOCK
+    grant:
+      git: https://github.com/crimson-knight/grant.git
+      version: #{AmberCLI::GrantRelease::VERSION}+git.commit.#{AmberCLI::GrantRelease::COMMIT}
+      checksum: #{AmberCLI::GrantRelease::CHECKSUM}
+  LOCK
+
+    asset_pipeline_lock_entry = <<-LOCK
+    asset_pipeline:
+      git: https://github.com/amberframework/asset_pipeline.git
+      version: #{AmberCLI::AssetPipelineRelease::VERSION}+git.commit.#{AmberCLI::AssetPipelineRelease::COMMIT}
+      checksum: #{AmberCLI::AssetPipelineRelease::CHECKSUM}
+  LOCK
+
+    pinned_entries = "#{amber_lock_entry}\n#{grant_lock_entry}\n#{asset_pipeline_lock_entry}"
+
+    it "accepts a lock with Amber, Grant and asset_pipeline at their pinned commits and checksums" do
+      lock = "version: 2.0\nshards:\n#{pinned_entries}\n"
       AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).should be_nil
     end
 
-    it "accepts the git-tree checksum an older Minecart records" do
-      older_entry = amber_lock_entry.sub(AmberCLI::AmberRelease::CHECKSUM, "git-tree:#{AmberCLI::AmberRelease::TREE}")
-      lock = "version: 2.0\nshards:\n#{older_entry}\n"
+    it "accepts the git-tree checksums an older Minecart records" do
+      older_entries = pinned_entries
+        .sub(AmberCLI::AmberRelease::CHECKSUM, "git-tree:#{AmberCLI::AmberRelease::TREE}")
+        .sub(AmberCLI::GrantRelease::CHECKSUM, "git-tree:#{AmberCLI::GrantRelease::TREE}")
+        .sub(AmberCLI::AssetPipelineRelease::CHECKSUM, "git-tree:#{AmberCLI::AssetPipelineRelease::TREE}")
+      lock = "version: 2.0\nshards:\n#{older_entries}\n"
       AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).should be_nil
     end
+
+    it "rejects a lock that leaves out Grant" do
+      lock = "version: 2.0\nshards:\n#{amber_lock_entry}\n#{asset_pipeline_lock_entry}\n"
+      AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).should eq("Minecart did not lock Grant")
+    end
+
+    it "rejects a lock with asset_pipeline at another commit" do
+      other_commit = "2" * 40
+      lock = "version: 2.0\nshards:\n#{pinned_entries.sub(AmberCLI::AssetPipelineRelease::COMMIT, other_commit)}\n"
+      problem = AmberCLI::Commands::NewCommand.minecart_lock_problem(lock)
+      problem.to_s.should contain("Minecart locked asset_pipeline at a revision other than v#{AmberCLI::AssetPipelineRelease::VERSION}")
+    end
+
+    {% unless flag?(:win32) %}
+      it "rejects a lock whose Grant checksum differs from the pinned release" do
+        other_checksum = "sha256-v2:#{"0" * 64}"
+        lock = "version: 2.0\nshards:\n#{pinned_entries.sub(AmberCLI::GrantRelease::CHECKSUM, other_checksum)}\n"
+        problem = AmberCLI::Commands::NewCommand.minecart_lock_problem(lock)
+        problem.to_s.should contain("Minecart locked Grant")
+        problem.to_s.should contain(AmberCLI::GrantRelease::CHECKSUM)
+      end
+    {% end %}
 
     {% unless flag?(:win32) %}
       it "rejects a lock whose Amber checksum differs from the pinned release" do
         other_checksum = "sha256-v2:#{"0" * 64}"
-        lock = "version: 2.0\nshards:\n#{amber_lock_entry.sub(AmberCLI::AmberRelease::CHECKSUM, other_checksum)}\n"
+        lock = "version: 2.0\nshards:\n#{pinned_entries.sub(AmberCLI::AmberRelease::CHECKSUM, other_checksum)}\n"
         problem = AmberCLI::Commands::NewCommand.minecart_lock_problem(lock)
         problem.should_not be_nil
         problem.to_s.should contain(AmberCLI::AmberRelease::CHECKSUM)
@@ -56,7 +97,7 @@ describe AmberCLI::Commands::NewCommand do
 
     it "rejects a lock with Amber at another commit" do
       other_commit = "1" * 40
-      lock = "version: 2.0\nshards:\n#{amber_lock_entry.sub(AmberCLI::AmberRelease::COMMIT, other_commit)}\n"
+      lock = "version: 2.0\nshards:\n#{pinned_entries.sub(AmberCLI::AmberRelease::COMMIT, other_commit)}\n"
       AmberCLI::Commands::NewCommand.minecart_lock_problem(lock).should_not be_nil
     end
 
@@ -172,13 +213,13 @@ describe AmberCLI::Commands::NewCommand do
 
         shard = File.read(File.join(destination, "shard.yml"))
         shard.should contain("github: amberframework/amber")
-        shard.should contain("commit: #{AmberCLI::AmberRelease::COMMIT} # #{AmberCLI::AmberRelease::VERSION} on v2-dev")
+        shard.should contain("commit: #{AmberCLI::AmberRelease::COMMIT} # v#{AmberCLI::AmberRelease::VERSION}")
         shard.should contain("grant:")
         shard.should contain("github: crimson-knight/grant")
-        shard.should contain("commit: 623c4bcad284fcee000244c8b26651f925e23ceb")
+        shard.should contain("commit: #{AmberCLI::GrantRelease::COMMIT} # v#{AmberCLI::GrantRelease::VERSION}")
         shard.should contain("asset_pipeline:")
         shard.should contain("github: amberframework/asset_pipeline")
-        shard.should contain("commit: ac630a4c948080bf45e9b1e66451c48da9a69349")
+        shard.should contain("commit: #{AmberCLI::AssetPipelineRelease::COMMIT} # v#{AmberCLI::AssetPipelineRelease::VERSION}")
         shard.should_not contain("version: ~> 0.37.1")
         shard.should_not contain("crystal-sqlite3")
         shard.should_not contain("crystal-pg")
