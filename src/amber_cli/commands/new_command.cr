@@ -41,10 +41,12 @@ module AmberCLI::Commands
     VALID_TEMPLATES = %w[ecr]
 
     # Starting garbage-collector heap, in MiB, written to `server.gc_initial_heap_mib`
-    # in every generated environment file. 16 MiB is the smallest starting heap that
-    # kept POST p50 at or below beta.10 in a generated app (4 and 8 MiB did not); it
-    # adds about 8 MiB of peak memory on a small JSON route.
-    GC_INITIAL_HEAP_MIB = 16
+    # in every generated environment file. 8 MiB keeps a generated app under 20 MiB
+    # peak memory on its page-cached, JSON and form-post routes at 32 connections
+    # (15.2 to 16.8 MiB, against 23.5 to 25.6 MiB at 16 MiB). A 16 MiB heap collects
+    # less often, so allocation-heavy routes cost about 18% more CPU per request at
+    # 8 MiB; an app that prefers that trade raises the value per environment.
+    GC_INITIAL_HEAP_MIB = 8
 
     getter database : String = "sqlite"
     getter template : String = "ecr"
@@ -522,6 +524,8 @@ give a page a session, move its route to `routes :web`.
 The garbage collector starts with a #{GC_INITIAL_HEAP_MIB} MiB heap (`server.gc_initial_heap_mib`
 in `config/environments/*.yml`, or `AMBER_SERVER_GC_INITIAL_HEAP_MIB`), so a busy server
 does not collect over and over while its heap grows. 0 keeps the collector's own size.
+A larger value trades memory for less collector work: at 16 MiB the app peaks near
+24 MiB under load instead of 16 MiB, and JSON and form posts use less CPU per request.
 
 Production writes no per-request log line. The edge proxy keeps access logs. The
 `Amber::Pipe::Logger` lines in `config/routes.cr` show where to turn it back on.
