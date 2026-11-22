@@ -3,7 +3,7 @@
 [![GitHub release](https://img.shields.io/github/release/amberframework/amber_cli.svg)](https://github.com/amberframework/amber_cli/releases)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://amberframework.github.io/amber_cli/)
 
-Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.13`
+Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.14`
 creates the supported Amber `2.0.0-beta.13` ECR web application and includes
 development, generator, database, and LSP tooling. Its agent tooling also
 works in plain Crystal apps and shards; see
@@ -42,13 +42,13 @@ are selected by the installed core catalog, not pinned by this tap.
 
 ### Direct release archive
 
-The CLI `2.0.13` release has `darwin-arm64`, `linux-x86_64`, and
+The CLI `2.0.14` release has `darwin-arm64`, `linux-x86_64`, and
 `linux-arm64` binary archives. A direct archive does not install Minecart or
 the native dependencies, so Homebrew is the beginner path. Windows x86-64 has
 no release archive.
 
 ```bash
-version=v2.0.13
+version=v2.0.14
 platform=darwin-arm64
 asset="amber_cli-${platform}.tar.gz"
 
@@ -97,7 +97,7 @@ The web template is deliberately small:
 - branded homepage, controller spec, and fingerprinted CSS, JavaScript, SVG,
   font, image, and general static-file support
 - a browser-native import map with a local JavaScript module entry point
-- Grant `v0.25.0` and asset_pipeline `v0.38.0`, pinned by commit and checked
+- Grant `v0.25.1` and asset_pipeline `v0.38.0`, pinned by commit and checked
   in `shard.lock` the same way, so the built app links no PCRE2
 - Grant ORM, Micrate-powered migration commands, and the selected database driver
 - SQLite by default, so the first persisted feature needs no database server
