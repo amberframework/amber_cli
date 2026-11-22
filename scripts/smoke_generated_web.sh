@@ -46,7 +46,7 @@ grep -F 'AMBER_ENV=test crystal spec' "$script_dir/../src/amber_cli/templates/ap
 ! grep -F 'crystal-alpha' "$script_dir/../src/amber_cli/templates/app/.amber.yml.ecr"
 
 grep -F "github: amberframework/amber" "$app_path/shard.yml"
-grep -F "commit: f987f1bb19b789f8f14b000b6ee00ed496fe6cbb # v2.0.0-beta.11" "$app_path/shard.yml"
+grep -F "commit: 834ef5d2790a1486b4c879e1b87ecd0c32e7809a # v2.0.0-beta.12" "$app_path/shard.yml"
 grep -F "github: crimson-knight/grant" "$app_path/shard.yml"
 grep -F "github: amberframework/asset_pipeline" "$app_path/shard.yml"
 grep -F "commit: 73c89c3417a5282d9ac4179b283bcc660b7f898a # v0.38.0" "$app_path/shard.yml"
@@ -68,7 +68,7 @@ fi
 
 if [[ -n "$framework_commit" ]]; then
   sed -i.bak -E "s#    github: amberframework/amber#    github: ${framework_repository}#" "$app_path/shard.yml"
-  sed -i.bak -E "s/    commit: f987f1bb19b789f8f14b000b6ee00ed496fe6cbb( # [^#]+)?$/    commit: ${framework_commit}/" "$app_path/shard.yml"
+  sed -i.bak -E "s/    commit: 834ef5d2790a1486b4c879e1b87ecd0c32e7809a( # [^#]+)?$/    commit: ${framework_commit}/" "$app_path/shard.yml"
   rm -f "$app_path/shard.yml.bak"
 fi
 
@@ -103,14 +103,14 @@ if [[ -n "$framework_commit" ]]; then
   expected_amber_commit="$framework_commit"
   expected_amber_git="https://github.com/${framework_repository}.git"
 else
-  expected_amber_commit="f987f1bb19b789f8f14b000b6ee00ed496fe6cbb"
+  expected_amber_commit="834ef5d2790a1486b4c879e1b87ecd0c32e7809a"
   expected_amber_git="https://github.com/amberframework/amber.git"
 fi
 grep -qxF "    git: ${expected_amber_git}" <<<"$amber_entry"
 grep -qE "^    version: [^ ]+\+git\.commit\.${expected_amber_commit}$" <<<"$amber_entry"
 if [[ -z "$framework_commit" ]]; then
-  grep -qxF "    version: 2.0.0-beta.11+git.commit.f987f1bb19b789f8f14b000b6ee00ed496fe6cbb" <<<"$amber_entry"
-  grep -qxF "    checksum: sha256-v2:732bd8a19fed53e2e8ef0ee768dab03466abf502324d55de5f81961ac75456fa" <<<"$amber_entry"
+  grep -qxF "    version: 2.0.0-beta.12+git.commit.834ef5d2790a1486b4c879e1b87ecd0c32e7809a" <<<"$amber_entry"
+  grep -qxF "    checksum: sha256-v2:e54b07880db48f675951fc3d29221c97e3bed867d777972962d3b750ca6dfe5b" <<<"$amber_entry"
 fi
 "$cli_path" assets build
 "$cli_path" assets check

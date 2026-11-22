@@ -504,7 +504,7 @@ server database. Set `DATABASE_URL` to override the environment YAML URL.
 ## Production configuration
 
 Set at least `AMBER_SERVER_SECRET_KEY_BASE`. See the
-[Amber V2 beta guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.11/docs/beta-installation.md).
+[Amber V2 beta guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.12/docs/beta-installation.md).
 
 ## What is on by default
 
@@ -692,19 +692,10 @@ CONFIG
 
     private def create_compression_pipe(path : String)
       pipe_content = <<-PIPE
-# Gzips a pipeline's responses for clients that accept it, through Crystal's own handler.
-class CompressedResponsePipe < Amber::Pipe::Base
-  def initialize
-    @compress_handler = HTTP::CompressHandler.new
-  end
-
-  # A byte range refers to the uncompressed file, so a range request is answered uncompressed.
-  def call(context : HTTP::Server::Context) : Nil
-    return call_next(context) if context.request.headers.has_key?("Range")
-    context.response.headers.add("Vary", "Accept-Encoding")
-    @compress_handler.next = self.next
-    @compress_handler.call(context)
-  end
+# Gzips a pipeline's responses for clients that accept it. Amber::Pipe::Compression keeps its
+# zlib streams outside the collected heap and reuses them, answers a range request
+# uncompressed, and adds `Vary: Accept-Encoding`.
+class CompressedResponsePipe < Amber::Pipe::Compression
 end
 PIPE
 
@@ -816,15 +807,14 @@ database:
 
 session:
   key: "#{name}.session"
-  # Amber 2.0.0-beta.11 keeps every session on the server, in `adapter`, whichever store
-  # is named here; the cookie carries only the encrypted session id. It accepts
-  # signed_cookie, encrypted_cookie and redis. Once amberframework/amber#1455 is
-  # released, signed_cookie and encrypted_cookie keep the session in the visitor's
-  # cookie with nothing held on the server, and store: adapter becomes valid.
+  # signed_cookie and encrypted_cookie keep the session in the visitor's cookie
+  # (4,096 bytes at most) and nothing on the server; the visitor can read, but not
+  # change, a signed_cookie session. adapter and redis keep it on the server through
+  # `adapter`, and only they let regenerate_session! issue a new session id.
   store: "signed_cookie"
   # memory, or an adapter the app registers with Amber::Adapters::AdapterFactory.
-  # The memory adapter has no size limit in beta.11; amber#1455 caps it at
-  # session.max_memory_sessions (10,000 by default).
+  # The memory adapter keeps at most session.max_memory_sessions (10,000 by default)
+  # and drops the session used longest ago.
   adapter: "memory"
   # Seconds a session lasts after its last change (two weeks). 0 makes the cookie end
   # when the browser closes; a server-side session with 0 never expires.
