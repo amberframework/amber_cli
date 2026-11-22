@@ -3,14 +3,14 @@ set -euo pipefail
 
 shard_version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
 cli_version="$(sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' src/amber_cli.cr | head -1)"
-test "$shard_version" = "2.0.12"
+test "$shard_version" = "2.0.13"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new_command.cr
 grep -F 'commit: #{AmberRelease::COMMIT} # v#{AmberRelease::VERSION}' src/amber_cli/commands/new_command.cr
-grep -F 'COMMIT  = "834ef5d2790a1486b4c879e1b87ecd0c32e7809a"' src/amber_cli/amber_release.cr
-grep -F 'TREE    = "c07e799f09b91f002ca07e8f31c4dfc054e82fc4"' src/amber_cli/amber_release.cr
-grep -F 'CHECKSUM = "sha256-v2:e54b07880db48f675951fc3d29221c97e3bed867d777972962d3b750ca6dfe5b"' src/amber_cli/amber_release.cr
+grep -F 'COMMIT  = "346ce766853d3916f3cf1d391921dafb907615bd"' src/amber_cli/amber_release.cr
+grep -F 'TREE    = "cd384f403c3aea50783f63d3a14b383d037065f4"' src/amber_cli/amber_release.cr
+grep -F 'CHECKSUM = "sha256-v2:b2087f907b51e65f5e6a1af36a663408fb5383d127377e35c2fbf0c0a735a11e"' src/amber_cli/amber_release.cr
 grep -F 'template: ecr' src/amber_cli/commands/new_command.cr
 grep -F 'model: grant' src/amber_cli/commands/new_command.cr
 grep -F 'database: #{database}' src/amber_cli/commands/new_command.cr
@@ -18,15 +18,15 @@ grep -F 'github: crimson-knight/grant' src/amber_cli/commands/new_command.cr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/commands/new_command.cr
 grep -F 'commit: #{GrantRelease::COMMIT} # v#{GrantRelease::VERSION}' src/amber_cli/commands/new_command.cr
 grep -F 'commit: #{AssetPipelineRelease::COMMIT} # v#{AssetPipelineRelease::VERSION}' src/amber_cli/commands/new_command.cr
-grep -F 'COMMIT   = "7bb4b9d45e74c490e6f3ad80cef8cc1cebd5b889"' src/amber_cli/pinned_releases.cr
-grep -F 'CHECKSUM = "sha256-v2:0c295bd9da92146c5482c63326adb402b24e33c152af86025a27f9da1a086f51"' src/amber_cli/pinned_releases.cr
+grep -F 'COMMIT   = "eb55ebd1ce1c7011b08288cc3e9e943581bea77f"' src/amber_cli/pinned_releases.cr
+grep -F 'CHECKSUM = "sha256-v2:6296051f79683e5f70d549d6a5fa947e6300d68b85004746e0df5bcca47840a1"' src/amber_cli/pinned_releases.cr
 grep -F 'COMMIT   = "73c89c3417a5282d9ac4179b283bcc660b7f898a"' src/amber_cli/pinned_releases.cr
 grep -F 'CHECKSUM = "sha256-v2:80ea8ac95943a3c5be438e68c2ef2f00d9b9783f0787fcd67ef346f135d9510c"' src/amber_cli/pinned_releases.cr
-grep -F 'commit: 7bb4b9d45e74c490e6f3ad80cef8cc1cebd5b889 # v0.24.0' src/amber_cli/templates/app/shard.yml.ecr
+grep -F 'commit: eb55ebd1ce1c7011b08288cc3e9e943581bea77f # v0.25.0' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'commit: 73c89c3417a5282d9ac4179b283bcc660b7f898a # v0.38.0' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/amber' src/amber_cli/generators/native_app.cr
-grep -F 'commit: 834ef5d2790a1486b4c879e1b87ecd0c32e7809a # v2.0.0-beta.12' src/amber_cli/generators/native_app.cr
+grep -F 'commit: 346ce766853d3916f3cf1d391921dafb907615bd # v2.0.0-beta.13' src/amber_cli/generators/native_app.cr
 grep -F 'version: ~> 0.37.1' src/amber_cli/generators/native_app.cr
 if grep -F 'branch:' src/amber_cli/generators/native_app.cr; then
   echo "native app template contains a mutable dependency branch" >&2
