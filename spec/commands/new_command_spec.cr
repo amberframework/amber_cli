@@ -417,8 +417,8 @@ describe AmberCLI::Commands::NewCommand do
           routes.index!("routes :lean_read do").should be < routes.index!(%(get "/", HomeController))
 
           pipe = File.read(File.join(destination, "src/pipes/compressed_response_pipe.cr"))
-          pipe.should contain("HTTP::CompressHandler.new")
-          pipe.should contain(%("Vary", "Accept-Encoding"))
+          pipe.should contain("class CompressedResponsePipe < Amber::Pipe::Compression")
+          pipe.should_not contain("HTTP::CompressHandler")
 
           page_cache_config = File.read(File.join(destination, "config/initializers/page_cache.cr"))
           page_cache_config.should contain("config.use_memory_cache")

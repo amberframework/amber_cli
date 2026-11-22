@@ -3,14 +3,14 @@ set -euo pipefail
 
 shard_version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
 cli_version="$(sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' src/amber_cli.cr | head -1)"
-test "$shard_version" = "2.0.11"
+test "$shard_version" = "2.0.12"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new_command.cr
 grep -F 'commit: #{AmberRelease::COMMIT} # v#{AmberRelease::VERSION}' src/amber_cli/commands/new_command.cr
-grep -F 'COMMIT  = "f987f1bb19b789f8f14b000b6ee00ed496fe6cbb"' src/amber_cli/amber_release.cr
-grep -F 'TREE    = "fc2433e6cf3b55fc779977cc70b1270c7910c920"' src/amber_cli/amber_release.cr
-grep -F 'CHECKSUM = "sha256-v2:732bd8a19fed53e2e8ef0ee768dab03466abf502324d55de5f81961ac75456fa"' src/amber_cli/amber_release.cr
+grep -F 'COMMIT  = "834ef5d2790a1486b4c879e1b87ecd0c32e7809a"' src/amber_cli/amber_release.cr
+grep -F 'TREE    = "c07e799f09b91f002ca07e8f31c4dfc054e82fc4"' src/amber_cli/amber_release.cr
+grep -F 'CHECKSUM = "sha256-v2:e54b07880db48f675951fc3d29221c97e3bed867d777972962d3b750ca6dfe5b"' src/amber_cli/amber_release.cr
 grep -F 'template: ecr' src/amber_cli/commands/new_command.cr
 grep -F 'model: grant' src/amber_cli/commands/new_command.cr
 grep -F 'database: #{database}' src/amber_cli/commands/new_command.cr
@@ -26,7 +26,7 @@ grep -F 'commit: 7bb4b9d45e74c490e6f3ad80cef8cc1cebd5b889 # v0.24.0' src/amber_c
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'commit: 73c89c3417a5282d9ac4179b283bcc660b7f898a # v0.38.0' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/amber' src/amber_cli/generators/native_app.cr
-grep -F 'commit: f987f1bb19b789f8f14b000b6ee00ed496fe6cbb # v2.0.0-beta.11' src/amber_cli/generators/native_app.cr
+grep -F 'commit: 834ef5d2790a1486b4c879e1b87ecd0c32e7809a # v2.0.0-beta.12' src/amber_cli/generators/native_app.cr
 grep -F 'version: ~> 0.37.1' src/amber_cli/generators/native_app.cr
 if grep -F 'branch:' src/amber_cli/generators/native_app.cr; then
   echo "native app template contains a mutable dependency branch" >&2

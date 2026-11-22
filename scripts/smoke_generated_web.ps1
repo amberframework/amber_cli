@@ -43,7 +43,7 @@ $amberConfig = [System.IO.File]::ReadAllText($amberConfigPath)
 if (-not $manifest.Contains("github: amberframework/amber")) {
   throw "Generated shard.yml does not include Amber"
 }
-if (-not $manifest.Contains("commit: f987f1bb19b789f8f14b000b6ee00ed496fe6cbb # v2.0.0-beta.11")) {
+if (-not $manifest.Contains("commit: 834ef5d2790a1486b4c879e1b87ecd0c32e7809a # v2.0.0-beta.12")) {
   throw "Generated shard.yml does not pin the supported Amber beta"
 }
 if (-not $manifest.Contains("github: crimson-knight/grant")) {
@@ -74,7 +74,7 @@ if (-not $amberConfig.Contains("database: sqlite") -or -not $amberConfig.Contain
 
 if ($FrameworkCommit) {
   $releasedRepository = "    github: amberframework/amber"
-  $releasedFramework = "    commit: f987f1bb19b789f8f14b000b6ee00ed496fe6cbb # v2.0.0-beta.11"
+  $releasedFramework = "    commit: 834ef5d2790a1486b4c879e1b87ecd0c32e7809a # v2.0.0-beta.12"
   if (-not $manifest.Contains($releasedRepository)) {
     throw "Generated shard.yml does not contain the expected Amber repository"
   }
@@ -118,7 +118,7 @@ try {
     $expectedAmberCommit = $FrameworkCommit
     $expectedAmberGit = "https://github.com/$FrameworkRepository.git"
   } else {
-    $expectedAmberCommit = "f987f1bb19b789f8f14b000b6ee00ed496fe6cbb"
+    $expectedAmberCommit = "834ef5d2790a1486b4c879e1b87ecd0c32e7809a"
     $expectedAmberGit = "https://github.com/amberframework/amber.git"
   }
   if ($amberEntry -notmatch "(?m)^    git: $([regex]::Escape($expectedAmberGit))\r?$") {
