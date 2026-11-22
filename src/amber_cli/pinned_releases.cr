@@ -13,12 +13,12 @@ module AmberCLI
     tree : String,
     checksum : String
 
-  # The Grant release that `amber new` pins (tag `v0.25.0`).
+  # The Grant release that `amber new` pins (tag `v0.25.1`).
   module GrantRelease
-    VERSION  = "0.25.0"
-    COMMIT   = "eb55ebd1ce1c7011b08288cc3e9e943581bea77f"
-    TREE     = "feb59c2da5b67dd21e12b8d26f7c45baddb39ec3"
-    CHECKSUM = "sha256-v2:6296051f79683e5f70d549d6a5fa947e6300d68b85004746e0df5bcca47840a1"
+    VERSION  = "0.25.1"
+    COMMIT   = "cfb9ff4a48e28c78040c37c1ffbb05379df26d97"
+    TREE     = "9bdf0c29956f5fef8a0ffff429e2946289fd8d90"
+    CHECKSUM = "sha256-v2:432b5fc89aa21041d4d6a1dc29784ca10bd205d706348b71d589c0247db0a757"
   end
 
   # The asset_pipeline release that `amber new` pins (tag `v0.38.0`).
