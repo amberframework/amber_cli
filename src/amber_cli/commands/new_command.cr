@@ -504,7 +504,7 @@ server database. Set `DATABASE_URL` to override the environment YAML URL.
 ## Production configuration
 
 Set at least `AMBER_SERVER_SECRET_KEY_BASE`. See the
-[Amber V2 beta guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.12/docs/beta-installation.md).
+[Amber V2 beta guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.13/docs/beta-installation.md).
 
 ## What is on by default
 

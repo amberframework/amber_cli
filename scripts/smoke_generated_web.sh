@@ -46,11 +46,11 @@ grep -F 'AMBER_ENV=test crystal spec' "$script_dir/../src/amber_cli/templates/ap
 ! grep -F 'crystal-alpha' "$script_dir/../src/amber_cli/templates/app/.amber.yml.ecr"
 
 grep -F "github: amberframework/amber" "$app_path/shard.yml"
-grep -F "commit: 834ef5d2790a1486b4c879e1b87ecd0c32e7809a # v2.0.0-beta.12" "$app_path/shard.yml"
+grep -F "commit: 346ce766853d3916f3cf1d391921dafb907615bd # v2.0.0-beta.13" "$app_path/shard.yml"
 grep -F "github: crimson-knight/grant" "$app_path/shard.yml"
 grep -F "github: amberframework/asset_pipeline" "$app_path/shard.yml"
 grep -F "commit: 73c89c3417a5282d9ac4179b283bcc660b7f898a # v0.38.0" "$app_path/shard.yml"
-grep -F "commit: 7bb4b9d45e74c490e6f3ad80cef8cc1cebd5b889" "$app_path/shard.yml"
+grep -F "commit: eb55ebd1ce1c7011b08288cc3e9e943581bea77f" "$app_path/shard.yml"
 ! grep -F "crystal-sqlite3" "$app_path/shard.yml"
 grep -F "template: ecr" "$app_path/.amber.yml"
 grep -F "database: sqlite" "$app_path/.amber.yml"
@@ -68,7 +68,7 @@ fi
 
 if [[ -n "$framework_commit" ]]; then
   sed -i.bak -E "s#    github: amberframework/amber#    github: ${framework_repository}#" "$app_path/shard.yml"
-  sed -i.bak -E "s/    commit: 834ef5d2790a1486b4c879e1b87ecd0c32e7809a( # [^#]+)?$/    commit: ${framework_commit}/" "$app_path/shard.yml"
+  sed -i.bak -E "s/    commit: 346ce766853d3916f3cf1d391921dafb907615bd( # [^#]+)?$/    commit: ${framework_commit}/" "$app_path/shard.yml"
   rm -f "$app_path/shard.yml.bak"
 fi
 
@@ -86,8 +86,8 @@ else
   minecart install --frozen
 fi
 test -s shard.lock
-grep -F "version: 0.24.0+git.commit.7bb4b9d45e74c490e6f3ad80cef8cc1cebd5b889" shard.lock
-grep -A3 '^  grant:$' shard.lock | grep -qE '^    checksum: (sha256-v2:0c295bd9da92146c5482c63326adb402b24e33c152af86025a27f9da1a086f51|git-tree:ac01af3a3edb7d881c798c755e0845ad04383225)$'
+grep -F "version: 0.25.0+git.commit.eb55ebd1ce1c7011b08288cc3e9e943581bea77f" shard.lock
+grep -A3 '^  grant:$' shard.lock | grep -qE '^    checksum: (sha256-v2:6296051f79683e5f70d549d6a5fa947e6300d68b85004746e0df5bcca47840a1|git-tree:feb59c2da5b67dd21e12b8d26f7c45baddb39ec3)$'
 grep -F "version: 0.38.0+git.commit.73c89c3417a5282d9ac4179b283bcc660b7f898a" shard.lock
 grep -A3 '^  asset_pipeline:$' shard.lock | grep -qE '^    checksum: (sha256-v2:80ea8ac95943a3c5be438e68c2ef2f00d9b9783f0787fcd67ef346f135d9510c|git-tree:42caf3fc2d1af5e97417e7d7947dddd025e405e1)$'
 grep -F "version: 0.14.0" shard.lock
@@ -103,14 +103,14 @@ if [[ -n "$framework_commit" ]]; then
   expected_amber_commit="$framework_commit"
   expected_amber_git="https://github.com/${framework_repository}.git"
 else
-  expected_amber_commit="834ef5d2790a1486b4c879e1b87ecd0c32e7809a"
+  expected_amber_commit="346ce766853d3916f3cf1d391921dafb907615bd"
   expected_amber_git="https://github.com/amberframework/amber.git"
 fi
 grep -qxF "    git: ${expected_amber_git}" <<<"$amber_entry"
 grep -qE "^    version: [^ ]+\+git\.commit\.${expected_amber_commit}$" <<<"$amber_entry"
 if [[ -z "$framework_commit" ]]; then
-  grep -qxF "    version: 2.0.0-beta.12+git.commit.834ef5d2790a1486b4c879e1b87ecd0c32e7809a" <<<"$amber_entry"
-  grep -qxF "    checksum: sha256-v2:e54b07880db48f675951fc3d29221c97e3bed867d777972962d3b750ca6dfe5b" <<<"$amber_entry"
+  grep -qxF "    version: 2.0.0-beta.13+git.commit.346ce766853d3916f3cf1d391921dafb907615bd" <<<"$amber_entry"
+  grep -qxF "    checksum: sha256-v2:b2087f907b51e65f5e6a1af36a663408fb5383d127377e35c2fbf0c0a735a11e" <<<"$amber_entry"
 fi
 "$cli_path" assets build
 "$cli_path" assets check

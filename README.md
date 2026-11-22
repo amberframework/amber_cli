@@ -3,8 +3,8 @@
 [![GitHub release](https://img.shields.io/github/release/amberframework/amber_cli.svg)](https://github.com/amberframework/amber_cli/releases)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://amberframework.github.io/amber_cli/)
 
-Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.12`
-creates the supported Amber `2.0.0-beta.12` ECR web application and includes
+Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.13`
+creates the supported Amber `2.0.0-beta.13` ECR web application and includes
 development, generator, database, and LSP tooling. Its agent tooling also
 works in plain Crystal apps and shards; see
 [Agent tooling](#agent-tooling-for-any-crystal-project).
@@ -42,13 +42,13 @@ are selected by the installed core catalog, not pinned by this tap.
 
 ### Direct release archive
 
-The CLI `2.0.12` release has `darwin-arm64`, `linux-x86_64`, and
+The CLI `2.0.13` release has `darwin-arm64`, `linux-x86_64`, and
 `linux-arm64` binary archives. A direct archive does not install Minecart or
 the native dependencies, so Homebrew is the beginner path. Windows x86-64 has
 no release archive.
 
 ```bash
-version=v2.0.12
+version=v2.0.13
 platform=darwin-arm64
 asset="amber_cli-${platform}.tar.gz"
 
@@ -90,14 +90,14 @@ or a file under `app/assets/` changes. Open <http://127.0.0.1:3000>.
 
 The web template is deliberately small:
 
-- Amber from `amberframework/amber`, pinned to `2.0.0-beta.12` by commit
-  (`834ef5d2790a1486b4c879e1b87ecd0c32e7809a`), with its checksum (`sha256-v2:e54b07880db48f675951fc3d29221c97e3bed867d777972962d3b750ca6dfe5b`) checked in `shard.lock`
+- Amber from `amberframework/amber`, pinned to `2.0.0-beta.13` by commit
+  (`346ce766853d3916f3cf1d391921dafb907615bd`), with its checksum (`sha256-v2:b2087f907b51e65f5e6a1af36a663408fb5383d127377e35c2fbf0c0a735a11e`) checked in `shard.lock`
 - ECR views (Slang and Kilt are not supported in Amber V2)
 - typed development, test, and production YAML
 - branded homepage, controller spec, and fingerprinted CSS, JavaScript, SVG,
   font, image, and general static-file support
 - a browser-native import map with a local JavaScript module entry point
-- Grant `v0.24.0` and asset_pipeline `v0.38.0`, pinned by commit and checked
+- Grant `v0.25.0` and asset_pipeline `v0.38.0`, pinned by commit and checked
   in `shard.lock` the same way, so the built app links no PCRE2
 - Grant ORM, Micrate-powered migration commands, and the selected database driver
 - SQLite by default, so the first persisted feature needs no database server

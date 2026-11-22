@@ -118,7 +118,7 @@ dependencies:
   # Amber Framework V2 (patterns only, NO HTTP server for native apps)
   amber:
     github: amberframework/amber
-    commit: 834ef5d2790a1486b4c879e1b87ecd0c32e7809a # v2.0.0-beta.12
+    commit: 346ce766853d3916f3cf1d391921dafb907615bd # v2.0.0-beta.13
 
   # Grant ORM (ActiveRecord-style, replaces Granite in V2)
   grant:
