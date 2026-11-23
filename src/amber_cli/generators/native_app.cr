@@ -118,12 +118,12 @@ dependencies:
   # Amber Framework V2 (patterns only, NO HTTP server for native apps)
   amber:
     github: amberframework/amber
-    commit: 346ce766853d3916f3cf1d391921dafb907615bd # v2.0.0-beta.13
+    commit: 1a9af236afed4a6915214b8d193028e6315d7643 # v2.0.0-beta.14
 
   # Grant ORM (ActiveRecord-style, replaces Granite in V2)
   grant:
     github: crimson-knight/grant
-    commit: cfb9ff4a48e28c78040c37c1ffbb05379df26d97 # v0.25.1
+    commit: b83a82f0261509d4ce1f26fadb318c8ba132a066 # v0.26.0
 
   # Asset Pipeline (cross-platform UI: AppKit, UIKit, Android Views)
   asset_pipeline:

@@ -42,9 +42,9 @@ describe AmberCLI::Generators::NativeApp do
         # Must have amber (patterns only)
         shard_content.should contain("amber:")
         shard_content.should contain("github: amberframework/amber")
-        shard_content.should contain("commit: 346ce766853d3916f3cf1d391921dafb907615bd # v2.0.0-beta.13")
+        shard_content.should contain("commit: 1a9af236afed4a6915214b8d193028e6315d7643 # v2.0.0-beta.14")
         shard_content.should contain("github: crimson-knight/grant")
-        shard_content.should contain("commit: cfb9ff4a48e28c78040c37c1ffbb05379df26d97 # v0.25.1")
+        shard_content.should contain("commit: b83a82f0261509d4ce1f26fadb318c8ba132a066 # v0.26.0")
         File.exists?(File.join(project_path, "shard.lock")).should be_false
 
         # Must have the released asset_pipeline with cross-platform UI support

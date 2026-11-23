@@ -504,7 +504,7 @@ server database. Set `DATABASE_URL` to override the environment YAML URL.
 ## Production configuration
 
 Set at least `AMBER_SERVER_SECRET_KEY_BASE`. See the
-[Amber V2 beta guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.13/docs/beta-installation.md).
+[Amber V2 beta guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.14/docs/beta-installation.md).
 
 ## What is on by default
 
@@ -623,6 +623,10 @@ require "./jobs/**"
 require "./mailers/**"
 require "./channels/**"
 
+# Every Log source logs at logging.severity from config/environments/<env>.yml
+# (or AMBER_LOGGING_SEVERITY): debug in development, info in production.
+Amber.settings.logging.apply_severity_to_log
+
 # Stateless views render once here, before the server accepts traffic.
 warm_report = Components::StatelessView.warm_all
 Log.for("boot").info do
@@ -692,9 +696,9 @@ CONFIG
 
     private def create_compression_pipe(path : String)
       pipe_content = <<-PIPE
-# Gzips a pipeline's responses for clients that accept it. Amber::Pipe::Compression keeps its
-# zlib streams outside the collected heap and reuses them, answers a range request
-# uncompressed, and adds `Vary: Accept-Encoding`.
+# Gzips a pipeline's responses for clients that accept it. Amber::Pipe::Compression compresses
+# with Mica's DEFLATE, in Crystal, so it works in a build made with -Dwithout_zlib, answers a
+# range request uncompressed, and adds `Vary: Accept-Encoding`.
 class CompressedResponsePipe < Amber::Pipe::Compression
 end
 PIPE

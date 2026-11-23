@@ -2,7 +2,7 @@
 
 This page takes a new developer from a bare machine to an Amber V2 app with
 checksum-verified dependencies, and with editor and coding-assistant rules active
-from the first edit. It covers Amber CLI 2.0.14, Amber 2.0.0-beta.13 and Minecart
+from the first edit. It covers Amber CLI 2.0.15, Amber 2.0.0-beta.14 and Minecart
 2025.11.25.9 on Apple Silicon macOS and Linux.
 
 ## What you get
@@ -13,7 +13,7 @@ from the first edit. It covers Amber CLI 2.0.14, Amber 2.0.0-beta.13 and Minecar
 | `amber-lsp` | Language server, API lookup and rule checks | Same formula |
 | `minecart` | Installs dependencies and verifies their checksums | Dependency of the formula |
 | Crystal | Compiles the app | Dependency of the formula |
-| Amber 2.0.0-beta.13 | The framework, its rule pack and its guides | Pinned in each new app |
+| Amber 2.0.0-beta.14 | The framework, its rule pack and its guides | Pinned in each new app |
 | Grant | The ORM and its tenancy rule pack | Pinned in each new app |
 | Asset Pipeline | CSS, JavaScript and image assets | Pinned in each new app |
 | micrate | Database migrations | Built into `amber database` |
@@ -36,8 +36,8 @@ HOMEBREW_NO_AUTO_UPDATE=1 brew install amberframework/amber_cli/amber_cli
 Check the result:
 
 ```bash
-amber --version      # Amber CLI v2.0.14
-amber-lsp --version  # amber-lsp 1.0.0 (amber_cli 2.0.14, ...)
+amber --version      # Amber CLI v2.0.15
+amber-lsp --version  # amber-lsp 1.0.0 (amber_cli 2.0.15, ...)
 minecart --version   # Minecart 2025.11.25.9
 ```
 
@@ -191,18 +191,18 @@ Pin the release commits and move the lock:
 dependencies:
   amber:
     github: amberframework/amber
-    commit: 346ce766853d3916f3cf1d391921dafb907615bd # v2.0.0-beta.13
+    commit: 1a9af236afed4a6915214b8d193028e6315d7643 # v2.0.0-beta.14
   grant:
     github: crimson-knight/grant
-    commit: cfb9ff4a48e28c78040c37c1ffbb05379df26d97 # v0.25.1
+    commit: b83a82f0261509d4ce1f26fadb318c8ba132a066 # v0.26.0
   asset_pipeline:
     github: amberframework/asset_pipeline
-    commit: 73c89c3417a5282d9ac4179b283bcc660b7f898a # v0.38.0
+    commit: 757cfca8e7b37bafe1dfe19d98192e6716e03746 # v0.39.0
 ```
 
 ```bash
 minecart update amber grant asset_pipeline
-grep -A3 '^  amber:' shard.lock   # checksum: sha256-v2:b2087f907b51e65f5e6a1af36a663408fb5383d127377e35c2fbf0c0a735a11e
+grep -A3 '^  amber:' shard.lock   # checksum: sha256-v2:fd3b452154187bf99140885d5d524b8a39bdd5771338d9c18e3bb0b8f8feab75
 amber setup:agent
 ```
 
@@ -211,4 +211,4 @@ notice about them. Minecart 2025.11.25.9 stops on a folder in `lib/` that
 `shard.lock` does not pin, and names it. Remove that folder and install again.
 
 Then read the
-[beta.13 release notes](https://github.com/amberframework/amber/blob/v2.0.0-beta.13/RELEASE_NOTES_V2_BETA13.md).
+[beta.14 release notes](https://github.com/amberframework/amber/blob/v2.0.0-beta.14/RELEASE_NOTES_V2_BETA14.md).
