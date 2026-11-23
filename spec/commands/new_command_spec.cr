@@ -425,6 +425,8 @@ describe AmberCLI::Commands::NewCommand do
           page_cache_config.should contain(%(ENV["PAGE_CACHE_MB"]? || "32"))
 
           main = File.read(File.join(destination, "src/tuned_sqlite.cr"))
+          main.index!("require \"./channels/**\"").should be < main.index!("Amber.settings.logging.apply_severity_to_log")
+          main.index!("Amber.settings.logging.apply_severity_to_log").should be < main.index!("Components::StatelessView.warm_all")
           main.index!("Components::StatelessView.warm_all").should be < main.index!("Amber::Server.start")
 
           File.read(File.join(destination, "src/components/site_header.cr")).should contain("struct SiteHeader < Components::StatelessView")
