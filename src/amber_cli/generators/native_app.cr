@@ -141,7 +141,7 @@ dependencies:
     version: 0.30.0
   mysql:
     github: crimson-knight/crystal-mysql
-    commit: c061324dcef89a200a7a3f86a59b2ebf03f83602
+    commit: 5b6e84e903c850d653360a19f424e274833ba866
   sqlite3:
     github: crystal-lang/crystal-sqlite3
     version: 0.23.0

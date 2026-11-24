@@ -1506,7 +1506,7 @@ ROBOTS
       <<-YAML
         mysql:
           github: crimson-knight/crystal-mysql
-          commit: c061324dcef89a200a7a3f86a59b2ebf03f83602 # 0.17.0
+          commit: 5b6e84e903c850d653360a19f424e274833ba866 # 0.18.0 (Beryl TLS 1.3)
       YAML
     end
 
