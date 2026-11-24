@@ -10,13 +10,14 @@ require "./check_amber_agent_setup_command"
 #
 # ## Usage
 # ```
-# amber new [app_name] -d [pg | mysql | sqlite] -t ecr --type [web | native] --no-deps
+# amber new [app_name] -d [pg | mysql | sqlite] -t ecr --type [web | native] --tls --no-deps
 # ```
 #
 # ## Options
 # - `-d, --database` - Database type (pg, mysql, sqlite)
 # - `-t, --template` - Template language (ECR is the only V2 engine)
 # - `--type` - Application type: web (default) or native (cross-platform desktop/mobile)
+# - `--tls` - Serve HTTPS from the app itself: adds `require "amber/tls"`, which links OpenSSL
 # - `--no-deps` - Skip dependency installation
 # - `--skip-agent-setup` - Skip Claude Code and Codex hooks
 #
@@ -30,6 +31,9 @@ require "./check_amber_agent_setup_command"
 #
 # # Create a native cross-platform app (macOS, iOS, Android)
 # amber new my_native_app --type native
+#
+# # Create a web app that serves HTTPS itself (server.ssl)
+# amber new my_shop --tls
 #
 # # Create app with SQLite (for development)
 # amber new quick_app -d sqlite
@@ -54,6 +58,7 @@ module AmberCLI::Commands
     getter should_assume_yes : Bool = false
     getter should_skip_dependency_installation : Bool = false
     getter should_skip_agent_setup : Bool = false
+    getter should_serve_tls : Bool = false
     getter application_name : String = ""
 
     # :nodoc:
@@ -98,6 +103,11 @@ module AmberCLI::Commands
         @should_assume_yes = true
       end
 
+      option_parser.on("--tls", "Serve HTTPS from the app itself (adds require \"amber/tls\", which links OpenSSL)") do
+        @parsed_options["tls"] = true
+        @should_serve_tls = true
+      end
+
       option_parser.on("--no-deps", "Don't install dependencies") do
         @parsed_options["no_deps"] = true
         @should_skip_dependency_installation = true
@@ -120,6 +130,7 @@ module AmberCLI::Commands
       option_parser.separator "Examples:"
       option_parser.separator "  amber new my_app"
       option_parser.separator "  amber new my_app -d mysql -t ecr"
+      option_parser.separator "  amber new my_shop --tls"
       option_parser.separator "  amber new my_native_app --type native"
       option_parser.separator "  amber new . -d sqlite"
     end
@@ -642,6 +653,7 @@ MAIN
     private def create_config_files(path : String, name : String)
       app_config = <<-CONFIG
 require "amber"
+#{tls_require}
 
 # Initializers load here, before config/database.cr and config/routes.cr:
 # `require "../config/*"` reaches this file first.
@@ -684,6 +696,24 @@ end
 CONFIG
 
       write_text(File.join(path, "config/initializers/page_cache.cr"), page_cache_config)
+    end
+
+    # TLS is opt-in in Amber: only an app made with `--tls` requires `amber/tls`
+    # and links OpenSSL. Every other app gets a comment that says how to add it.
+    private def tls_require : String
+      if should_serve_tls
+        <<-TLS
+        # This app serves HTTPS itself (server.ssl) and may send mail over SMTP
+        # STARTTLS; amber/tls adds both and links OpenSSL.
+        require "amber/tls"
+        TLS
+      else
+        <<-TLS
+        # TLS is opt-in. An app that serves HTTPS itself (server.ssl) or sends mail
+        # over SMTP STARTTLS adds `require "amber/tls"` here; without it the app
+        # links no OpenSSL.
+        TLS
+      end
     end
 
     private def create_assets_config(path : String)

@@ -58,6 +58,8 @@ module AmberCLI::Documentation
   # - `-t, --template=TEMPLATE` - Template engine (`ecr` only in V2)
   # - `--type=TYPE` - Application type (`web` supported, `native` preview)
   # - `-y, --assume-yes` - Skip interactive prompts
+  # - `--tls` - Serve HTTPS from the app itself: adds `require "amber/tls"`,
+  #   which links OpenSSL. Without it the app links no OpenSSL.
   # - `--no-deps` - Don't install dependencies
   #
   # ### Examples
