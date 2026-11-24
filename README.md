@@ -85,6 +85,9 @@ assistant files, plus each dependency's guides, then installs the Claude Code an
 Minecart install and assistant setup are deliberately deferred; run `minecart
 install --strict-pinning` and `minecart assistant init` before frozen installs. Pass `--skip-agent-setup` to generate
 the app without the agent files.
+TLS is opt-in: a generated app links no OpenSSL. Pass `--tls` when the app
+serves HTTPS itself (`server.ssl`) or sends mail over SMTP STARTTLS; it adds
+`require "amber/tls"` to `config/application.cr`.
 `amber watch` recompiles assets before the application whenever an ECR template
 or a file under `app/assets/` changes. Open <http://127.0.0.1:3000>.
 

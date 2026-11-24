@@ -448,6 +448,36 @@ describe AmberCLI::Commands::NewCommand do
       end
     end
 
+    it "leaves amber/tls out of a default web app, so it links no OpenSSL" do
+      SpecHelper.within_temp_directory do |temp_dir|
+        destination = File.join(temp_dir, "plain_app")
+        command = AmberCLI::Commands::NewCommand.new("new")
+
+        command.parse_and_execute([destination, "--type=web", "--no-deps", "--skip-agent-setup"])
+
+        command.should_serve_tls.should be_false
+        application_config = File.read(File.join(destination, "config/application.cr"))
+        list_of_code_lines = application_config.lines.reject(&.lstrip.starts_with?("#"))
+        list_of_code_lines.any?(&.includes?("amber/tls")).should be_false
+        # The comment tells the developer how to opt in.
+        application_config.should contain(%(`require "amber/tls"`))
+      end
+    end
+
+    it "requires amber/tls right after amber in an app made with --tls" do
+      SpecHelper.within_temp_directory do |temp_dir|
+        destination = File.join(temp_dir, "tls_app")
+        command = AmberCLI::Commands::NewCommand.new("new")
+
+        command.parse_and_execute([destination, "--type=web", "--tls", "--no-deps", "--skip-agent-setup"])
+
+        command.should_serve_tls.should be_true
+        application_config = File.read(File.join(destination, "config/application.cr"))
+        list_of_code_lines = application_config.lines.reject(&.lstrip.starts_with?("#")).map(&.strip).reject(&.empty?)
+        list_of_code_lines.first(2).should eq([%(require "amber"), %(require "amber/tls")])
+      end
+    end
+
     it "requires config/initializers before the generated config files that read Amber.settings" do
       SpecHelper.within_temp_directory do |temp_dir|
         destination = File.join(temp_dir, "initializer_app")
