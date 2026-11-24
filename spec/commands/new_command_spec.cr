@@ -475,6 +475,7 @@ describe AmberCLI::Commands::NewCommand do
         application_config = File.read(File.join(destination, "config/application.cr"))
         list_of_code_lines = application_config.lines.reject(&.lstrip.starts_with?("#")).map(&.strip).reject(&.empty?)
         list_of_code_lines.first(2).should eq([%(require "amber"), %(require "amber/tls")])
+        application_config.should contain("TLS 1.3")
       end
     end
 
