@@ -21,12 +21,12 @@ module AmberCLI
     CHECKSUM = "sha256-v2:886b86c249fa5f7ec3d4b66a0f700d8647687b3b9984b7f580cbc2c75b5306b9"
   end
 
-  # The asset_pipeline release that `amber new` pins (tag `v0.39.0`).
+  # The asset_pipeline release that `amber new` pins (tag `v0.40.0`).
   module AssetPipelineRelease
-    VERSION  = "0.39.0"
-    COMMIT   = "757cfca8e7b37bafe1dfe19d98192e6716e03746"
-    TREE     = "12fede7cd4097c001942232dba924e3318e9a745"
-    CHECKSUM = "sha256-v2:9d82b94e45c24b53f52eea129ba7cf3839d833e211e2fe3da39a03795d36efd2"
+    VERSION  = "0.40.0"
+    COMMIT   = "84f3188239e43dc6e0bcfd2e72074e8ec67156cd"
+    TREE     = "a9ff8d2bdc88044ce6bf254b5ccbd6943365bdfb"
+    CHECKSUM = "sha256-v2:137195ff733af93d36787d4a965a1846bb4795347a6eced8a5dd3f015ee729b9"
   end
 
   # Every release a generated application's `shard.lock` must record exactly.

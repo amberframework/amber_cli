@@ -4,10 +4,10 @@ module AmberCLI
   # it. A release of Amber CLI that moves to a new Amber release changes all of
   # them together.
   module AmberRelease
-    VERSION = "2.0.0-beta.14"
-    COMMIT  = "1a9af236afed4a6915214b8d193028e6315d7643"
-    TREE    = "c38f7cc1d385178f2db65c907c4297a31e3459c3"
+    VERSION = "2.0.0-beta.15"
+    COMMIT  = "0830e3fdbc5e05be851c3c7ae7bf03b67be10732"
+    TREE    = "5709f265e0d9e942507d5d7e155a922013b65559"
     # What Minecart 2025.11.25.9 and newer record for this tree in `shard.lock`.
-    CHECKSUM = "sha256-v2:fd3b452154187bf99140885d5d524b8a39bdd5771338d9c18e3bb0b8f8feab75"
+    CHECKSUM = "sha256-v2:14df1ff766414599f53a8be6816023374ba01cc6a2bd6d61ad1cabb81d88ad28"
   end
 end

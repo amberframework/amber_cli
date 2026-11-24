@@ -15,13 +15,13 @@ targets:
 dependencies:
   amber:
     github: amberframework/amber
-    commit: 1a9af236afed4a6915214b8d193028e6315d7643 # v2.0.0-beta.14
+    commit: 0830e3fdbc5e05be851c3c7ae7bf03b67be10732 # v2.0.0-beta.15
   grant:
     github: crimson-knight/grant
     commit: b83a82f0261509d4ce1f26fadb318c8ba132a066 # v0.26.0
   asset_pipeline:
     github: amberframework/asset_pipeline
-    commit: 757cfca8e7b37bafe1dfe19d98192e6716e03746 # v0.39.0
+    commit: 84f3188239e43dc6e0bcfd2e72074e8ec67156cd # v0.40.0
 <%# Grant ships its own Postgres and SQLite drivers; only MySQL needs a shard. -%>
 <% if @database == "mysql" -%>
   mysql:
