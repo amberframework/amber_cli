@@ -2,7 +2,7 @@
 
 This page takes a new developer from a bare machine to an Amber V2 app with
 checksum-verified dependencies, and with editor and coding-assistant rules active
-from the first edit. It covers Amber CLI 2.0.15, Amber 2.0.0-beta.14 and Minecart
+from the first edit. It covers Amber CLI 2.0.16, Amber 2.0.0-beta.15 and Minecart
 2025.11.25.9 on Apple Silicon macOS and Linux.
 
 ## What you get
@@ -13,7 +13,7 @@ from the first edit. It covers Amber CLI 2.0.15, Amber 2.0.0-beta.14 and Minecar
 | `amber-lsp` | Language server, API lookup and rule checks | Same formula |
 | `minecart` | Installs dependencies and verifies their checksums | Dependency of the formula |
 | Crystal | Compiles the app | Dependency of the formula |
-| Amber 2.0.0-beta.14 | The framework, its rule pack and its guides | Pinned in each new app |
+| Amber 2.0.0-beta.15 | The framework, its rule pack and its guides | Pinned in each new app |
 | Grant | The ORM and its tenancy rule pack | Pinned in each new app |
 | Asset Pipeline | CSS, JavaScript and image assets | Pinned in each new app |
 | micrate | Database migrations | Built into `amber database` |
@@ -36,8 +36,8 @@ HOMEBREW_NO_AUTO_UPDATE=1 brew install amberframework/amber_cli/amber_cli
 Check the result:
 
 ```bash
-amber --version      # Amber CLI v2.0.15
-amber-lsp --version  # amber-lsp 1.0.0 (amber_cli 2.0.15, ...)
+amber --version      # Amber CLI v2.0.16
+amber-lsp --version  # amber-lsp 1.0.0 (amber_cli 2.0.16, ...)
 minecart --version   # Minecart 2025.11.25.9
 ```
 
@@ -191,24 +191,29 @@ Pin the release commits and move the lock:
 dependencies:
   amber:
     github: amberframework/amber
-    commit: 1a9af236afed4a6915214b8d193028e6315d7643 # v2.0.0-beta.14
+    commit: 0830e3fdbc5e05be851c3c7ae7bf03b67be10732 # v2.0.0-beta.15
   grant:
     github: crimson-knight/grant
     commit: b83a82f0261509d4ce1f26fadb318c8ba132a066 # v0.26.0
   asset_pipeline:
     github: amberframework/asset_pipeline
-    commit: 757cfca8e7b37bafe1dfe19d98192e6716e03746 # v0.39.0
+    commit: 84f3188239e43dc6e0bcfd2e72074e8ec67156cd # v0.40.0
 ```
 
 ```bash
 minecart update amber grant asset_pipeline
-grep -A3 '^  amber:' shard.lock   # checksum: sha256-v2:fd3b452154187bf99140885d5d524b8a39bdd5771338d9c18e3bb0b8f8feab75
+grep -A3 '^  amber:' shard.lock   # checksum: sha256-v2:14df1ff766414599f53a8be6816023374ba01cc6a2bd6d61ad1cabb81d88ad28
 amber setup:agent
 ```
+
+An app that serves HTTPS itself (`server.ssl`) or sends mail with mailer
+`use_tls` adds `require "amber/tls"` right after `require "amber"` in
+`config/application.cr`. TLS is opt-in from Amber 2.0.0-beta.15; without that
+line such an app stops at start with `Amber::Exceptions::TLSNotCompiledIn`.
 
 `git-tree:` entries already in your lock keep verifying, and Minecart prints a
 notice about them. Minecart 2025.11.25.9 stops on a folder in `lib/` that
 `shard.lock` does not pin, and names it. Remove that folder and install again.
 
 Then read the
-[beta.14 release notes](https://github.com/amberframework/amber/blob/v2.0.0-beta.14/RELEASE_NOTES_V2_BETA14.md).
+[beta.15 release notes](https://github.com/amberframework/amber/blob/v2.0.0-beta.15/RELEASE_NOTES_V2_BETA15.md).
