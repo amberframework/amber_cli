@@ -1,12 +1,9 @@
-require "micrate"
-require "pg"
-require "mysql"
-require "sqlite3"
 require "yaml"
 require "../core/base_command"
 require "../helpers/helpers"
 require "../helpers/migration"
 require "../config"
+require "../database/run_database_task"
 require "file_utils"
 
 # The `database` command provides database management operations including
@@ -40,12 +37,12 @@ module AmberCLI::Commands
   class DatabaseCommand < AmberCLI::Core::BaseCommand
     Log = ::Log.for("database")
 
-    MIGRATIONS_DIR        = "./db/migrations"
-    CREATE_SQLITE_MESSAGE = "For sqlite3, the database will be created during the first migration."
+    MIGRATIONS_DIR = "./db/migrations"
 
     def help_description : String
       <<-EOS
-      Performs database migrations and maintenance tasks. Powered by micrate.
+      Performs database migrations and maintenance tasks. Powered by Grant; runs
+      Micrate migration files and keeps Micrate migration history.
 
       Commands:
         drop      drops the database
@@ -97,31 +94,19 @@ module AmberCLI::Commands
 
     private def process_commands(commands)
       commands.each do |command|
-        url = self.class.connection_url_for_migrations(database_url)
         case command
-        when "drop"
-          Micrate::Cli.drop_database(url)
-        when "create"
-          Micrate::Cli.create_database(url)
         when "seed"
           Amber::CLI::Helpers.run("crystal db/seeds.cr", wait: true, shell: true)
           info "Seeded database"
-        when "migrate"
-          Micrate::Cli.run_up(url, MIGRATIONS_DIR)
-        when "rollback"
-          Micrate::Cli.run_down(url, MIGRATIONS_DIR)
-        when "redo"
-          Micrate::Cli.run_redo(url, MIGRATIONS_DIR)
-        when "status"
-          Micrate::Cli.run_status(url, MIGRATIONS_DIR)
-        when "version"
-          Micrate::Cli.run_dbversion(url, MIGRATIONS_DIR)
         when "connect"
           connect_to_database
         else
-          error "Unknown command: #{command}"
-          puts option_parser
-          exit(1)
+          unless AmberCLI::Database::RunDatabaseTask.handles?(command)
+            error "Unknown command: #{command}"
+            puts option_parser
+            exit(1)
+          end
+          AmberCLI::Database::RunDatabaseTask.new(command, database_url, environment, MIGRATIONS_DIR).perform
         end
       end
     end
@@ -169,19 +154,8 @@ module AmberCLI::Commands
       end
     end
 
-    # The crystal-pg 0.29 driver this CLI links takes the socket file as `host`, while a
-    # generated application's database URL names the socket directory, as libpq does.
-    def self.connection_url_for_migrations(url : String) : String
-      return url unless url.starts_with?("postgres")
-
-      parsed = URI.parse(url)
-      params = parsed.query_params
-      host = params["host"]?
-      return url unless host && host.starts_with?('/') && !host.includes?(".s.PGSQL.")
-
-      params["host"] = File.join(host, ".s.PGSQL.#{parsed.port || 5432}")
-      parsed.query_params = params
-      parsed.to_s
+    private def environment : String
+      ENV["AMBER_ENV"]? || "development"
     end
 
     private def database_url : String
@@ -189,7 +163,6 @@ module AmberCLI::Commands
     end
 
     private def environment_database_url : String?
-      environment = ENV["AMBER_ENV"]? || "development"
       config_file = "config/environments/#{environment}.yml"
       return unless File.exists?(config_file)
 
@@ -202,7 +175,6 @@ module AmberCLI::Commands
 
     private def default_database_url : String
       name = Amber::CLI::Config.get_name
-      environment = ENV["AMBER_ENV"]? || "development"
 
       case database_type
       when "mysql"

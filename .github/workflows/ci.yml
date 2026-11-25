@@ -65,7 +65,7 @@ jobs:
       continue-on-error: true
 
     - name: Compile CLI
-      run: crystal build src/amber_cli.cr --no-debug -o amber
+      run: crystal build src/amber_cli.cr -Dwithout_openssl --no-debug -o amber
 
     - name: Compile LSP
       run: crystal build src/amber_lsp.cr --no-debug -o amber-lsp
@@ -81,7 +81,7 @@ jobs:
     - name: Build release binaries
       if: matrix.os == 'ubuntu-24.04'
       run: |
-        crystal build src/amber_cli.cr --release --no-debug -o amber_cli
+        crystal build src/amber_cli.cr -Dwithout_openssl --release --no-debug -o amber_cli
         crystal build src/amber_lsp.cr --release --no-debug -o amber_lsp
 
     - name: Upload binary artifacts (Linux)
@@ -143,7 +143,7 @@ jobs:
       run: scripts/check_regex_on_mica.sh
 
     - name: Compile CLI
-      run: crystal build src/amber_cli.cr --no-debug -o amber
+      run: crystal build src/amber_cli.cr -Dwithout_openssl --no-debug -o amber
 
     - name: Check every regex in generated code against Mica's dialect
       env:
@@ -192,7 +192,7 @@ jobs:
 
     - name: Test CLI functionality
       run: |
-        crystal build src/amber_cli.cr -o amber_cli
+        crystal build src/amber_cli.cr -Dwithout_openssl -o amber_cli
         ./amber_cli --help || true
         ./amber_cli --version || true
 
@@ -300,7 +300,7 @@ jobs:
       run: minecart install --frozen --skip-ai-docs
 
     - name: Compile CLI
-      run: crystal build src/amber_cli.cr --no-debug -o amber
+      run: crystal build src/amber_cli.cr -Dwithout_openssl --no-debug -o amber
 
     - name: Check what the generated app links
       run: scripts/check_generated_app_linkage.sh ./amber "$RUNNER_TEMP/generated-app-linkage"

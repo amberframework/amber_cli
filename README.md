@@ -105,7 +105,7 @@ The web template is deliberately small:
   `-Dwithout_zlib -Dwithout_openssl`, it also links no libz and no OpenSSL
 - `src/<app>.cr` applies `logging.severity` from the environment file to
   `Log` at boot (`Amber.settings.logging.apply_severity_to_log`)
-- Grant ORM, Micrate-powered migration commands, and the selected database driver
+- Grant ORM, Grant-powered migration commands (Micrate `.sql` files and history), and the selected database driver
 - SQLite by default, so the first persisted feature needs no database server
 
 The `-d pg|mysql|sqlite` option selects the generated driver, connection, and

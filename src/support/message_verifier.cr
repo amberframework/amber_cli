@@ -1,5 +1,5 @@
 # :nodoc:
-require "openssl/hmac"
+require "beryl"
 require "crypto/subtle"
 require "base64"
 
@@ -40,6 +40,18 @@ module Amber::Support
       "#{data}--#{generate_digest(data)}"
     end
 
+    # Returns the HMAC tag of *data* under *secret* with *digest* (`:sha1`,
+    # `:sha256`, `:sha384` or `:sha512`), computed by Beryl.
+    def self.authentication_tag(digest : Symbol, secret : String, data : String | Bytes) : Bytes
+      case digest
+      when :sha1   then Beryl::Crypto::V1::HMAC(Beryl::Crypto::Compatibility::SHA1).authenticate(data, key: secret)
+      when :sha256 then Beryl::Crypto::V1::HMAC(Beryl::Crypto::V1::SHA256).authenticate(data, key: secret)
+      when :sha384 then Beryl::Crypto::V1::HMAC(Beryl::Crypto::V1::SHA384).authenticate(data, key: secret)
+      when :sha512 then Beryl::Crypto::V1::HMAC(Beryl::Crypto::V1::SHA512).authenticate(data, key: secret)
+      else              raise ArgumentError.new("Unsupported digest #{digest.inspect}: use :sha1, :sha256, :sha384 or :sha512")
+      end
+    end
+
     private def encode(data)
       ::Base64.strict_encode(data)
     end
@@ -49,7 +61,7 @@ module Amber::Support
     end
 
     private def generate_digest(data)
-      encode(OpenSSL::HMAC.digest(OpenSSL::Algorithm.parse(@digest.to_s), @secret, data))
+      encode(self.class.authentication_tag(@digest, @secret, data))
     end
   end
 end

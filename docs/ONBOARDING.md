@@ -16,7 +16,7 @@ from the first edit. It covers Amber CLI 2.0.16, Amber 2.0.0-beta.15 and Minecar
 | Amber 2.0.0-beta.15 | The framework, its rule pack and its guides | Pinned in each new app |
 | Grant | The ORM and its tenancy rule pack | Pinned in each new app |
 | Asset Pipeline | CSS, JavaScript and image assets | Pinned in each new app |
-| micrate | Database migrations | Built into `amber database` |
+| grant | Database migrations (runs Micrate `.sql` files) | Built into `amber database` |
 | Mica | XML request bodies | Add it when an app accepts XML |
 
 ## 1. Install the tools

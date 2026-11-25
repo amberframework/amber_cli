@@ -92,7 +92,7 @@ module AmberCLI::Documentation
   # - **.gitignore** - Git ignore rules
   #
   # The web template pins Amber `2.0.0-beta.15`, uses ECR, and includes Grant,
-  # Micrate-powered database commands, and the selected database driver. Model,
+  # Grant-powered database commands, and the selected database driver. Model,
   # scaffold, and migration generators are supported. API-resource,
   # authentication, and native generators are preview surfaces during the beta.
   class NewCommand
@@ -191,7 +191,9 @@ module AmberCLI::Documentation
   # ## Database Management
   #
   # The `database` command provides comprehensive database management capabilities
-  # powered by Micrate. It supports PostgreSQL, MySQL, and SQLite.
+  # powered by Grant. It supports PostgreSQL, MySQL, and SQLite, runs Micrate
+  # `.sql` migration files, and keeps the history in Micrate's
+  # `micrate_db_version` table, so a database Micrate migrated carries on.
   #
   # ### Usage
   # ```bash

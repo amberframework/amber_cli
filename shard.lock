@@ -7,13 +7,18 @@ shards:
 
   asset_pipeline:
     git: https://github.com/amberframework/asset_pipeline.git
-    version: 0.37.1
-    checksum: git-tree:630a4c72a746f391ed5956b16f4839328f01be93
+    version: 0.40.0
+    checksum: sha256-v2:137195ff733af93d36787d4a965a1846bb4795347a6eced8a5dd3f015ee729b9
 
   backtracer:
     git: https://github.com/sija/backtracer.cr.git
     version: 1.2.4
     checksum: git-tree:54afe1195b6229aae7ee38849f857a7d8dc5788f
+
+  beryl:
+    git: https://github.com/amberframework/beryl.git
+    version: 0.2.0+git.commit.ed5f21e7ddc3e30750abdd4c944ee22d16b12d57
+    checksum: sha256-v2:53349001ef9eaceb00a4c6c423456fc819306036af5430b4053ccdd592ec73db
 
   compiled_license:
     git: https://github.com/elorest/compiled_license.git
@@ -22,31 +27,21 @@ shards:
 
   db:
     git: https://github.com/crystal-lang/crystal-db.git
-    version: 0.13.1
-    checksum: git-tree:77be88f3f39ff1d7cbba1022062a69d09b763de4
+    version: 0.14.0
+    checksum: sha256-v2:1eb6f1bf214c7b5a8135b5fb626ef4d55fae66ac85ed1e01c45c3b079a72df4e
 
   exception_page:
     git: https://github.com/crystal-loot/exception_page.git
     version: 0.2.2
     checksum: git-tree:460d68c049fdca6ee6160fdfdf7d58b0c60ae82e
 
-  micrate:
-    git: https://github.com/amberframework/micrate.git
-    version: 0.16.0-beta.1+git.commit.56afd5607cc591776980f3d3762495c037b98d98
-    checksum: git-tree:b8fe378a82510aaeb61b6f4306099025272ddf52
+  grant:
+    git: https://github.com/crimson-knight/grant.git
+    version: 0.28.0+git.commit.05d0ed6403b45763a9c3c346c6284a235ec8821d
+    checksum: sha256-v2:fecb3424f0463610d863df029e3758a90bf0a85dd4574b03795014bd11af4a08
 
   mysql:
-    git: https://github.com/crystal-lang/crystal-mysql.git
-    version: 0.16.0
-    checksum: git-tree:7c87e8d1a35b97c3b699df61eab28099a630a856
-
-  pg:
-    git: https://github.com/will/crystal-pg.git
-    version: 0.29.0
-    checksum: git-tree:9537ebbb1a6b936bfb9cc87307d3b661f70ab518
-
-  sqlite3:
-    git: https://github.com/crystal-lang/crystal-sqlite3.git
-    version: 0.21.0
-    checksum: git-tree:0724768c38a3e14b9a6e9161515c4e293a7f1e0c
+    git: https://github.com/crimson-knight/crystal-mysql.git
+    version: 0.18.0+git.commit.12169921c2920494caa4421f9b412838b4bb5195
+    checksum: sha256-v2:04b835dd490fe129509da03931fca04251539e6e5acf7ebaac6ce0d105736923
 

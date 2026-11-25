@@ -1,13 +1,18 @@
 # :nodoc:
 require "json"
-require "openssl/cipher"
-require "openssl/hmac"
+require "beryl"
+require "random/secure"
 require "crypto/subtle"
 
 require "./message_verifier"
 
 module Amber::Support
+  # Encrypts and signs a message: AES-256-CBC (the first 32 bytes of the
+  # secret as the key), then the 16-byte initialization vector, then an HMAC
+  # of both. Beryl does the cryptography, byte for byte as OpenSSL did.
   class MessageEncryptor
+    KEY_BYTESIZE = 32
+
     getter verifier : MessageVerifier
 
     def initialize(@secret : String, @cipher_algorithm = "aes-256-cbc", @digest = :sha256)
@@ -35,36 +40,32 @@ module Amber::Support
     end
 
     def encrypt(value, sign = false)
-      cipher = OpenSSL::Cipher.new(@cipher_algorithm)
-      cipher.encrypt
-      cipher.key = @secret
-      iv = cipher.random_iv
+      iv = Random::Secure.random_bytes(@block_size)
 
       encrypted_data = IO::Memory.new
-      encrypted_data.write(cipher.update(value))
-      encrypted_data.write(cipher.final)
+      encrypted_data.write(cipher.encrypt(value.to_slice, initialization_vector: iv))
       encrypted_data.write(iv)
       encrypted_data.write(sign_bytes(encrypted_data.to_slice)) if sign
       encrypted_data.to_slice
     end
 
     def decrypt(value : Bytes)
-      cipher = OpenSSL::Cipher.new(@cipher_algorithm)
       data = value[0, value.size - @block_size]
       iv = value[value.size - @block_size, @block_size]
 
-      cipher.decrypt
-      cipher.key = @secret
-      cipher.iv = iv
+      cipher.decrypt(data, initialization_vector: iv) || raise "Invalid Encryption!"
+    end
 
-      decrypted_data = IO::Memory.new
-      decrypted_data.write cipher.update(data)
-      decrypted_data.write cipher.final
-      decrypted_data.to_slice
+    private def cipher : Beryl::Crypto::Compatibility::AESCBC
+      unless @cipher_algorithm.downcase == "aes-256-cbc"
+        raise ArgumentError.new("Unsupported cipher #{@cipher_algorithm.inspect}: messages use aes-256-cbc")
+      end
+      raise ArgumentError.new("The encryption key must be at least #{KEY_BYTESIZE} bytes") if @secret.bytesize < KEY_BYTESIZE
+      Beryl::Crypto::Compatibility::AESCBC.new(@secret.to_slice[0, KEY_BYTESIZE])
     end
 
     private def sign_bytes(data : Bytes)
-      OpenSSL::HMAC.digest(OpenSSL::Algorithm.parse(@digest.to_s), @secret, data)
+      MessageVerifier.authentication_tag(@digest, @secret, data)
     end
   end
 end

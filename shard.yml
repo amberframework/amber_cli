@@ -19,23 +19,25 @@ dependencies:
   # Stable static-asset compiler used by the CLI and generated applications.
   asset_pipeline:
     github: amberframework/asset_pipeline
-    version: 0.37.1
+    version: 0.40.0
 
-  micrate:
-    github: amberframework/micrate
-    commit: 56afd5607cc591776980f3d3762495c037b98d98
+  grant:
+    github: crimson-knight/grant
+    # `amber database` runs migrations on Grant: its own PostgreSQL driver on
+    # Beryl TLS 1.3 and its own SQLite engine, so the CLI links no C library.
+    commit: 05d0ed6403b45763a9c3c346c6284a235ec8821d
 
-  pg:
-    github: will/crystal-pg
-    version: 0.29.0
-
+  # The MySQL driver generated MySQL applications use (0.18.0, TLS 1.3 and the
+  # password exchanges on Beryl).
   mysql:
-    github: crystal-lang/crystal-mysql
-    version: 0.16.0
+    github: crimson-knight/crystal-mysql
+    commit: 12169921c2920494caa4421f9b412838b4bb5195
 
-  sqlite3:
-    github: crystal-lang/crystal-sqlite3
-    version: 0.21.0
+  # Pure-Crystal cryptography (AES-CBC, HMAC) for `amber encrypt`, so the CLI
+  # links no OpenSSL. The same commit crystal-mysql pins.
+  beryl:
+    github: amberframework/beryl
+    commit: ed5f21e7ddc3e30750abdd4c944ee22d16b12d57
 
   exception_page:
     github: crystal-loot/exception_page
