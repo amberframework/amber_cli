@@ -59,7 +59,7 @@ module AmberCLI::Documentation
   # - `--type=TYPE` - Application type (`web` supported, `native` preview)
   # - `-y, --assume-yes` - Skip interactive prompts
   # - `--tls` - Serve HTTPS from the app itself: adds `require "amber/tls"`,
-  #   which links OpenSSL. Without it the app links no OpenSSL.
+  #   TLS 1.3 only, on Beryl (no OpenSSL). Without it the app has no TLS.
   # - `--no-deps` - Don't install dependencies
   #
   # ### Examples

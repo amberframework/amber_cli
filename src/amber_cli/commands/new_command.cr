@@ -17,7 +17,7 @@ require "./check_amber_agent_setup_command"
 # - `-d, --database` - Database type (pg, mysql, sqlite)
 # - `-t, --template` - Template language (ECR is the only V2 engine)
 # - `--type` - Application type: web (default) or native (cross-platform desktop/mobile)
-# - `--tls` - Serve HTTPS from the app itself: adds `require "amber/tls"`, which links OpenSSL
+# - `--tls` - Serve HTTPS from the app itself: adds `require "amber/tls"` (TLS 1.3 only, on Beryl; no OpenSSL)
 # - `--no-deps` - Skip dependency installation
 # - `--skip-agent-setup` - Skip Claude Code and Codex hooks
 #
@@ -103,7 +103,7 @@ module AmberCLI::Commands
         @should_assume_yes = true
       end
 
-      option_parser.on("--tls", "Serve HTTPS from the app itself (adds require \"amber/tls\", which links OpenSSL)") do
+      option_parser.on("--tls", "Serve HTTPS from the app itself (adds require \"amber/tls\": TLS 1.3 only, on Beryl, no OpenSSL)") do
         @parsed_options["tls"] = true
         @should_serve_tls = true
       end
@@ -702,20 +702,23 @@ CONFIG
       write_text(File.join(path, "config/initializers/page_cache.cr"), page_cache_config)
     end
 
-    # TLS is opt-in in Amber: only an app made with `--tls` requires `amber/tls`
-    # and links OpenSSL. Every other app gets a comment that says how to add it.
+    # TLS is opt-in in Amber: only an app made with `--tls` requires `amber/tls`,
+    # which serves TLS 1.3 on Beryl. Every other app gets a comment that says
+    # how to add it.
     private def tls_require : String
       if should_serve_tls
         <<-TLS
         # This app serves HTTPS itself (server.ssl) and may send mail over SMTP
-        # STARTTLS; amber/tls adds both and links OpenSSL.
+        # TLS; amber/tls adds both. TLS 1.3 is required: clients and mail servers
+        # that cannot speak TLS 1.3 are refused. It runs on Beryl, Amber's own
+        # TLS, and links no OpenSSL.
         require "amber/tls"
         TLS
       else
         <<-TLS
         # TLS is opt-in. An app that serves HTTPS itself (server.ssl) or sends mail
-        # over SMTP STARTTLS adds `require "amber/tls"` here; without it the app
-        # links no OpenSSL.
+        # over SMTP TLS adds `require "amber/tls"` here. Amber's TLS is TLS 1.3
+        # only.
         TLS
       end
     end
