@@ -225,15 +225,41 @@ describe AmberCLI::Commands::GenerateCommand do
       migration = File.read(Dir.glob("db/migrations/*_create_comments.sql").first)
       migration.should contain("post_id BIGINT")
 
-      File.read("src/schemas/comment_schema.cr").should contain("field :post_id, Int64")
+      # Grant requires the parent of a belongs_to, so the schema and column do too.
+      migration.should contain("post_id BIGINT NOT NULL")
+      File.read("src/schemas/comment_schema.cr").should contain("field :post_id, Int64, required: true")
       File.read("src/controllers/comment_controller.cr").should contain("comment.post_id = schema.post_id")
       form = File.read("src/views/comment/_form.ecr")
-      form.should contain(%(number_field("post_id", value: @comment.post_id?)))
+      form.should contain(%(number_field("post_id", value: @comment.post_id?, required: true, min: 1)))
       form.should_not contain(%(text_field("post")))
 
       spec = File.read("spec/controllers/comment_controller_spec.cr")
       spec.should contain("def create_parent_post : Post")
       spec.should contain("saved.post_id = create_parent_post.id")
+      spec.should contain(%(it "refuses a post that does not exist"))
+      spec.should contain(%("post_id" => "0"))
+      spec.should contain("assert_response_status(response, 422)")
+    end
+  end
+
+  it "answers a refused save with 422 and shows the record errors on the form" do
+    SpecHelper.within_temp_directory do
+      File.write(".amber.yml", "template: ecr\ndatabase: sqlite\nmodel: grant\n")
+
+      AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["scaffold", "Comment", "post:reference"])
+
+      controller = File.read("src/controllers/comment_controller.cr")
+      controller.should contain("@list_of_save_error_messages = [] of String")
+      create_action = controller[controller.index!("  def create")...controller.index!("  def edit")]
+      create_action.should contain("@list_of_save_error_messages = comment.errors.full_messages")
+      create_action.should contain("response.status_code = 422")
+      update_action = controller[controller.index!("  def update")...controller.index!("  def destroy")]
+      update_action.should contain("@list_of_save_error_messages = comment.errors.full_messages")
+      update_action.should contain("response.status_code = 422")
+
+      form = File.read("src/views/comment/_form.ecr")
+      form.should contain("<% unless @errors.empty? && @list_of_save_error_messages.empty? %>")
+      form.should contain("<% @list_of_save_error_messages.each do |message| %>")
     end
   end
 
@@ -359,6 +385,42 @@ describe AmberCLI::Commands::GenerateCommand do
       File.read("src/models/member.cr").should contain("class Member < Grant::Base")
       File.read("src/controllers/session_controller.cr").should contain("Member.authenticate(")
       File.exists?("src/models/user.cr").should be_false
+    end
+  end
+
+  describe "an app made before ApplicationController loaded first" do
+    it "adds the explicit require ahead of each controllers glob, once" do
+      SpecHelper.within_temp_directory do
+        File.write(".amber.yml", "template: ecr\ndatabase: sqlite\nmodel: grant\n")
+        Dir.mkdir_p("src/controllers")
+        Dir.mkdir_p("spec")
+        Dir.mkdir_p("db")
+        File.write("src/controllers/application_controller.cr", "class ApplicationController < Amber::Controller::Base\nend\n")
+        File.write("src/shop.cr", %(require "../config/*"\nrequire "./controllers/**"\nrequire "./models/**"\n))
+        File.write("spec/spec_helper.cr", %(require "spec"\nrequire "../src/controllers/**"\n))
+        File.write("db/seeds.cr", %(require "../src/controllers/**"\n))
+
+        2.times do |index|
+          AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["controller", "Account#{index}", "index"])
+        end
+
+        File.read("src/shop.cr").should eq(%(require "../config/*"\nrequire "./controllers/application_controller"\nrequire "./controllers/**"\nrequire "./models/**"\n))
+        File.read("spec/spec_helper.cr").should eq(%(require "spec"\nrequire "../src/controllers/application_controller"\nrequire "../src/controllers/**"\n))
+        File.read("db/seeds.cr").should eq(%(require "../src/controllers/application_controller"\nrequire "../src/controllers/**"\n))
+      end
+    end
+
+    it "leaves the entry files alone when generating a model" do
+      SpecHelper.within_temp_directory do
+        File.write(".amber.yml", "template: ecr\ndatabase: sqlite\nmodel: grant\n")
+        Dir.mkdir_p("src/controllers")
+        File.write("src/controllers/application_controller.cr", "class ApplicationController < Amber::Controller::Base\nend\n")
+        File.write("src/shop.cr", %(require "./controllers/**"\n))
+
+        AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["model", "Account", "first_name:string"])
+
+        File.read("src/shop.cr").should eq(%(require "./controllers/**"\n))
+      end
     end
   end
 end

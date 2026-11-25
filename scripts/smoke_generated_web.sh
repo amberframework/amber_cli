@@ -121,6 +121,18 @@ fi
 "$cli_path" generate mailer Digest --actions=weekly
 "$cli_path" generate channel Updates --topics=posts
 "$cli_path" generate migration CreatePosts
+# Account and Address sort ahead of application_controller.cr, so the app must
+# load ApplicationController first. Comment belongs to Post through a reference.
+"$cli_path" generate scaffold Account first_name:string:required
+"$cli_path" generate scaffold Address street:string:required
+"$cli_path" generate scaffold Post title:string:required
+"$cli_path" generate scaffold Comment body:text post:reference
+grep -F "field :post_id, Int64, required: true" src/schemas/comment_schema.cr
+# The channel generator writes a socket; routing it proves the app compiles it.
+sed -i.bak -E "s#^  routes :web do\$#  routes :web do\\
+    websocket \"/updates\", UpdatesSocket#" config/routes.cr
+rm -f config/routes.cr.bak
+grep -F 'websocket "/updates", UpdatesSocket' config/routes.cr
 
 grep -F "class Pet < Grant::Base" src/models/pet.cr
 grep -F -- "-- +micrate Up" db/migrations/*_create_pets.sql
@@ -268,6 +280,44 @@ curl --fail --silent --output /dev/null --dump-header "$response_headers" \
   http://127.0.0.1:3210/pets/1
 grep -F "Location: /pets/1" "$response_headers"
 curl --fail --silent http://127.0.0.1:3210/pets/1 | grep -F "Ruby II"
+
+# Posts a form the way a browser does: GET the new page for the session cookie
+# and CSRF token, then POST. Prints the status code; the body lands in $2.
+post_form() {
+  local resource="$1" body_file="$2" headers_file="$3"
+  shift 3
+  local form_page="$smoke_root/form-page.html"
+  curl --fail --silent --cookie "$cookie_jar" --cookie-jar "$cookie_jar" \
+    "http://127.0.0.1:3210/$resource/new" >"$form_page"
+  local token
+  token="$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' "$form_page" | head -1)"
+  test -n "$token"
+  local form_arguments=(--data-urlencode "_csrf=$token")
+  local pair
+  for pair in "$@"; do
+    form_arguments+=(--data-urlencode "$pair")
+  done
+  curl --silent --output "$body_file" --dump-header "$headers_file" --write-out '%{http_code}' \
+    --cookie "$cookie_jar" --request POST "${form_arguments[@]}" "http://127.0.0.1:3210/$resource"
+}
+
+created_body="$smoke_root/created.html"
+test "$(post_form accounts "$created_body" "$response_headers" "first_name=Ada")" = "302"
+grep -F "Location: /accounts/1" "$response_headers"
+test "$(post_form addresses "$created_body" "$response_headers" "street=Main Street")" = "302"
+grep -F "Location: /addresses/1" "$response_headers"
+test "$(post_form posts "$created_body" "$response_headers" "title=First")" = "302"
+grep -F "Location: /posts/1" "$response_headers"
+test "$(post_form comments "$created_body" "$response_headers" "body=Hello" "post_id=1")" = "302"
+grep -F "Location: /comments/1" "$response_headers"
+curl --fail --silent http://127.0.0.1:3210/comments/1 | grep -F "Hello"
+
+# A parent that does not exist is refused, and the form says why.
+refused_body="$smoke_root/refused-comment.html"
+test "$(post_form comments "$refused_body" "$response_headers" "body=Orphan" "post_id=999")" = "422"
+grep -F "post must exist" "$refused_body"
+test "$(post_form comments "$refused_body" "$response_headers" "body=Orphan")" = "422"
+grep -F "post_id" "$refused_body"
 
 kill "$server_pid"
 wait "$server_pid" || true

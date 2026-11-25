@@ -448,6 +448,24 @@ describe AmberCLI::Commands::NewCommand do
       end
     end
 
+    it "loads ApplicationController before the controllers that sort ahead of it, and sockets after channels" do
+      SpecHelper.within_temp_directory do |temp_dir|
+        destination = File.join(temp_dir, "load_order")
+        AmberCLI::Commands::NewCommand.new("new").parse_and_execute([destination, "--type=web", "--no-deps", "--skip-agent-setup"])
+
+        {
+          "src/load_order.cr"   => "./",
+          "spec/spec_helper.cr" => "../src/",
+          "db/seeds.cr"         => "../src/",
+        }.each do |entry_file, path_prefix|
+          source = File.read(File.join(destination, entry_file))
+          base_require = source.index!(%(require "#{path_prefix}controllers/application_controller"))
+          base_require.should be < source.index!(%(require "#{path_prefix}controllers/**"))
+          source.index!(%(require "#{path_prefix}channels/**")).should be < source.index!(%(require "#{path_prefix}sockets/**"))
+        end
+      end
+    end
+
     it "leaves amber/tls out of a default web app, so it links no OpenSSL" do
       SpecHelper.within_temp_directory do |temp_dir|
         destination = File.join(temp_dir, "plain_app")
