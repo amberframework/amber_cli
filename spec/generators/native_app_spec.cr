@@ -97,6 +97,9 @@ describe AmberCLI::Generators::NativeApp do
 
         # MUST require asset_pipeline/ui (not just "ui")
         main_content.should contain("require \"asset_pipeline/ui\"")
+
+        # The base controller loads before the glob, which loads files in name order.
+        main_content.index!(%(require "./controllers/application_controller")).should be < main_content.index!(%(require "./controllers/**"))
       end
     end
 
