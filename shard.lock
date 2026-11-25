@@ -18,7 +18,7 @@ shards:
   beryl:
     git: https://github.com/amberframework/beryl.git
     version: 0.2.1+git.commit.6afec738aac1aeefc016b0ba826d8d9f0acc3541
-    checksum: sha256-v2:15f5f2f4528b14f807239d5d7f9565680da29cdc3b3c647e6f4028b1444459fc
+    checksum: git-tree:72cd3de3531a7c8ac546f7fcfc563f345ddf1170
 
   compiled_license:
     git: https://github.com/elorest/compiled_license.git
@@ -28,7 +28,7 @@ shards:
   db:
     git: https://github.com/crystal-lang/crystal-db.git
     version: 0.14.0
-    checksum: sha256-v2:1eb6f1bf214c7b5a8135b5fb626ef4d55fae66ac85ed1e01c45c3b079a72df4e
+    checksum: git-tree:3f3d464ddf96815f507434082245eb632ca65bf4
 
   exception_page:
     git: https://github.com/crystal-loot/exception_page.git
@@ -38,10 +38,10 @@ shards:
   grant:
     git: https://github.com/crimson-knight/grant.git
     version: 0.28.0+git.commit.05d0ed6403b45763a9c3c346c6284a235ec8821d
-    checksum: sha256-v2:fecb3424f0463610d863df029e3758a90bf0a85dd4574b03795014bd11af4a08
+    checksum: git-tree:0eb1ff6a7b2f1e1d1188fd4143834bae33aedf7a
 
   mysql:
     git: https://github.com/crimson-knight/crystal-mysql.git
     version: 0.18.1+git.commit.ce9cbfab8ba76f5b6d25386140aca0a409b1d585
-    checksum: sha256-v2:ea05767c3304dafd3d40096e39717ca2e4e79fdcfe6a07f7a5bea2852dce9343
+    checksum: git-tree:c7ff173e176112834b85646146d87efcc76d0e7b
 
