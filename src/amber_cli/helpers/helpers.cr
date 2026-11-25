@@ -1,5 +1,6 @@
 # :nodoc:
 require "../config"
+require "./resolve_crystal_compiler_command"
 
 module Amber::CLI::Helpers
   def add_routes(pipeline, route)
@@ -28,7 +29,7 @@ module Amber::CLI::Helpers
         File.write("./config/routes.cr", routes_file.gsub(web_routes[0], replacement))
       end
     end
-    system("crystal tool format ./config/routes.cr")
+    system(Amber::CLI.crystal_compiler_command, ["tool", "format", "./config/routes.cr"])
   end
 
   def add_plugs(pipeline, plug)
@@ -60,7 +61,7 @@ module Amber::CLI::Helpers
       end
     end
 
-    system("crystal tool format ./config/routes.cr")
+    system(Amber::CLI.crystal_compiler_command, ["tool", "format", "./config/routes.cr"])
   end
 
   def add_dependencies(dependencies)

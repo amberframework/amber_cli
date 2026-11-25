@@ -52,6 +52,29 @@ module AmberLSP::Lookup
     end
   end
 
+  # Lists every directory above a compiler, both as found on PATH and with
+  # symlinks resolved, nearest first.
+  class ListDirectoriesAboveCompiler
+    def initialize(@compiler_path : String)
+    end
+
+    def perform : Array(String)
+      list_of_compiler_paths = [@compiler_path]
+      begin
+        list_of_compiler_paths << File.realpath(@compiler_path)
+      rescue ex : File::Error
+      end
+
+      list_of_directories = [] of String
+      list_of_compiler_paths.each do |path|
+        Path[path].parents.reverse_each do |directory|
+          list_of_directories << directory.to_s unless directory == directory.root
+        end
+      end
+      list_of_directories.uniq
+    end
+  end
+
   # :nodoc:
   struct CrystalDocsWorkspace
     getter root_path : String
@@ -468,7 +491,7 @@ module AmberLSP::Lookup
         source_root = crystal_source_root(identity)
         docs_flags = [] of String
         environment_overrides = {} of String => String
-        if llvm_config = find_llvm_config(identity.llvm_version)
+        if llvm_config = find_llvm_config(identity)
           environment_overrides["LLVM_CONFIG"] = llvm_config
         end
 
@@ -518,8 +541,8 @@ module AmberLSP::Lookup
       raise APIIndexBuildError.new("Could not locate the Crystal standard library: #{ex.message}")
     end
 
-    private def find_llvm_config(llvm_version : String) : String?
-      version_parts = llvm_version.split('.')
+    private def find_llvm_config(identity : CrystalAlphaIdentity) : String?
+      version_parts = identity.llvm_version.split('.')
       major = version_parts.first?
       minor = version_parts[1]?
       return nil unless major && minor
@@ -527,6 +550,12 @@ module AmberLSP::Lookup
       candidates = [] of String
       candidates << "/opt/homebrew/opt/llvm@#{major}/bin/llvm-config"
       candidates << "/usr/local/opt/llvm@#{major}/bin/llvm-config"
+      # Homebrew's llvm@N is keg-only, so on Linux (/home/linuxbrew/.linuxbrew) and
+      # in custom prefixes it is found beside the compiler: walk up from the
+      # compiler to the Homebrew prefix that holds opt/llvm@N.
+      ListDirectoriesAboveCompiler.new(identity.executable_path).perform.each do |directory|
+        candidates << File.join(directory, "opt", "llvm@#{major}", "bin", "llvm-config")
+      end
 
       if executable = Process.find_executable("llvm-config-#{major}.#{minor}")
         candidates << executable
