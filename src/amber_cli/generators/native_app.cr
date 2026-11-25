@@ -409,6 +409,8 @@ CLAUDEMD
       content = <<-MAIN
 require "amber"
 require "asset_pipeline/ui"
+# Glob requires load files in name order; the base controller loads first.
+require "./controllers/application_controller"
 require "./controllers/**"
 require "./models/**"
 require "./process_managers/**"

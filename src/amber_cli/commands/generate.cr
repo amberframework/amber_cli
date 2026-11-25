@@ -79,6 +79,9 @@ module AmberCLI::Commands
 
     DEFAULT_AUTH_MODEL_NAME = "User"
 
+    # Generators that write a controller inheriting from ApplicationController.
+    CONTROLLER_GENERATOR_TYPES = %w[controller scaffold api auth]
+
     WEB_ROUTES_ANCHOR       = "  routes :web do"
     LEAN_READ_ROUTES_ANCHOR = "  routes :lean_read do"
 
@@ -189,12 +192,15 @@ module AmberCLI::Commands
           field_name = parts[0]
           field_type = parts[1].downcase
 
+          is_required = parts.size > 2 && parts[2].downcase == "required"
           if field_type == "reference"
             association_name = field_name.chomp("_id")
             references << association_name
             field_name = "#{association_name}_id"
+            # Grant's belongs_to refuses a record whose parent does not exist, so
+            # the schema and the column require the foreign key as well.
+            is_required = true
           end
-          is_required = parts.size > 2 && parts[2].downcase == "required"
 
           @fields << {field_name, field_type}
           @schema_fields << {field_name, field_type, is_required}
@@ -213,6 +219,8 @@ module AmberCLI::Commands
       if File.exists?(".amber.yml") && File.read(".amber.yml").includes?("template: slang")
         warning "Amber V2 supports ECR only; generating ECR output despite the legacy Slang setting."
       end
+
+      load_application_controller_first if CONTROLLER_GENERATOR_TYPES.includes?(generator_type)
 
       case generator_type
       when "model"
@@ -935,6 +943,7 @@ class #{controller_name} < ApplicationController
   @has_next_page = false
   @#{variable_name} = #{class_name}.new
   @errors = [] of Amber::Schema::Error
+  @list_of_save_error_messages = [] of String
 
   # Everything built inside `Components::Cache.page_cache.answer` is the same for every
   # visitor, and the page cache holds exactly that. To mark a page per-visitor (a name,
@@ -988,6 +997,8 @@ class #{controller_name} < ApplicationController
       redirect_to "/#{plural_name}/\#{#{variable_name}.id}"
     else
       @#{variable_name} = #{variable_name}
+      @list_of_save_error_messages = #{variable_name}.errors.full_messages
+      response.status_code = 422
       flash[:danger] = "Could not create #{class_name}"
       render("new.#{template_ext}")
     end
@@ -1014,6 +1025,8 @@ class #{controller_name} < ApplicationController
         redirect_to "/#{plural_name}/\#{#{variable_name}.id}"
       else
         @#{variable_name} = #{variable_name}
+        @list_of_save_error_messages = #{variable_name}.errors.full_messages
+        response.status_code = 422
         flash[:danger] = "Could not update #{class_name}"
         render("edit.#{template_ext}")
       end
@@ -1211,7 +1224,7 @@ describe #{controller_name} do
       assert_response_status(response, 403)
       #{class_name}.all.to_a.size.should eq(0)
     end
-  end
+#{missing_parent_specs}  end
 
   describe "PUT /#{plural_name}/:id" do
     it "updates the #{class_name.underscore}" do
@@ -2120,7 +2133,14 @@ FIELD
     <%= text_field("#{field_name}", value: @#{variable_name}.#{field_name}?.try(&.to_rfc3339)) %>
   </div>
 FIELD
-          when "integer", "int", "int32", "int64", "reference", "float", "float64", "decimal"
+          when "reference"
+            <<-FIELD
+  <div class="form-group">
+    <%= label("#{field_name}") %>
+    <%= number_field("#{field_name}", value: @#{variable_name}.#{field_name}?, required: true, min: 1) %>
+  </div>
+FIELD
+          when "integer", "int", "int32", "int64", "float", "float64", "decimal"
             <<-FIELD
   <div class="form-group">
     <%= label("#{field_name}") %>
@@ -2138,12 +2158,15 @@ FIELD
         end.join("\n")
 
         <<-VIEW
-<% unless @errors.empty? %>
+<% unless @errors.empty? && @list_of_save_error_messages.empty? %>
   <div class="form-errors" role="alert">
     <p>Please correct the following:</p>
     <ul>
       <% @errors.each do |error| %>
         <li><%= error.field %>: <%= error.message || "is invalid" %></li>
+      <% end %>
+      <% @list_of_save_error_messages.each do |message| %>
+        <li><%= message %></li>
       <% end %>
     </ul>
   </div>
@@ -2300,6 +2323,25 @@ SUPPORT
       end.join
     end
 
+    # Generated specs showing that a create naming a parent that does not exist
+    # answers 422 with the reason on the form, instead of saving or redirecting.
+    private def missing_parent_specs : String
+      references.join do |association_name|
+        body = form_hash_literal("#{association_name}_id", "0")
+        <<-SPEC
+
+    it "refuses a #{association_name.underscore.gsub("_", " ")} that does not exist" do
+      headers = csrf_headers("/#{plural_name}/new")
+      response = post("/#{plural_name}", body: HTTP::Params.encode(#{body}), headers: headers)
+      assert_response_status(response, 422)
+      response.body.should contain("must exist")
+      #{class_name}.all.to_a.size.should eq(0)
+    end
+
+SPEC
+      end
+    end
+
     private def parent_clear_source : String
       references.map { |association_name| "    #{association_name.camelcase}.clear\n" }.join
     end
@@ -2441,6 +2483,37 @@ SUPPORT
         word[0..-3] + "ves"
       else
         word + "s"
+      end
+    end
+
+    # Apps made by Amber CLI 2.0.16 and earlier require their controllers by glob
+    # alone. A glob loads files in name order, so a controller named Account or
+    # Address loads before ApplicationController and the build stops on an
+    # undefined constant. This adds the explicit require ahead of each such glob
+    # in the app main file, spec/spec_helper.cr and db/seeds.cr.
+    private def load_application_controller_first : Nil
+      return unless File.exists?("src/controllers/application_controller.cr")
+
+      list_of_entry_files = Dir.glob("src/*.cr") + ["spec/spec_helper.cr", "db/seeds.cr"]
+      list_of_entry_files.each do |entry_file|
+        next unless File.exists?(entry_file)
+
+        source = File.read(entry_file)
+        updated_source = String.build do |io|
+          source.each_line(chomp: false) do |line|
+            glob_require = line.rstrip
+            if glob_require.starts_with?(%(require ")) && glob_require.ends_with?(%(controllers/**"))
+              path_prefix = glob_require.lchop(%(require ")).rchop(%(controllers/**"))
+              explicit_require = %(require "#{path_prefix}controllers/application_controller")
+              io << explicit_require << '\n' unless source.includes?(explicit_require)
+            end
+            io << line
+          end
+        end
+        next if updated_source == source
+
+        File.write(entry_file, updated_source)
+        info "Updated: #{entry_file} (ApplicationController now loads before the other controllers)"
       end
     end
 

@@ -627,12 +627,16 @@ POLICY
 require "../config/*"
 require "./pipes/**"
 require "./components/**"
+# Glob requires load files in name order, so a controller named Account or
+# Address would load before the class it inherits from. Load it first.
+require "./controllers/application_controller"
 require "./controllers/**"
 require "./models/**"
 require "./schemas/**"
 require "./jobs/**"
 require "./mailers/**"
 require "./channels/**"
+require "./sockets/**"
 
 # Every Log source logs at logging.severity from config/environments/<env>.yml
 # (or AMBER_LOGGING_SEVERITY): debug in development, info in production.
@@ -983,12 +987,16 @@ require "spec"
 require "../config/*"
 require "../src/pipes/**"
 require "../src/components/**"
+# Glob requires load files in name order, so a controller named Account or
+# Address would load before the class it inherits from. Load it first.
+require "../src/controllers/application_controller"
 require "../src/controllers/**"
 require "../src/models/**"
 require "../src/schemas/**"
 require "../src/jobs/**"
 require "../src/mailers/**"
 require "../src/channels/**"
+require "../src/sockets/**"
 
 # Amber Testing Framework
 require "amber/testing/testing"
@@ -1023,12 +1031,16 @@ SPEC
 require "../config/*"
 require "../src/pipes/**"
 require "../src/components/**"
+# Glob requires load files in name order, so a controller named Account or
+# Address would load before the class it inherits from. Load it first.
+require "../src/controllers/application_controller"
 require "../src/controllers/**"
 require "../src/models/**"
 require "../src/schemas/**"
 require "../src/jobs/**"
 require "../src/mailers/**"
 require "../src/channels/**"
+require "../src/sockets/**"
 
 # Database seed file
 #
