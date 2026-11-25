@@ -7,8 +7,8 @@ shards:
 
   asset_pipeline:
     git: https://github.com/amberframework/asset_pipeline.git
-    version: 0.40.0
-    checksum: sha256-v2:137195ff733af93d36787d4a965a1846bb4795347a6eced8a5dd3f015ee729b9
+    version: 0.40.1+git.commit.9a0447c0e10d645307e8532c7794b89491281210
+    checksum: sha256-v2:d34f0ec99a825eb90fd651676d7aff40b3cca7277f31db9f06e0d3b1e8164e8d
 
   backtracer:
     git: https://github.com/sija/backtracer.cr.git
@@ -17,8 +17,8 @@ shards:
 
   beryl:
     git: https://github.com/amberframework/beryl.git
-    version: 0.2.0+git.commit.ed5f21e7ddc3e30750abdd4c944ee22d16b12d57
-    checksum: sha256-v2:53349001ef9eaceb00a4c6c423456fc819306036af5430b4053ccdd592ec73db
+    version: 0.2.1+git.commit.6afec738aac1aeefc016b0ba826d8d9f0acc3541
+    checksum: sha256-v2:15f5f2f4528b14f807239d5d7f9565680da29cdc3b3c647e6f4028b1444459fc
 
   compiled_license:
     git: https://github.com/elorest/compiled_license.git
@@ -42,6 +42,6 @@ shards:
 
   mysql:
     git: https://github.com/crimson-knight/crystal-mysql.git
-    version: 0.18.0+git.commit.12169921c2920494caa4421f9b412838b4bb5195
-    checksum: sha256-v2:04b835dd490fe129509da03931fca04251539e6e5acf7ebaac6ce0d105736923
+    version: 0.18.1+git.commit.ce9cbfab8ba76f5b6d25386140aca0a409b1d585
+    checksum: sha256-v2:ea05767c3304dafd3d40096e39717ca2e4e79fdcfe6a07f7a5bea2852dce9343
 

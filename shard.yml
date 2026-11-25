@@ -19,7 +19,7 @@ dependencies:
   # Stable static-asset compiler used by the CLI and generated applications.
   asset_pipeline:
     github: amberframework/asset_pipeline
-    version: 0.40.0
+    commit: 9a0447c0e10d645307e8532c7794b89491281210 # v0.40.1
 
   grant:
     github: crimson-knight/grant
@@ -27,17 +27,17 @@ dependencies:
     # Beryl TLS 1.3 and its own SQLite engine, so the CLI links no C library.
     commit: 05d0ed6403b45763a9c3c346c6284a235ec8821d
 
-  # The MySQL driver generated MySQL applications use (0.18.0, TLS 1.3 and the
-  # password exchanges on Beryl).
+  # The MySQL driver generated MySQL applications use (0.18.1, TLS 1.3 and the
+  # password exchanges on Beryl 0.2.1).
   mysql:
     github: crimson-knight/crystal-mysql
-    commit: 12169921c2920494caa4421f9b412838b4bb5195
+    commit: ce9cbfab8ba76f5b6d25386140aca0a409b1d585
 
   # Pure-Crystal cryptography (AES-CBC, HMAC) for `amber encrypt`, so the CLI
   # links no OpenSSL. The same commit crystal-mysql pins.
   beryl:
     github: amberframework/beryl
-    commit: ed5f21e7ddc3e30750abdd4c944ee22d16b12d57
+    commit: 6afec738aac1aeefc016b0ba826d8d9f0acc3541 # v0.2.1
 
   exception_page:
     github: crystal-loot/exception_page
