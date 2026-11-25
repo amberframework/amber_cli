@@ -100,7 +100,7 @@ The web template is deliberately small:
 - branded homepage, controller spec, and fingerprinted CSS, JavaScript, SVG,
   font, image, and general static-file support
 - a browser-native import map with a local JavaScript module entry point
-- Grant `v0.28.0` and asset_pipeline `v0.40.1`, pinned by commit and checked
+- Grant `v0.28.1` and asset_pipeline `v0.40.1`, pinned by commit and checked
   in `shard.lock` the same way, so the built app links no PCRE2; built with
   `-Dwithout_zlib -Dwithout_openssl`, it also links no libz and no OpenSSL
 - `src/<app>.cr` applies `logging.severity` from the environment file to

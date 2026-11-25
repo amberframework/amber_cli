@@ -27,9 +27,10 @@ dependencies:
 
   grant:
     github: crimson-knight/grant
-    # `amber database` runs migrations on Grant: its own PostgreSQL driver on
-    # Beryl TLS 1.3 and its own SQLite engine, so the CLI links no C library.
-    commit: 05d0ed6403b45763a9c3c346c6284a235ec8821d
+    # `amber database` runs migrations on Grant: its PostgreSQL driver on
+    # Beryl TLS 1.3 and its SQLite driver on the system libsqlite3, as
+    # generated 2.0.17 apps do.
+    commit: 78ad9c2c16393cff5293d79ebd05377a36aed633
 
   # The MySQL driver generated MySQL applications use (0.18.1, TLS 1.3 and the
   # password exchanges on Beryl 0.2.1).
