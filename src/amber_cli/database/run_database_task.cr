@@ -165,7 +165,9 @@ module AmberCLI::Database
 
     private def read_migration_file_names : Hash(Int64, String)
       file_name_by_version = {} of Int64 => String
-      Dir.glob(File.join(@migrations_directory, "*.sql")).each do |path|
+      # A Path pattern, as Grant lists migrations: Dir.glob reads the "\" that
+      # File.join puts between parts on Windows as an escape.
+      Dir.glob(Path[@migrations_directory, "*.sql"]).each do |path|
         file_name = File.basename(path)
         if version = file_name.split('_', 2).first.to_i64?
           file_name_by_version[version] = file_name

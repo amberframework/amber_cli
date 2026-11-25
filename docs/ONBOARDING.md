@@ -194,7 +194,7 @@ dependencies:
     commit: 261cf2d3b4a6f3292fefb8113e71e0fe6900fcee # v2.0.0-beta.16
   grant:
     github: crimson-knight/grant
-    commit: 78ad9c2c16393cff5293d79ebd05377a36aed633 # v0.28.1
+    commit: 96fe7d9f69bb394009c26eaad3a9c87227122830 # v0.28.2
   asset_pipeline:
     github: amberframework/asset_pipeline
     commit: 9a0447c0e10d645307e8532c7794b89491281210 # v0.40.1

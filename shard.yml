@@ -30,7 +30,7 @@ dependencies:
     # `amber database` runs migrations on Grant: its PostgreSQL driver on
     # Beryl TLS 1.3 and its SQLite driver on the system libsqlite3, as
     # generated 2.0.17 apps do.
-    commit: 78ad9c2c16393cff5293d79ebd05377a36aed633
+    commit: 96fe7d9f69bb394009c26eaad3a9c87227122830
 
   # The MySQL driver generated MySQL applications use (0.18.1, TLS 1.3 and the
   # password exchanges on Beryl 0.2.1).

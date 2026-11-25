@@ -50,7 +50,7 @@ grep -F "commit: 261cf2d3b4a6f3292fefb8113e71e0fe6900fcee # v2.0.0-beta.16" "$ap
 grep -F "github: crimson-knight/grant" "$app_path/shard.yml"
 grep -F "github: amberframework/asset_pipeline" "$app_path/shard.yml"
 grep -F "commit: 9a0447c0e10d645307e8532c7794b89491281210 # v0.40.1" "$app_path/shard.yml"
-grep -F "commit: 78ad9c2c16393cff5293d79ebd05377a36aed633" "$app_path/shard.yml"
+grep -F "commit: 96fe7d9f69bb394009c26eaad3a9c87227122830" "$app_path/shard.yml"
 ! grep -F "crystal-sqlite3" "$app_path/shard.yml"
 grep -F "template: ecr" "$app_path/.amber.yml"
 grep -F "database: sqlite" "$app_path/.amber.yml"
@@ -86,8 +86,8 @@ else
   minecart install --frozen
 fi
 test -s shard.lock
-grep -F "version: 0.28.1+git.commit.78ad9c2c16393cff5293d79ebd05377a36aed633" shard.lock
-grep -A3 '^  grant:$' shard.lock | grep -qE '^    checksum: (sha256-v2:30196bf9e42c04b598f9b6702496f41bae1c14f703c3767ad879352efe468fdd|git-tree:083f09453d88a3bfca8acb1a7120c5655f06b501)$'
+grep -F "version: 0.28.2+git.commit.96fe7d9f69bb394009c26eaad3a9c87227122830" shard.lock
+grep -A3 '^  grant:$' shard.lock | grep -qE '^    checksum: (sha256-v2:cd018dbf347f2dbb3591f9bd671c59ecff58bdfc98383a1a5b03d675228f5990|git-tree:9163d65c214ada60ca6bc950fda057e84423aad9)$'
 grep -F "version: 0.40.1+git.commit.9a0447c0e10d645307e8532c7794b89491281210" shard.lock
 grep -A3 '^  asset_pipeline:$' shard.lock | grep -qE '^    checksum: (sha256-v2:d34f0ec99a825eb90fd651676d7aff40b3cca7277f31db9f06e0d3b1e8164e8d|git-tree:89dc7d5b714fde68479653232691e9afcee387eb)$'
 grep -F "version: 0.14.0" shard.lock

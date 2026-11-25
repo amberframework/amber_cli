@@ -37,8 +37,8 @@ shards:
 
   grant:
     git: https://github.com/crimson-knight/grant.git
-    version: 0.28.1+git.commit.78ad9c2c16393cff5293d79ebd05377a36aed633
-    checksum: git-tree:083f09453d88a3bfca8acb1a7120c5655f06b501
+    version: 0.28.2+git.commit.96fe7d9f69bb394009c26eaad3a9c87227122830
+    checksum: git-tree:9163d65c214ada60ca6bc950fda057e84423aad9
 
   mysql:
     git: https://github.com/crimson-knight/crystal-mysql.git
