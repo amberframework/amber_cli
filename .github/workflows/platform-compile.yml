@@ -65,6 +65,12 @@ jobs:
           "CRYSTAL_LIBRARY_PATH=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\lib;$crystalLibraryPath" >> $env:GITHUB_ENV
           "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\bin" >> $env:GITHUB_PATH
 
+      - name: Check shards out byte for byte
+        # Git for Windows converts LF to CRLF on checkout (core.autocrlf), so
+        # the shards Minecart checks out would not match their sha256-v2 lock
+        # checksums, which hash the committed bytes.
+        run: git config --global core.autocrlf false
+
       - name: Build pinned Minecart
         shell: pwsh
         run: scripts/install_pinned_minecart.ps1
