@@ -515,7 +515,7 @@ server database. Set `DATABASE_URL` to override the environment YAML URL.
 ## Production configuration
 
 Set at least `AMBER_SERVER_SECRET_KEY_BASE`. See the
-[Amber V2 beta guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.15/docs/beta-installation.md).
+[Amber V2 beta guide](https://github.com/amberframework/amber/blob/v2.0.0-beta.16/docs/beta-installation.md).
 
 ## What is on by default
 
@@ -1521,7 +1521,7 @@ ROBOTS
       <<-YAML
         mysql:
           github: crimson-knight/crystal-mysql
-          commit: 12169921c2920494caa4421f9b412838b4bb5195 # 0.18.0 (Beryl TLS 1.3)
+          commit: 4ec0bcaddd436bcf19ef5072034fbef3b8282f63 # 0.18.1 (Beryl 0.2.1, TLS 1.3)
       YAML
     end
 

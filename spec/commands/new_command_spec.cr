@@ -378,7 +378,7 @@ describe AmberCLI::Commands::NewCommand do
 
           shard = File.read(File.join(destination, "shard.yml"))
           shard.should contain("github: crimson-knight/crystal-mysql")
-          shard.should contain("commit: 12169921c2920494caa4421f9b412838b4bb5195")
+          shard.should contain("commit: 4ec0bcaddd436bcf19ef5072034fbef3b8282f63")
         end
       end
 

@@ -43,7 +43,7 @@ $amberConfig = [System.IO.File]::ReadAllText($amberConfigPath)
 if (-not $manifest.Contains("github: amberframework/amber")) {
   throw "Generated shard.yml does not include Amber"
 }
-if (-not $manifest.Contains("commit: 0830e3fdbc5e05be851c3c7ae7bf03b67be10732 # v2.0.0-beta.15")) {
+if (-not $manifest.Contains("commit: e5c4ac7f0c1d908c3f3ad9ea4f33d858e1f47a5f # v2.0.0-beta.16")) {
   throw "Generated shard.yml does not pin the supported Amber beta"
 }
 if (-not $manifest.Contains("github: crimson-knight/grant")) {
@@ -55,7 +55,7 @@ if ($manifest.Contains("crystal-sqlite3")) {
 if (-not $manifest.Contains("github: amberframework/asset_pipeline")) {
   throw "Generated shard.yml does not include Asset Pipeline"
 }
-if (-not $manifest.Contains("commit: 84f3188239e43dc6e0bcfd2e72074e8ec67156cd # v0.40.0")) {
+if (-not $manifest.Contains("commit: dc2185094f4da66062e4e7fb65fb41a9e46a1287 # v0.40.1")) {
   throw "Generated shard.yml does not pin the supported Asset Pipeline release"
 }
 if (-not (Test-Path (Join-Path $appPath ".claude/CLAUDE.md"))) {
@@ -74,7 +74,7 @@ if (-not $amberConfig.Contains("database: sqlite") -or -not $amberConfig.Contain
 
 if ($FrameworkCommit) {
   $releasedRepository = "    github: amberframework/amber"
-  $releasedFramework = "    commit: 0830e3fdbc5e05be851c3c7ae7bf03b67be10732 # v2.0.0-beta.15"
+  $releasedFramework = "    commit: e5c4ac7f0c1d908c3f3ad9ea4f33d858e1f47a5f # v2.0.0-beta.16"
   if (-not $manifest.Contains($releasedRepository)) {
     throw "Generated shard.yml does not contain the expected Amber repository"
   }
@@ -118,7 +118,7 @@ try {
     $expectedAmberCommit = $FrameworkCommit
     $expectedAmberGit = "https://github.com/$FrameworkRepository.git"
   } else {
-    $expectedAmberCommit = "0830e3fdbc5e05be851c3c7ae7bf03b67be10732"
+    $expectedAmberCommit = "e5c4ac7f0c1d908c3f3ad9ea4f33d858e1f47a5f"
     $expectedAmberGit = "https://github.com/amberframework/amber.git"
   }
   if ($amberEntry -notmatch "(?m)^    git: $([regex]::Escape($expectedAmberGit))\r?$") {
