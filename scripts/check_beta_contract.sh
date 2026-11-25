@@ -18,11 +18,11 @@ grep -F 'github: crimson-knight/grant' src/amber_cli/commands/new_command.cr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/commands/new_command.cr
 grep -F 'commit: #{GrantRelease::COMMIT} # v#{GrantRelease::VERSION}' src/amber_cli/commands/new_command.cr
 grep -F 'commit: #{AssetPipelineRelease::COMMIT} # v#{AssetPipelineRelease::VERSION}' src/amber_cli/commands/new_command.cr
-grep -F 'COMMIT   = "b83a82f0261509d4ce1f26fadb318c8ba132a066"' src/amber_cli/pinned_releases.cr
-grep -F 'CHECKSUM = "sha256-v2:886b86c249fa5f7ec3d4b66a0f700d8647687b3b9984b7f580cbc2c75b5306b9"' src/amber_cli/pinned_releases.cr
+grep -F 'COMMIT   = "f89a84c355ffa95f21232a887cc58a5b5e91ef8b"' src/amber_cli/pinned_releases.cr
+grep -F 'CHECKSUM = "sha256-v2:72dfd31da5b7865f5977dd00b21dfa91b2f08eb83972f5d6fec8d283f0ae31d9"' src/amber_cli/pinned_releases.cr
 grep -F 'COMMIT   = "84f3188239e43dc6e0bcfd2e72074e8ec67156cd"' src/amber_cli/pinned_releases.cr
 grep -F 'CHECKSUM = "sha256-v2:137195ff733af93d36787d4a965a1846bb4795347a6eced8a5dd3f015ee729b9"' src/amber_cli/pinned_releases.cr
-grep -F 'commit: b83a82f0261509d4ce1f26fadb318c8ba132a066 # v0.26.0' src/amber_cli/templates/app/shard.yml.ecr
+grep -F 'commit: f89a84c355ffa95f21232a887cc58a5b5e91ef8b # v0.27.0' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'commit: 84f3188239e43dc6e0bcfd2e72074e8ec67156cd # v0.40.0' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/amber' src/amber_cli/generators/native_app.cr

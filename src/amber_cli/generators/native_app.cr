@@ -123,7 +123,7 @@ dependencies:
   # Grant ORM (ActiveRecord-style, replaces Granite in V2)
   grant:
     github: crimson-knight/grant
-    commit: b83a82f0261509d4ce1f26fadb318c8ba132a066 # v0.26.0
+    commit: f89a84c355ffa95f21232a887cc58a5b5e91ef8b # v0.27.0
 
   # Asset Pipeline (cross-platform UI: AppKit, UIKit, Android Views)
   asset_pipeline:
