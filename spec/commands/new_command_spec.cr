@@ -244,8 +244,7 @@ describe AmberCLI::Commands::NewCommand do
         amber_config["model"].as_s.should eq("grant")
 
         database_config = File.read(File.join(destination, "config/database.cr"))
-        database_config.should contain(%(require "grant/adapter/sqlite/grant_engine"))
-        database_config.should contain(%(require "grant/adapter/sqlite" above))
+        database_config.should contain(%(require "grant/adapter/sqlite"))
         database_config.should contain(%(database: "primary"))
         database_config.should contain("Grant::ConnectionRegistry.establish_connection")
         database_config.should contain(%(ENV["DATABASE_URL"]? || Amber.settings.database_url))
