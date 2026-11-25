@@ -40,19 +40,23 @@ module AmberLSP::Lookup
 
       directory_above_bin = bin_directory.parent
       directory_two_levels_above_bin = directory_above_bin.parent
-      prefix_candidate =
-        if directory_two_levels_above_bin.parent.basename == "Cellar"
-          directory_two_levels_above_bin.parent.parent
-        elsif directory_two_levels_above_bin.basename == "opt"
-          directory_two_levels_above_bin.parent
-        else
-          directory_above_bin
-        end
+      list_of_prefix_candidates = [] of Path
+      if directory_two_levels_above_bin.parent.basename == "Cellar"
+        list_of_prefix_candidates << directory_two_levels_above_bin.parent.parent
+      end
+      if directory_two_levels_above_bin.basename == "opt"
+        list_of_prefix_candidates << directory_two_levels_above_bin.parent
+      end
+      list_of_prefix_candidates << directory_above_bin
 
-      return nil if prefix_candidate == prefix_candidate.root
-      return nil unless Dir.exists?(prefix_candidate.join("Cellar"))
+      homebrew_prefix = list_of_prefix_candidates.find { |prefix_candidate| holds_a_cellar?(prefix_candidate) }
+      homebrew_prefix.try(&.to_s)
+    end
 
-      prefix_candidate.to_s
+    private def holds_a_cellar?(prefix_candidate : Path) : Bool
+      return false if prefix_candidate == prefix_candidate.root
+
+      Dir.exists?(prefix_candidate.join("Cellar"))
     end
   end
 end

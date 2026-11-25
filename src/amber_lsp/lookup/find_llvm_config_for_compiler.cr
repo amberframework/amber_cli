@@ -2,7 +2,7 @@ require "./list_homebrew_prefixes_around_compiler"
 
 module AmberLSP::Lookup
   # Finds an llvm-config that reports the same LLVM major.minor the compiler
-  # was built with. Homebrew's llvm@N is keg-only, so it is searched first in
+  # was built with. Homebrew's llvm@N and llvm are keg-only, so they are searched first in
   # the Homebrew prefix that holds the compiler (this covers Linuxbrew and
   # custom prefixes), then in the standard Homebrew prefixes, then on PATH.
   class FindLLVMConfigForCompiler
@@ -40,8 +40,13 @@ module AmberLSP::Lookup
       list_of_homebrew_prefixes = ListHomebrewPrefixesAroundCompiler.new(@compiler_path).perform
       list_of_homebrew_prefixes.concat(@list_of_standard_homebrew_prefixes)
 
-      list_of_candidates = list_of_homebrew_prefixes.map do |homebrew_prefix|
-        File.join(homebrew_prefix, "opt", "llvm@#{major}", "bin", "llvm-config")
+      # The versioned keg first, then the unversioned `llvm` formula's keg; the
+      # version check below rejects either one when its LLVM does not match.
+      list_of_candidates = list_of_homebrew_prefixes.flat_map do |homebrew_prefix|
+        [
+          File.join(homebrew_prefix, "opt", "llvm@#{major}", "bin", "llvm-config"),
+          File.join(homebrew_prefix, "opt", "llvm", "bin", "llvm-config"),
+        ]
       end
       ["llvm-config-#{major}.#{minor}", "llvm-config-#{major}", "llvm-config"].each do |command|
         if executable = @path_lookup.call(command)

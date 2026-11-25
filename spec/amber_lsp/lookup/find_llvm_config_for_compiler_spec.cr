@@ -65,6 +65,21 @@ describe AmberLSP::Lookup::FindLLVMConfigForCompiler do
     end
   end
 
+  it "finds the unversioned llvm keg beside the compiler when its version matches" do
+    within_temporary_directory do |directory|
+      run_log = File.join(directory, "runs.log")
+      linuxbrew_prefix = File.join(directory, "linuxbrew")
+      compiler = write_homebrew_compiler(linuxbrew_prefix)
+      unversioned_llvm_config = write_executable(
+        File.join(linuxbrew_prefix, "opt", "llvm", "bin", "llvm-config"),
+        "echo 21.1.8",
+      )
+
+      AmberLSP::Lookup::FindLLVMConfigForCompiler.new(compiler, "21.1.8", ([] of String), no_executables_on_path).perform
+        .should eq(unversioned_llvm_config)
+    end
+  end
+
   it "skips an llvm-config whose minor version only starts with the wanted one" do
     within_temporary_directory do |directory|
       run_log = File.join(directory, "runs.log")

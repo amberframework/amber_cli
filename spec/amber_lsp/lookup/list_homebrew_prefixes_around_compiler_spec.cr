@@ -47,6 +47,17 @@ describe AmberLSP::Lookup::ListHomebrewPrefixesAroundCompiler do
     end
   end
 
+  it "finds a prefix that sits inside a folder named opt, as /opt/homebrew does" do
+    within_temporary_directory do |directory|
+      prefix = File.join(directory, "opt", "homebrew")
+      Dir.mkdir_p(File.join(prefix, "Cellar"))
+      compiler = File.join(prefix, "bin", "crystal-alpha")
+      write_compiler(compiler)
+
+      AmberLSP::Lookup::ListHomebrewPrefixesAroundCompiler.new(compiler).perform.should eq([prefix])
+    end
+  end
+
   it "lists no prefix for a compiler in a system bin folder" do
     AmberLSP::Lookup::ListHomebrewPrefixesAroundCompiler.new("/bin/crystal-alpha").perform.should be_empty
   end
