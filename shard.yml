@@ -1,5 +1,5 @@
 name: amber_cli
-version: 2.0.16
+version: 2.0.17
 
 authors:
   - crimson-knight <crimsonknightstudios@gmail.com>
@@ -15,27 +15,34 @@ targets:
     main: src/amber_lsp.cr
 
 dependencies:
+  # shard.lock records each git dependency by its git tree hash, which Minecart
+  # verifies on every platform. Minecart 2025.11.25.9 on Windows computes a
+  # different sha256-v2 for its checkouts (asset_pipeline, db), so the CLI's
+  # own lock keeps tree hashes until Minecart fixes that.
 
   # Stable static-asset compiler used by the CLI and generated applications.
   asset_pipeline:
     github: amberframework/asset_pipeline
-    version: 0.37.1
+    commit: 9a0447c0e10d645307e8532c7794b89491281210 # v0.40.1
 
-  micrate:
-    github: amberframework/micrate
-    commit: 56afd5607cc591776980f3d3762495c037b98d98
+  grant:
+    github: crimson-knight/grant
+    # `amber database` runs migrations on Grant: its PostgreSQL driver on
+    # Beryl TLS 1.3 and its SQLite driver on the system libsqlite3, as
+    # generated 2.0.17 apps do.
+    commit: 4ba859e673a85de91b5dd815556ee83be3cc13b2
 
-  pg:
-    github: will/crystal-pg
-    version: 0.29.0
-
+  # The MySQL driver generated MySQL applications use (0.18.1, TLS 1.3 and the
+  # password exchanges on Beryl 0.2.1).
   mysql:
-    github: crystal-lang/crystal-mysql
-    version: 0.16.0
+    github: crimson-knight/crystal-mysql
+    commit: ce9cbfab8ba76f5b6d25386140aca0a409b1d585
 
-  sqlite3:
-    github: crystal-lang/crystal-sqlite3
-    version: 0.21.0
+  # Pure-Crystal cryptography (AES-CBC, HMAC) for `amber encrypt`, so the CLI
+  # links no OpenSSL. The same commit crystal-mysql pins.
+  beryl:
+    github: amberframework/beryl
+    commit: 6afec738aac1aeefc016b0ba826d8d9f0acc3541 # v0.2.1
 
   exception_page:
     github: crystal-loot/exception_page

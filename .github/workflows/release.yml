@@ -69,16 +69,19 @@ jobs:
     - name: Install dependencies
       run: minecart install --frozen --production --skip-ai-docs
     
+    # -Dwithout_openssl: the CLI calls no OpenSSL (Beryl does its cryptography,
+    # Grant and crystal-mysql their TLS), so the flag keeps the standard
+    # library from linking libssl and libcrypto. The language server is unchanged.
     - name: Build binaries (Linux)
       if: startsWith(matrix.target, 'linux-')
       run: |
-        crystal-alpha build src/amber_cli.cr -o amber --release --static
+        crystal-alpha build src/amber_cli.cr -Dwithout_openssl -o amber --release --static
         crystal-alpha build src/amber_lsp.cr -o amber-lsp --release --static
 
     - name: Build binaries (macOS ARM64)
       if: matrix.target == 'darwin-arm64'
       run: |
-        crystal-alpha build src/amber_cli.cr -o amber --release
+        crystal-alpha build src/amber_cli.cr -Dwithout_openssl -o amber --release
         crystal-alpha build src/amber_lsp.cr -o amber-lsp --release
 
     - name: Verify binaries
@@ -94,6 +97,9 @@ jobs:
         otool -L amber
         otool -L amber-lsp
         ! otool -L amber amber-lsp | grep -F 'openssl@1.1'
+        # The CLI links no OpenSSL (SQLite migrations use the system libsqlite3,
+        # as generated SQLite apps do).
+        ! otool -L amber | grep -E 'libssl|libcrypto'
 
     - name: Smoke test generated Amber V2 web app
       run: scripts/smoke_generated_web.sh ./amber

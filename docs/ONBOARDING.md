@@ -2,7 +2,7 @@
 
 This page takes a new developer from a bare machine to an Amber V2 app with
 checksum-verified dependencies, and with editor and coding-assistant rules active
-from the first edit. It covers Amber CLI 2.0.16, Amber 2.0.0-beta.15 and Minecart
+from the first edit. It covers Amber CLI 2.0.17, Amber 2.0.0-beta.16 and Minecart
 2025.11.25.9 on Apple Silicon macOS and Linux.
 
 ## What you get
@@ -13,10 +13,10 @@ from the first edit. It covers Amber CLI 2.0.16, Amber 2.0.0-beta.15 and Minecar
 | `amber-lsp` | Language server, API lookup and rule checks | Same formula |
 | `minecart` | Installs dependencies and verifies their checksums | Dependency of the formula |
 | Crystal | Compiles the app | Dependency of the formula |
-| Amber 2.0.0-beta.15 | The framework, its rule pack and its guides | Pinned in each new app |
+| Amber 2.0.0-beta.16 | The framework, its rule pack and its guides | Pinned in each new app |
 | Grant | The ORM and its tenancy rule pack | Pinned in each new app |
 | Asset Pipeline | CSS, JavaScript and image assets | Pinned in each new app |
-| micrate | Database migrations | Built into `amber database` |
+| grant | Database migrations (runs Micrate `.sql` files) | Built into `amber database` |
 | Mica | XML request bodies | Add it when an app accepts XML |
 
 ## 1. Install the tools
@@ -36,8 +36,8 @@ HOMEBREW_NO_AUTO_UPDATE=1 brew install amberframework/amber_cli/amber_cli
 Check the result:
 
 ```bash
-amber --version      # Amber CLI v2.0.16
-amber-lsp --version  # amber-lsp 1.0.0 (amber_cli 2.0.16, ...)
+amber --version      # Amber CLI v2.0.17
+amber-lsp --version  # amber-lsp 1.0.0 (amber_cli 2.0.17, ...)
 minecart --version   # Minecart 2025.11.25.9
 ```
 
@@ -191,18 +191,18 @@ Pin the release commits and move the lock:
 dependencies:
   amber:
     github: amberframework/amber
-    commit: 0830e3fdbc5e05be851c3c7ae7bf03b67be10732 # v2.0.0-beta.15
+    commit: 261cf2d3b4a6f3292fefb8113e71e0fe6900fcee # v2.0.0-beta.16
   grant:
     github: crimson-knight/grant
-    commit: b83a82f0261509d4ce1f26fadb318c8ba132a066 # v0.26.0
+    commit: 4ba859e673a85de91b5dd815556ee83be3cc13b2 # v0.28.2
   asset_pipeline:
     github: amberframework/asset_pipeline
-    commit: 84f3188239e43dc6e0bcfd2e72074e8ec67156cd # v0.40.0
+    commit: 9a0447c0e10d645307e8532c7794b89491281210 # v0.40.1
 ```
 
 ```bash
 minecart update amber grant asset_pipeline
-grep -A3 '^  amber:' shard.lock   # checksum: sha256-v2:14df1ff766414599f53a8be6816023374ba01cc6a2bd6d61ad1cabb81d88ad28
+grep -A3 '^  amber:' shard.lock   # checksum: sha256-v2:9f7aa2e42de37b244efe33afa66c2f60177ba0d82968afc6ac2f728a3f978e77
 amber setup:agent
 ```
 

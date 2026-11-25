@@ -316,7 +316,7 @@ RETRIES
 #   #{class_name}.new.enqueue(delay: 5.minutes)
 #   #{class_name}.new.enqueue(queue: "critical")
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.15/docs/guides/background-jobs.md
+# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.16/docs/guides/background-jobs.md
 class #{class_name} < Amber::Jobs::Job
   include JSON::Serializable
 
@@ -414,7 +414,7 @@ METHOD
 #     .subject("Welcome!")
 #     .deliver
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.15/docs/guides/mailer.md
+# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.16/docs/guides/mailer.md
 class #{class_name}Mailer < Amber::Mailer::Base
   def initialize(@user_name : String, @user_email : String)
   end
@@ -620,7 +620,7 @@ SPEC
 # Clients subscribe to this channel through a ClientSocket.
 # Messages sent to this channel are handled by `handle_message`.
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.15/docs/guides/websockets.md
+# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.16/docs/guides/websockets.md
 class #{class_name}Channel < Amber::WebSockets::Channel
   # Called when a client subscribes to this channel.
   # Use this for authorization or sending initial state.
@@ -651,7 +651,7 @@ CHANNEL
 # Configure in config/routes.cr:
 #   websocket "/#{file_name}", #{class_name}Socket
 #
-# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.15/docs/guides/websockets.md
+# See: https://github.com/amberframework/amber/blob/v2.0.0-beta.16/docs/guides/websockets.md
 struct #{class_name}Socket < Amber::WebSockets::ClientSocket
   channel "#{file_name}:*", #{class_name}Channel
 

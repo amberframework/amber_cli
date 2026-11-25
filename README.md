@@ -3,8 +3,8 @@
 [![GitHub release](https://img.shields.io/github/release/amberframework/amber_cli.svg)](https://github.com/amberframework/amber_cli/releases)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://amberframework.github.io/amber_cli/)
 
-Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.16`
-creates the supported Amber `2.0.0-beta.15` ECR web application and includes
+Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.17`
+creates the supported Amber `2.0.0-beta.16` ECR web application and includes
 development, generator, database, and LSP tooling. Its agent tooling also
 works in plain Crystal apps and shards; see
 [Agent tooling](#agent-tooling-for-any-crystal-project).
@@ -42,13 +42,13 @@ are selected by the installed core catalog, not pinned by this tap.
 
 ### Direct release archive
 
-The CLI `2.0.16` release has `darwin-arm64`, `linux-x86_64`, and
+The CLI `2.0.17` release has `darwin-arm64`, `linux-x86_64`, and
 `linux-arm64` binary archives. A direct archive does not install Minecart or
 the native dependencies, so Homebrew is the beginner path. Windows x86-64 has
 no release archive.
 
 ```bash
-version=v2.0.16
+version=v2.0.17
 platform=darwin-arm64
 asset="amber_cli-${platform}.tar.gz"
 
@@ -93,19 +93,19 @@ or a file under `app/assets/` changes. Open <http://127.0.0.1:3000>.
 
 The web template is deliberately small:
 
-- Amber from `amberframework/amber`, pinned to `2.0.0-beta.15` by commit
-  (`0830e3fdbc5e05be851c3c7ae7bf03b67be10732`), with its checksum (`sha256-v2:14df1ff766414599f53a8be6816023374ba01cc6a2bd6d61ad1cabb81d88ad28`) checked in `shard.lock`
+- Amber from `amberframework/amber`, pinned to `2.0.0-beta.16` by commit
+  (`261cf2d3b4a6f3292fefb8113e71e0fe6900fcee`), with its checksum (`sha256-v2:9f7aa2e42de37b244efe33afa66c2f60177ba0d82968afc6ac2f728a3f978e77`) checked in `shard.lock`
 - ECR views (Slang and Kilt are not supported in Amber V2)
 - typed development, test, and production YAML
 - branded homepage, controller spec, and fingerprinted CSS, JavaScript, SVG,
   font, image, and general static-file support
 - a browser-native import map with a local JavaScript module entry point
-- Grant `v0.26.0` and asset_pipeline `v0.40.0`, pinned by commit and checked
+- Grant `v0.28.2` and asset_pipeline `v0.40.1`, pinned by commit and checked
   in `shard.lock` the same way, so the built app links no PCRE2; built with
   `-Dwithout_zlib -Dwithout_openssl`, it also links no libz and no OpenSSL
 - `src/<app>.cr` applies `logging.severity` from the environment file to
   `Log` at boot (`Amber.settings.logging.apply_severity_to_log`)
-- Grant ORM, Micrate-powered migration commands, and the selected database driver
+- Grant ORM, Grant-powered migration commands (Micrate `.sql` files and history), and the selected database driver
 - SQLite by default, so the first persisted feature needs no database server
 
 The `-d pg|mysql|sqlite` option selects the generated driver, connection, and

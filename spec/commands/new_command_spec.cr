@@ -377,7 +377,7 @@ describe AmberCLI::Commands::NewCommand do
 
           shard = File.read(File.join(destination, "shard.yml"))
           shard.should contain("github: crimson-knight/crystal-mysql")
-          shard.should contain("commit: 12169921c2920494caa4421f9b412838b4bb5195")
+          shard.should contain("commit: ce9cbfab8ba76f5b6d25386140aca0a409b1d585")
         end
       end
 
@@ -493,6 +493,7 @@ describe AmberCLI::Commands::NewCommand do
         application_config = File.read(File.join(destination, "config/application.cr"))
         list_of_code_lines = application_config.lines.reject(&.lstrip.starts_with?("#")).map(&.strip).reject(&.empty?)
         list_of_code_lines.first(2).should eq([%(require "amber"), %(require "amber/tls")])
+        application_config.should contain("TLS 1.3")
       end
     end
 

@@ -59,7 +59,7 @@ module AmberCLI::Documentation
   # - `--type=TYPE` - Application type (`web` supported, `native` preview)
   # - `-y, --assume-yes` - Skip interactive prompts
   # - `--tls` - Serve HTTPS from the app itself: adds `require "amber/tls"`,
-  #   which links OpenSSL. Without it the app links no OpenSSL.
+  #   TLS 1.3 only, on Beryl (no OpenSSL). Without it the app has no TLS.
   # - `--no-deps` - Don't install dependencies
   #
   # ### Examples
@@ -91,8 +91,8 @@ module AmberCLI::Documentation
   # - **.amber.yml** - Project configuration
   # - **.gitignore** - Git ignore rules
   #
-  # The web template pins Amber `2.0.0-beta.15`, uses ECR, and includes Grant,
-  # Micrate-powered database commands, and the selected database driver. Model,
+  # The web template pins Amber `2.0.0-beta.16`, uses ECR, and includes Grant,
+  # Grant-powered database commands, and the selected database driver. Model,
   # scaffold, and migration generators are supported. API-resource,
   # authentication, and native generators are preview surfaces during the beta.
   class NewCommand
@@ -191,7 +191,9 @@ module AmberCLI::Documentation
   # ## Database Management
   #
   # The `database` command provides comprehensive database management capabilities
-  # powered by Micrate. It supports PostgreSQL, MySQL, and SQLite.
+  # powered by Grant. It supports PostgreSQL, MySQL, and SQLite, runs Micrate
+  # `.sql` migration files, and keeps the history in Micrate's
+  # `micrate_db_version` table, so a database Micrate migrated carries on.
   #
   # ### Usage
   # ```bash

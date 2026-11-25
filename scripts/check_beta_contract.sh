@@ -3,14 +3,14 @@ set -euo pipefail
 
 shard_version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
 cli_version="$(sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' src/amber_cli.cr | head -1)"
-test "$shard_version" = "2.0.16"
+test "$shard_version" = "2.0.17"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new_command.cr
 grep -F 'commit: #{AmberRelease::COMMIT} # v#{AmberRelease::VERSION}' src/amber_cli/commands/new_command.cr
-grep -F 'COMMIT  = "0830e3fdbc5e05be851c3c7ae7bf03b67be10732"' src/amber_cli/amber_release.cr
-grep -F 'TREE    = "5709f265e0d9e942507d5d7e155a922013b65559"' src/amber_cli/amber_release.cr
-grep -F 'CHECKSUM = "sha256-v2:14df1ff766414599f53a8be6816023374ba01cc6a2bd6d61ad1cabb81d88ad28"' src/amber_cli/amber_release.cr
+grep -F 'COMMIT  = "261cf2d3b4a6f3292fefb8113e71e0fe6900fcee"' src/amber_cli/amber_release.cr
+grep -F 'TREE    = "9a6e713abbdcc8500d0d6ffd71b7383952f6c038"' src/amber_cli/amber_release.cr
+grep -F 'CHECKSUM = "sha256-v2:9f7aa2e42de37b244efe33afa66c2f60177ba0d82968afc6ac2f728a3f978e77"' src/amber_cli/amber_release.cr
 grep -F 'template: ecr' src/amber_cli/commands/new_command.cr
 grep -F 'model: grant' src/amber_cli/commands/new_command.cr
 grep -F 'database: #{database}' src/amber_cli/commands/new_command.cr
@@ -18,15 +18,15 @@ grep -F 'github: crimson-knight/grant' src/amber_cli/commands/new_command.cr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/commands/new_command.cr
 grep -F 'commit: #{GrantRelease::COMMIT} # v#{GrantRelease::VERSION}' src/amber_cli/commands/new_command.cr
 grep -F 'commit: #{AssetPipelineRelease::COMMIT} # v#{AssetPipelineRelease::VERSION}' src/amber_cli/commands/new_command.cr
-grep -F 'COMMIT   = "b83a82f0261509d4ce1f26fadb318c8ba132a066"' src/amber_cli/pinned_releases.cr
-grep -F 'CHECKSUM = "sha256-v2:886b86c249fa5f7ec3d4b66a0f700d8647687b3b9984b7f580cbc2c75b5306b9"' src/amber_cli/pinned_releases.cr
-grep -F 'COMMIT   = "84f3188239e43dc6e0bcfd2e72074e8ec67156cd"' src/amber_cli/pinned_releases.cr
-grep -F 'CHECKSUM = "sha256-v2:137195ff733af93d36787d4a965a1846bb4795347a6eced8a5dd3f015ee729b9"' src/amber_cli/pinned_releases.cr
-grep -F 'commit: b83a82f0261509d4ce1f26fadb318c8ba132a066 # v0.26.0' src/amber_cli/templates/app/shard.yml.ecr
+grep -F 'COMMIT   = "4ba859e673a85de91b5dd815556ee83be3cc13b2"' src/amber_cli/pinned_releases.cr
+grep -F 'CHECKSUM = "sha256-v2:cd018dbf347f2dbb3591f9bd671c59ecff58bdfc98383a1a5b03d675228f5990"' src/amber_cli/pinned_releases.cr
+grep -F 'COMMIT   = "9a0447c0e10d645307e8532c7794b89491281210"' src/amber_cli/pinned_releases.cr
+grep -F 'CHECKSUM = "sha256-v2:d34f0ec99a825eb90fd651676d7aff40b3cca7277f31db9f06e0d3b1e8164e8d"' src/amber_cli/pinned_releases.cr
+grep -F 'commit: 4ba859e673a85de91b5dd815556ee83be3cc13b2 # v0.28.2' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/templates/app/shard.yml.ecr
-grep -F 'commit: 84f3188239e43dc6e0bcfd2e72074e8ec67156cd # v0.40.0' src/amber_cli/templates/app/shard.yml.ecr
+grep -F 'commit: 9a0447c0e10d645307e8532c7794b89491281210 # v0.40.1' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/amber' src/amber_cli/generators/native_app.cr
-grep -F 'commit: 0830e3fdbc5e05be851c3c7ae7bf03b67be10732 # v2.0.0-beta.15' src/amber_cli/generators/native_app.cr
+grep -F 'commit: 261cf2d3b4a6f3292fefb8113e71e0fe6900fcee # v2.0.0-beta.16' src/amber_cli/generators/native_app.cr
 grep -F 'version: ~> 0.37.1' src/amber_cli/generators/native_app.cr
 if grep -F 'branch:' src/amber_cli/generators/native_app.cr; then
   echo "native app template contains a mutable dependency branch" >&2
@@ -36,7 +36,15 @@ if grep -F 'shards install || true' src/amber_cli/generators/native_app.cr; then
   echo "native app setup masks dependency installation failures" >&2
   exit 1
 fi
-grep -F 'github: amberframework/micrate' shard.yml
+# `amber database` runs on Grant, so the CLI carries no C or OpenSSL database driver.
+grep -F 'github: crimson-knight/grant' shard.yml
+grep -F 'Grant::Tasks::Database' src/amber_cli/database/run_database_task.cr
+for driver in amberframework/micrate will/crystal-pg crystal-lang/crystal-sqlite3 crystal-lang/crystal-mysql; do
+  if grep -F "github: $driver" shard.yml; then
+    echo "shard.yml still depends on $driver" >&2
+    exit 1
+  fi
+done
 grep -F 'info "  2. Bind it in a controller: schema :create, #{class_name}Schema"' src/amber_cli/commands/generate.cr
 grep -F 'content_type "#{content_type}"' src/amber_cli/commands/generate.cr
 grep -F 'schema :create, #{class_name}Schema' src/amber_cli/commands/generate.cr

@@ -67,13 +67,13 @@ jobs:
     - name: Build binaries (Linux)
       if: matrix.target == 'linux-x86_64'
       run: |
-        crystal build src/amber_cli.cr -o amber --release --static
+        crystal build src/amber_cli.cr -Dwithout_openssl -o amber --release --static
         crystal build src/amber_lsp.cr -o amber-lsp --release --static
 
     - name: Build binaries (macOS)
       if: matrix.target == 'darwin-arm64'
       run: |
-        crystal build src/amber_cli.cr -o amber --release
+        crystal build src/amber_cli.cr -Dwithout_openssl -o amber --release
         crystal build src/amber_lsp.cr -o amber-lsp --release
 
     - name: Test binaries
