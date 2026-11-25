@@ -4,17 +4,16 @@ set -u
 project_root=$(CDPATH='' cd "$(dirname "$0")/.." && pwd -P) || exit 2
 cd "$project_root" || exit 2
 
-HOOK_VERSION=6
+HOOK_VERSION=7
 DEFAULT_MINIMUM_AMBER_LSP_VERSION=1.0.0
 MAIN_FILE='__AMBER_MAIN__'
 
 compiler_is_stock=0
-if [ -n "${CRYSTAL_ALPHA:-}" ]; then
-  compiler=$CRYSTAL_ALPHA
+specified_compiler=$(printf '%s' "${CRYSTAL:-}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+if [ -n "$specified_compiler" ]; then
+  compiler=$specified_compiler
 elif command -v crystal-alpha >/dev/null 2>&1; then
   compiler=crystal-alpha
-elif command -v acrystal >/dev/null 2>&1; then
-  compiler=acrystal
 elif command -v crystal >/dev/null 2>&1; then
   compiler=crystal
   compiler_is_stock=1

@@ -96,7 +96,7 @@ module AmberCLI::Commands
       commands.each do |command|
         case command
         when "seed"
-          Amber::CLI::Helpers.run("crystal db/seeds.cr", wait: true, shell: true)
+          Amber::CLI::Helpers.run(seed_command, wait: true, shell: true)
           info "Seeded database"
         when "connect"
           connect_to_database
@@ -109,6 +109,12 @@ module AmberCLI::Commands
           AmberCLI::Database::RunDatabaseTask.new(command, database_url, environment, MIGRATIONS_DIR).perform
         end
       end
+    end
+
+    # Runs db/seeds.cr with the compiler named by CRYSTAL, or crystal-alpha,
+    # or crystal.
+    def seed_command : String
+      "#{Process.quote(Amber::CLI.crystal_compiler_command)} run db/seeds.cr"
     end
 
     private def connect_to_database

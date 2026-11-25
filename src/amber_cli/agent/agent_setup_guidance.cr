@@ -1,7 +1,7 @@
 require "../../amber_lsp/project_context"
 
 module AmberCLI::Agent::AgentSetupGuidance
-  GENERATED_HOOK_VERSION       = "6"
+  GENERATED_HOOK_VERSION       = "7"
   DOCUMENT_START               = "<!-- amber-agent-loop:start -->"
   DOCUMENT_END                 = "<!-- amber-agent-loop:end -->"
   PLAIN_CRYSTAL_READINESS_ITEM = "plain Crystal project: Amber rules do not apply; lookup and Crystal hints are active"

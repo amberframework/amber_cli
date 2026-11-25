@@ -7,6 +7,7 @@ require "yaml"
 require "./build_crystal_docs_json"
 require "./api_cards"
 require "./default_compiler_command"
+require "./find_llvm_config_for_compiler"
 require "./index_cache"
 require "./merge_api_index_layers"
 require "./normalize_crystal_docs"
@@ -49,29 +50,6 @@ module AmberLSP::Lookup
       output.to_s
     rescue ex : IO::Error
       raise APIIndexBuildError.new("Could not inspect crystal-alpha: #{ex.message}")
-    end
-  end
-
-  # Lists every directory above a compiler, both as found on PATH and with
-  # symlinks resolved, nearest first.
-  class ListDirectoriesAboveCompiler
-    def initialize(@compiler_path : String)
-    end
-
-    def perform : Array(String)
-      list_of_compiler_paths = [@compiler_path]
-      begin
-        list_of_compiler_paths << File.realpath(@compiler_path)
-      rescue ex : File::Error
-      end
-
-      list_of_directories = [] of String
-      list_of_compiler_paths.each do |path|
-        Path[path].parents.reverse_each do |directory|
-          list_of_directories << directory.to_s unless directory == directory.root
-        end
-      end
-      list_of_directories.uniq
     end
   end
 
@@ -491,7 +469,7 @@ module AmberLSP::Lookup
         source_root = crystal_source_root(identity)
         docs_flags = [] of String
         environment_overrides = {} of String => String
-        if llvm_config = find_llvm_config(identity)
+        if llvm_config = FindLLVMConfigForCompiler.new(identity.executable_path, identity.llvm_version).perform
           environment_overrides["LLVM_CONFIG"] = llvm_config
         end
 
@@ -539,49 +517,6 @@ module AmberLSP::Lookup
       source_root
     rescue ex : IO::Error
       raise APIIndexBuildError.new("Could not locate the Crystal standard library: #{ex.message}")
-    end
-
-    private def find_llvm_config(identity : CrystalAlphaIdentity) : String?
-      version_parts = identity.llvm_version.split('.')
-      major = version_parts.first?
-      minor = version_parts[1]?
-      return nil unless major && minor
-
-      candidates = [] of String
-      candidates << "/opt/homebrew/opt/llvm@#{major}/bin/llvm-config"
-      candidates << "/usr/local/opt/llvm@#{major}/bin/llvm-config"
-      # Homebrew's llvm@N is keg-only, so on Linux (/home/linuxbrew/.linuxbrew) and
-      # in custom prefixes it is found beside the compiler: walk up from the
-      # compiler to the Homebrew prefix that holds opt/llvm@N.
-      ListDirectoriesAboveCompiler.new(identity.executable_path).perform.each do |directory|
-        candidates << File.join(directory, "opt", "llvm@#{major}", "bin", "llvm-config")
-      end
-
-      if executable = Process.find_executable("llvm-config-#{major}.#{minor}")
-        candidates << executable
-      end
-      if executable = Process.find_executable("llvm-config-#{major}")
-        candidates << executable
-      end
-      if executable = Process.find_executable("llvm-config")
-        candidates << executable
-      end
-
-      candidates.uniq.each do |candidate|
-        next unless File.file?(candidate) || Process.find_executable(candidate)
-
-        version_output = IO::Memory.new
-        version_error = IO::Memory.new
-        status = Process.run(candidate, ["--version"], output: version_output, error: version_error)
-        next unless status.success?
-        next unless version_output.to_s.strip.starts_with?("#{major}.#{minor}")
-
-        return candidate
-      rescue ex : IO::Error
-        next
-      end
-
-      nil
     end
 
     private def relative_entrypoint(entrypoint : String, working_directory : String) : String
