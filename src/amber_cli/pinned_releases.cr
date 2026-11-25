@@ -16,7 +16,7 @@ module AmberCLI
   # The Grant release that `amber new` pins (tag `v0.28.2`).
   module GrantRelease
     VERSION  = "0.28.2"
-    COMMIT   = "96fe7d9f69bb394009c26eaad3a9c87227122830"
+    COMMIT   = "4ba859e673a85de91b5dd815556ee83be3cc13b2"
     TREE     = "9163d65c214ada60ca6bc950fda057e84423aad9"
     CHECKSUM = "sha256-v2:cd018dbf347f2dbb3591f9bd671c59ecff58bdfc98383a1a5b03d675228f5990"
   end
