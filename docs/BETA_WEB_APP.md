@@ -35,7 +35,7 @@ grep -E '^(template|database|model):' .amber.yml
 ```
 
 The dependency must be `amberframework/amber` at commit
-`e5c4ac7f0c1d908c3f3ad9ea4f33d858e1f47a5f` (`v2.0.0-beta.16`); the
+`261cf2d3b4a6f3292fefb8113e71e0fe6900fcee` (`v2.0.0-beta.16`); the
 template must be `ecr`, the database must be `sqlite`, and the model layer must
 be `grant`. `shard.yml` must include Grant and Asset Pipeline pinned by commit,
 and no database driver shard unless you selected MySQL. Grant ships its own

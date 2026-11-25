@@ -118,12 +118,12 @@ dependencies:
   # Amber Framework V2 (patterns only, NO HTTP server for native apps)
   amber:
     github: amberframework/amber
-    commit: e5c4ac7f0c1d908c3f3ad9ea4f33d858e1f47a5f # v2.0.0-beta.16
+    commit: 261cf2d3b4a6f3292fefb8113e71e0fe6900fcee # v2.0.0-beta.16
 
   # Grant ORM (ActiveRecord-style, replaces Granite in V2)
   grant:
     github: crimson-knight/grant
-    commit: bf9cb490695860b08f209989be686a0eb42c1019 # v0.28.0
+    commit: 05d0ed6403b45763a9c3c346c6284a235ec8821d # v0.28.0
 
   # Asset Pipeline (cross-platform UI: AppKit, UIKit, Android Views)
   asset_pipeline:
@@ -141,7 +141,7 @@ dependencies:
     version: 0.30.0
   mysql:
     github: crimson-knight/crystal-mysql
-    commit: 4ec0bcaddd436bcf19ef5072034fbef3b8282f63
+    commit: ce9cbfab8ba76f5b6d25386140aca0a409b1d585
   sqlite3:
     github: crystal-lang/crystal-sqlite3
     version: 0.23.0

@@ -16,17 +16,17 @@ module AmberCLI
   # The Grant release that `amber new` pins (tag `v0.28.0`).
   module GrantRelease
     VERSION  = "0.28.0"
-    COMMIT   = "bf9cb490695860b08f209989be686a0eb42c1019"
-    TREE     = "17ddebfc2afb76051b13ab46c218fd605487f52c"
-    CHECKSUM = "sha256-v2:b736ee17d0fdce23740bd768089085ecb776b3f8ae308cd058132aff25fa4c77"
+    COMMIT   = "05d0ed6403b45763a9c3c346c6284a235ec8821d"
+    TREE     = "0eb1ff6a7b2f1e1d1188fd4143834bae33aedf7a"
+    CHECKSUM = "sha256-v2:fecb3424f0463610d863df029e3758a90bf0a85dd4574b03795014bd11af4a08"
   end
 
   # The asset_pipeline release that `amber new` pins (tag `v0.40.1`).
   module AssetPipelineRelease
     VERSION  = "0.40.1"
-    COMMIT   = "dc2185094f4da66062e4e7fb65fb41a9e46a1287"
-    TREE     = "2ba60af749a7a1250a3a770b67230f57b31c02ef"
-    CHECKSUM = "sha256-v2:ce5ff984b86dcdcedd3cbd51aab51e1b59be52273c29a18e69dc30015b8bf50e"
+    COMMIT   = "9a0447c0e10d645307e8532c7794b89491281210"
+    TREE     = "89dc7d5b714fde68479653232691e9afcee387eb"
+    CHECKSUM = "sha256-v2:d34f0ec99a825eb90fd651676d7aff40b3cca7277f31db9f06e0d3b1e8164e8d"
   end
 
   # Every release a generated application's `shard.lock` must record exactly.

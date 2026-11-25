@@ -94,7 +94,7 @@ or a file under `app/assets/` changes. Open <http://127.0.0.1:3000>.
 The web template is deliberately small:
 
 - Amber from `amberframework/amber`, pinned to `2.0.0-beta.16` by commit
-  (`e5c4ac7f0c1d908c3f3ad9ea4f33d858e1f47a5f`), with its checksum (`sha256-v2:b1d2dbc03a48dd16d3d11d078d96d9680f0e5416fdbb5d6a212f52964cd93763`) checked in `shard.lock`
+  (`261cf2d3b4a6f3292fefb8113e71e0fe6900fcee`), with its checksum (`sha256-v2:9f7aa2e42de37b244efe33afa66c2f60177ba0d82968afc6ac2f728a3f978e77`) checked in `shard.lock`
 - ECR views (Slang and Kilt are not supported in Amber V2)
 - typed development, test, and production YAML
 - branded homepage, controller spec, and fingerprinted CSS, JavaScript, SVG,

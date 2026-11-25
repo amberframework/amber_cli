@@ -191,18 +191,18 @@ Pin the release commits and move the lock:
 dependencies:
   amber:
     github: amberframework/amber
-    commit: e5c4ac7f0c1d908c3f3ad9ea4f33d858e1f47a5f # v2.0.0-beta.16
+    commit: 261cf2d3b4a6f3292fefb8113e71e0fe6900fcee # v2.0.0-beta.16
   grant:
     github: crimson-knight/grant
-    commit: bf9cb490695860b08f209989be686a0eb42c1019 # v0.28.0
+    commit: 05d0ed6403b45763a9c3c346c6284a235ec8821d # v0.28.0
   asset_pipeline:
     github: amberframework/asset_pipeline
-    commit: dc2185094f4da66062e4e7fb65fb41a9e46a1287 # v0.40.1
+    commit: 9a0447c0e10d645307e8532c7794b89491281210 # v0.40.1
 ```
 
 ```bash
 minecart update amber grant asset_pipeline
-grep -A3 '^  amber:' shard.lock   # checksum: sha256-v2:b1d2dbc03a48dd16d3d11d078d96d9680f0e5416fdbb5d6a212f52964cd93763
+grep -A3 '^  amber:' shard.lock   # checksum: sha256-v2:9f7aa2e42de37b244efe33afa66c2f60177ba0d82968afc6ac2f728a3f978e77
 amber setup:agent
 ```
 
