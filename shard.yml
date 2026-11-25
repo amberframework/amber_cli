@@ -17,6 +17,9 @@ targets:
 dependencies:
 
   # Stable static-asset compiler used by the CLI and generated applications.
+  # shard.lock records it by git tree (89dc7d5b, verified on every platform):
+  # Minecart 2025.11.25.9 on Windows computes another sha256-v2 for its
+  # checkout of this tree, which holds symlinks and executable files.
   asset_pipeline:
     github: amberframework/asset_pipeline
     commit: 9a0447c0e10d645307e8532c7794b89491281210 # v0.40.1
