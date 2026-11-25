@@ -671,7 +671,7 @@ CONFIG
 require "amber"
 require "grant"
 require "grant/adapter/#{database_adapter_require}"
-
+#{database_engine_note}
 # One app process gains nothing from a large pool, and each connection costs
 # memory on the database server. DB_POOL_SIZE changes it.
 connections_in_pool = (ENV["DB_POOL_SIZE"]? || "4").to_i
@@ -1563,8 +1563,22 @@ ROBOTS
       SOURCE
     end
 
+    # SQLite apps run on Grant's own engine, so the app links no C SQLite
+    # library; `grant/adapter/sqlite` brings the C library back.
     private def database_adapter_require : String
-      database == "sqlite" ? "sqlite" : database
+      database == "sqlite" ? "sqlite/grant_engine" : database
+    end
+
+    private def database_engine_note : String
+      return "" unless database == "sqlite"
+
+      <<-NOTE
+
+      # SQLite runs on Grant's own engine, written in Crystal: the app links no C
+      # SQLite library and its database files open in the sqlite3 tool. To run on
+      # the system's C SQLite library instead, require "grant/adapter/sqlite" above.
+
+      NOTE
     end
 
     private def database_adapter_class : String
