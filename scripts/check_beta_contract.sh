@@ -36,7 +36,15 @@ if grep -F 'shards install || true' src/amber_cli/generators/native_app.cr; then
   echo "native app setup masks dependency installation failures" >&2
   exit 1
 fi
-grep -F 'github: amberframework/micrate' shard.yml
+# `amber database` runs on Grant, so the CLI carries no C or OpenSSL database driver.
+grep -F 'github: crimson-knight/grant' shard.yml
+grep -F 'Grant::Tasks::Database' src/amber_cli/database/run_database_task.cr
+for driver in amberframework/micrate will/crystal-pg crystal-lang/crystal-sqlite3 crystal-lang/crystal-mysql; do
+  if grep -F "github: $driver" shard.yml; then
+    echo "shard.yml still depends on $driver" >&2
+    exit 1
+  fi
+done
 grep -F 'info "  2. Bind it in a controller: schema :create, #{class_name}Schema"' src/amber_cli/commands/generate.cr
 grep -F 'content_type "#{content_type}"' src/amber_cli/commands/generate.cr
 grep -F 'schema :create, #{class_name}Schema' src/amber_cli/commands/generate.cr
