@@ -1,5 +1,6 @@
 # :nodoc:
 require "yaml"
+require "./helpers/resolve_crystal_compiler_command"
 
 module Amber::CLI
   AMBER_YML = ".amber.yml" # TODO: move to config/amber.yml
@@ -45,7 +46,7 @@ module Amber::CLI
         "run" => Hash{
           "build_commands" => [
             "mkdir -p bin",
-            "crystal build ./src/#{appname}.cr -o bin/#{appname}",
+            "#{Process.quote(Amber::CLI.crystal_compiler_command)} build ./src/#{appname}.cr -o bin/#{appname}",
           ],
           "run_commands" => [
             "bin/#{appname}",

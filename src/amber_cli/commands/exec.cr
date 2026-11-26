@@ -90,7 +90,7 @@ module AmberCLI::Commands
         crystal_code = [] of String
         crystal_code << %(require "./config/application.cr") if Dir.exists?("config")
         crystal_code << %(require "#{filename}")
-        exit_code = execute_crystal(%(crystal eval '#{crystal_code.join("\n")}'))
+        exit_code = execute_crystal(%(#{Process.quote(Amber::CLI.crystal_compiler_command)} eval '#{crystal_code.join("\n")}'))
       end
 
       unless exit_code == 0

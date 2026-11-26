@@ -20,25 +20,29 @@ describe "amber setup:agent" do
     AmberCLI::Core::CommandRegistry.find_command("agent").should eq(AmberCLI::Core::CommandRegistry.find_command("setup:agent"))
   end
 
-  it "resolves the alpha override, aliases, and stock compiler in order" do
+  it "resolves CRYSTAL, then crystal-alpha, then stock crystal" do
     calls = [] of String
     lookup = ->(command : String) do
       calls << command
-      {"acrystal" => "/tools/acrystal", "crystal" => "/tools/crystal"}[command]?
+      {"crystal-alpha" => "/tools/crystal-alpha", "crystal" => "/tools/crystal"}[command]?
     end
 
-    override = AmberCLI::Agent::ResolveCompilerForAgentLoop.new("/custom/alpha", lookup)
+    override = AmberCLI::Agent::ResolveCompilerForAgentLoop.new(" /custom/alpha\n", lookup)
     override.perform.should eq("/custom/alpha")
+    override.stock_compiler?.should be_false
     calls.should be_empty
 
-    alias_choice = AmberCLI::Agent::ResolveCompilerForAgentLoop.new(nil, lookup)
-    alias_choice.perform.should eq("/tools/acrystal")
-    alias_choice.stock_compiler?.should be_false
-    calls.should eq(["crystal-alpha", "acrystal"])
+    blank_override = AmberCLI::Agent::ResolveCompilerForAgentLoop.new("  ", lookup)
+    blank_override.perform.should eq("/tools/crystal-alpha")
+    blank_override.stock_compiler?.should be_false
+    calls.should eq(["crystal-alpha"])
 
     stock = AmberCLI::Agent::ResolveCompilerForAgentLoop.new(nil, ->(command : String) { command == "crystal" ? "/tools/crystal" : nil })
     stock.perform.should eq("/tools/crystal")
     stock.stock_compiler?.should be_true
+
+    no_compiler = AmberCLI::Agent::ResolveCompilerForAgentLoop.new(nil, ->(command : String) { command == "acrystal" ? "/tools/acrystal" : nil })
+    no_compiler.perform.should be_nil
   end
 
   it "merges hooks while preserving unrelated settings and remains idempotent" do
@@ -130,7 +134,7 @@ describe "amber setup:agent" do
       setup_manifest = AmberCLI::Agent::AgentSetupManifest.from_json(File.read(".amber/agent_setup.json"))
       setup_manifest.amber_cli_version.should eq(AmberCli::VERSION)
       setup_manifest.minimum_amber_lsp_version.should eq("1.0.0")
-      setup_manifest.generated_hook_version.should eq("6")
+      setup_manifest.generated_hook_version.should eq("7")
       File.file?(".amber/claude-marketplace/amber-lsp/.lsp.json").should be_true
       File.file?(".lsp.json").should be_false
       File.info(".amber/amber-agent-hook").permissions.to_i.&(0o111).should_not eq(0)
@@ -274,9 +278,7 @@ describe "amber setup:agent" do
 
       run_hook.call("pre", "{}", "0", "2")[0].should eq(0)
 
-      File.rename(compiler, File.join(tools, "acrystal"))
-      run_hook.call("pre", "{}", "0", "0")[0].should eq(0)
-      File.rename(File.join(tools, "acrystal"), File.join(tools, "crystal"))
+      File.rename(compiler, File.join(tools, "crystal"))
       stock_result = run_hook.call("stop", "{}", "0", "0")
       stock_result[0].should eq(0)
       stock_result[2].should contain("fast rebuilds need crystal-alpha")
@@ -285,7 +287,7 @@ describe "amber setup:agent" do
       File.write(override_compiler, "#!/bin/sh\nprintf 'override %s\\n' \"$*\" >> \"$TEST_COMMAND_LOG\"\n")
       File.chmod(override_compiler, 0o755)
       override_status = Process.run(hook, ["pre"], input: IO::Memory.new("{}"), output: IO::Memory.new,
-        error: IO::Memory.new, env: {"PATH" => path, "CRYSTAL_ALPHA" => override_compiler, "TEST_COMMAND_LOG" => log})
+        error: IO::Memory.new, env: {"PATH" => path, "CRYSTAL" => "  #{override_compiler} ", "TEST_COMMAND_LOG" => log})
       override_status.exit_code.should eq(0)
       File.read(log).should contain("override watch hold")
     end

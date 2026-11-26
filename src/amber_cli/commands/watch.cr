@@ -1,5 +1,6 @@
 require "../core/base_command"
 require "../helpers/process_runner"
+require "../helpers/resolve_crystal_compiler_command"
 require "../helpers/sentry"
 require "../static_assets"
 
@@ -126,7 +127,7 @@ module AmberCLI::Commands
     end
 
     private def get_default_build_command
-      "crystal build src/#{@name}.cr -o bin/#{@name}"
+      "#{Process.quote(Amber::CLI.crystal_compiler_command)} build src/#{@name}.cr -o bin/#{@name}"
     end
 
     private def get_default_run_command
