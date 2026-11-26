@@ -11,7 +11,7 @@ Homebrew formula pins Amber and Minecart source archives and checksums.
 
 ## 2. CLI release
 
-1. Confirm `shard.yml` and `AmberCLI::VERSION` both say `2.0.17`.
+1. Confirm `shard.yml` and `AmberCLI::VERSION` both say `2.0.18`.
 2. Generate a web app and verify it pins the framework prerelease.
 3. Verify the generated app pins the reviewed Asset Pipeline release exactly,
    has a Minecart SHA-256 checksum for every dependency, and has assistant
@@ -27,7 +27,7 @@ Homebrew formula pins Amber and Minecart source archives and checksums.
 7. Confirm the Windows x86-64 generated app passes its full CI smoke, including
    launch and asset probes. This is a generated-app release gate, with no
    Windows archive yet.
-8. Tag `v2.0.17`, publish the release, and wait for the binary and source
+8. Tag `v2.0.18`, publish the release, and wait for the binary and source
    archives and checksum files to upload. Compare the published source archive
    hash with the reviewed Homebrew formula before pushing the tap.
 

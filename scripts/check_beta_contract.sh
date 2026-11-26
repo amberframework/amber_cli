@@ -3,7 +3,7 @@ set -euo pipefail
 
 shard_version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
 cli_version="$(sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' src/amber_cli.cr | head -1)"
-test "$shard_version" = "2.0.17"
+test "$shard_version" = "2.0.18"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new_command.cr

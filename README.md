@@ -3,7 +3,7 @@
 [![GitHub release](https://img.shields.io/github/release/amberframework/amber_cli.svg)](https://github.com/amberframework/amber_cli/releases)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://amberframework.github.io/amber_cli/)
 
-Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.17`
+Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.18`
 creates the supported Amber `2.0.0-beta.16` ECR web application and includes
 development, generator, database, and LSP tooling. Its agent tooling also
 works in plain Crystal apps and shards; see
@@ -42,13 +42,13 @@ are selected by the installed core catalog, not pinned by this tap.
 
 ### Direct release archive
 
-The CLI `2.0.17` release has `darwin-arm64`, `linux-x86_64`, and
+The CLI `2.0.18` release has `darwin-arm64`, `linux-x86_64`, and
 `linux-arm64` binary archives. A direct archive does not install Minecart or
 the native dependencies, so Homebrew is the beginner path. Windows x86-64 has
 no release archive.
 
 ```bash
-version=v2.0.17
+version=v2.0.18
 platform=darwin-arm64
 asset="amber_cli-${platform}.tar.gz"
 
