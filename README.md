@@ -160,12 +160,53 @@ to `src/schemas/pet_schema.cr`, the controller to
 `src/controllers/pet_controller.cr`, ECR views to `src/views/pet/`, a Micrate
 SQL migration to `db/migrations/`, and the resource route to `config/routes.cr`.
 
+## Build a release binary
+
+`amber build` compiles the first `targets:` entry in `shard.yml` into `bin/`
+with crystal-alpha in release mode, after compiling `app/assets/`:
+
+```bash
+amber build                          # portable: runs on every supported chip
+amber build --target-tier x86-64-v3  # tuned for a known deploy CPU
+amber build --list-target-tiers      # every tier and the machines it fits
+amber build --dry-run                # print the compiler command only
+```
+
+The default tier, `portable`, keeps crystal-alpha's own target, so one binary
+runs on every supported chip and picks per-chip kernels at startup. When you
+know the machine you deploy to, name its tier and the compiler tunes the whole
+program for that CPU:
+
+| Tier | Compiler flag | Machines |
+|---|---|---|
+| `portable` | (default target) | Every supported chip |
+| `x86-64-v2` | `--mcpu x86-64-v2` | x86-64 with SSE4.2 and POPCNT: Intel Nehalem and later, AMD Bulldozer and later |
+| `x86-64-v3` | `--mcpu x86-64-v3` | x86-64 with AVX2, BMI2 and FMA: Intel Haswell and later, AMD Zen and later |
+| `x86-64-v4` | `--mcpu x86-64-v4` | x86-64 with AVX-512 F/BW/DQ/VL: Intel Xeon Skylake-SP and later, AMD EPYC Zen 4 and later |
+| `neoverse-v1` | `--mcpu neoverse-v1` | AWS Graviton3 and Graviton3E |
+| `neoverse-n2` | `--mcpu neoverse-n2` | Azure Cobalt 100, GitHub `ubuntu-24.04-arm` runners, Alibaba Yitian 710 |
+| `neoverse-v2` | `--mcpu neoverse-v2` | AWS Graviton4, NVIDIA Grace, Google Axion |
+| `apple-m1` | `--mcpu apple-m1` | Apple M1 and every later Apple silicon Mac |
+| `apple-m4` | `--mcpu apple-m4` | Apple M4 and later only |
+
+A tuned binary runs only on its tier's machines and later ones, so build it on
+a machine of the same architecture (your deploy host or CI). `amber build`
+stops with an error when the tier's architecture differs from the machine it
+runs on, and an unknown tier name prints the valid ones. To set the tier for
+every build of an app, add it to `.amber.yml`; `--target-tier` overrides it:
+
+```yaml
+build:
+  target_tier: neoverse-v2
+```
+
 ## Commands
 
 | Command | Status | Purpose |
 |---|---|---|
 | `amber new APP --type web` | Supported | Create the beta web application |
 | `amber watch` | Supported | Rebuild and restart during development |
+| `amber build` | Supported | Build the release binary with crystal-alpha; `--target-tier` tunes it for a known deploy CPU |
 | `amber routes` | Supported | Inspect application routes |
 | `amber pipelines` | Supported | Inspect configured pipelines |
 | `amber generate` | Mixed | Model, scaffold, migration, and core generators supported; auth and API preview |

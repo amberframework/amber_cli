@@ -280,6 +280,26 @@ module AmberCLI::Documentation
   # - `-w, --watch=FILES` - Files to watch (comma-separated)
   # - `-i, --info` - Show current configuration
   #
+  # ### Release Builds
+  #
+  # The `build` command compiles the application's release binary with
+  # crystal-alpha into `bin/`, after compiling `app/assets/`.
+  #
+  # #### Usage
+  # ```bash
+  # amber build [options]
+  # ```
+  #
+  # #### Options
+  #
+  # - `-t, --target-tier=NAME` - CPU tier to build for (default: `portable`,
+  #   which runs on every supported chip)
+  # - `--list-target-tiers` - Print every tier and the machines it fits
+  # - `--dry-run` - Print the compiler command without running it
+  #
+  # A `build: target_tier:` entry in `.amber.yml` sets the tier when
+  # `--target-tier` is not given.
+  #
   # ### Code Execution
   #
   # The `exec` command allows you to execute Crystal code within your
@@ -394,6 +414,7 @@ module AmberCLI::Documentation
   #
   # #### Development
   # - `watch` - Development server
+  # - `build` - Release binary, with an optional CPU target tier
   # - `exec` - Code execution
   #
   # #### Analysis

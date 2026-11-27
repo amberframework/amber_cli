@@ -21,6 +21,7 @@ require "./amber_cli/commands/assets"
 require "./amber_cli/commands/database"
 require "./amber_cli/commands/routes"
 require "./amber_cli/commands/watch"
+require "./amber_cli/commands/build"
 require "./amber_cli/commands/encrypt"
 require "./amber_cli/commands/exec"
 require "./amber_cli/commands/plugin"
@@ -75,6 +76,7 @@ module AmberCLI
       assets          Build or verify fingerprinted static assets
       routes (r)      Display application routes
       watch (w)       Start development server with file watching
+      build (b)       Build the release binary (--target-tier for a known deploy CPU)
       encrypt (e)     Encrypt/decrypt environment files
       exec (x)        Execute Crystal code in application context
       plugin (pl)     Generate application plugins
