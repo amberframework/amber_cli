@@ -25,6 +25,7 @@ module AmberCLI
       option_parser.separator "  generate [type] [name] Generate components (model, controller, etc.)"
       option_parser.separator "  routes                Show all routes"
       option_parser.separator "  watch                 Watch and reload application"
+      option_parser.separator "  build                 Build the release binary with crystal-alpha"
       option_parser.separator "  exec [command]        Execute commands in the context of the application"
       option_parser.separator "  database [command]    Database migration and seeding tasks"
       option_parser.separator "  assets [command]      Build or verify fingerprinted static assets"

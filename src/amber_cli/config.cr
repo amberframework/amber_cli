@@ -27,10 +27,26 @@ module Amber::CLI
     # see defaults below
     alias WatchOptions = Hash(String, Hash(String, Array(String)))
 
+    # The `build:` section of .amber.yml, read by `amber build`:
+    #
+    # ```yaml
+    # build:
+    #   target_tier: x86-64-v3
+    # ```
+    class BuildOptions
+      include YAML::Serializable
+
+      property target_tier : String? = nil
+
+      def initialize
+      end
+    end
+
     property database : String = "sqlite"
     property language : String = "ecr"
     property model : String = "grant"
     property watch : WatchOptions?
+    property build : BuildOptions = BuildOptions.new
 
     def initialize
       @watch = default_watch_options
