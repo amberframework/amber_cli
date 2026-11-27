@@ -1,5 +1,6 @@
 require "../core/base_command"
 require "../config"
+require "../generators/exact_amount_field"
 
 # The `generate` command creates models, controllers, migrations, scaffolds,
 # jobs, mailers, schemas, and channels for an Amber V2 application.
@@ -47,7 +48,8 @@ module AmberCLI::Commands
       "int64"     => "Int64",
       "float"     => "Float64",
       "float64"   => "Float64",
-      "decimal"   => "Float64",
+      "decimal"   => "Grant::Decimal128",
+      "money"     => "Grant::Money",
       "bool"      => "Bool",
       "boolean"   => "Bool",
       "time"      => "Time",
@@ -57,7 +59,8 @@ module AmberCLI::Commands
       "email"     => "String",
     }
 
-    # Maps CLI field types to Schema field types with default options
+    # Maps CLI field types to Schema field types with default options.
+    # Amounts (decimal, money) travel as text, a JSON string, so that every digit is kept.
     SCHEMA_TYPE_MAP = {
       "string"    => {type: "String", options: ""},
       "text"      => {type: "String", options: ""},
@@ -67,7 +70,8 @@ module AmberCLI::Commands
       "int64"     => {type: "Int64", options: ""},
       "float"     => {type: "Float64", options: ""},
       "float64"   => {type: "Float64", options: ""},
-      "decimal"   => {type: "Float64", options: ""},
+      "decimal"   => {type: "String", options: ""},
+      "money"     => {type: "String", options: ""},
       "bool"      => {type: "Bool", options: ""},
       "boolean"   => {type: "Bool", options: ""},
       "time"      => {type: "Time", options: ", format: \"datetime\""},
@@ -93,6 +97,9 @@ module AmberCLI::Commands
     # Association names for `name:reference` fields. Each one becomes a
     # `belongs_to` and a `<name>_id` foreign key column.
     getter references : Array(String) = [] of String
+
+    # Precision, scale, and currency of each `decimal` and `money` field, by field name.
+    getter exact_amount_fields = {} of String => AmberCLI::Generators::ExactAmountField
 
     # Job generator options
     getter queue_name : String = "default"
@@ -126,7 +133,14 @@ module AmberCLI::Commands
         auth        Generate authentication system
 
       Field format: name:type[:required]
-        string, text, integer, int64, float, decimal, bool, time, email, uuid, reference
+        string, text, integer, int64, float, decimal, money, bool, time, email, uuid, reference
+
+      Exact amounts (quote braces that hold a comma, or the shell expands them):
+        price:decimal               Grant::Decimal128, NUMERIC(18,4)
+        'price:decimal{38,10}'      precision 1 to 38, scale 0 to the precision
+        total:money                 Grant::Money, NUMERIC(18,4) plus a total_currency column
+        total:money{USD}            always USD, no currency column
+        'total:money{18,2,USD}'     precision, scale, and a fixed currency
 
       Examples:
         amber generate model User name:string email:string
@@ -138,6 +152,7 @@ module AmberCLI::Commands
         amber generate schema User name:string email:string:required age:int32
         amber generate channel Chat
         amber generate api Product name:string price:float
+        amber generate scaffold Product price:decimal total:money
       HELP
     end
 
@@ -190,7 +205,7 @@ module AmberCLI::Commands
         if arg.includes?(":")
           parts = arg.split(":")
           field_name = parts[0]
-          field_type = parts[1].downcase
+          field_type = read_field_type(field_name, parts[1])
 
           is_required = parts.size > 2 && parts[2].downcase == "required"
           if field_type == "reference"
@@ -208,6 +223,32 @@ module AmberCLI::Commands
           @actions << arg
         end
       end
+    rescue ex : AmberCLI::Generators::ExactAmountField::InvalidOptionsError
+      error ex.message.to_s
+      exit(1)
+    end
+
+    # The field type before any braces. `decimal{38,10}` and `money{18,4,USD}`
+    # record their options in `exact_amount_fields`.
+    private def read_field_type(field_name : String, type_text : String) : String
+      field_type, brace, options_text = type_text.partition('{')
+      field_type = field_type.downcase
+
+      if AmberCLI::Generators::ExactAmountField.kind?(field_type)
+        if !brace.empty? && !options_text.ends_with?('}')
+          raise AmberCLI::Generators::ExactAmountField::InvalidOptionsError.new("#{field_name}: #{type_text} has no closing brace")
+        end
+        options = brace.empty? ? nil : options_text.rchop('}')
+        exact_amount_fields[field_name] = AmberCLI::Generators::ExactAmountField.parse(field_name, field_type, options)
+      elsif !brace.empty?
+        raise AmberCLI::Generators::ExactAmountField::InvalidOptionsError.new("#{field_name}: #{field_type} takes no options in braces")
+      elsif field_type.matches?(/\A(decimal|money)\d+\z/)
+        # An unquoted `price:decimal{38,10}` reaches us as `price:decimal38 price:decimal10`.
+        raise AmberCLI::Generators::ExactAmountField::InvalidOptionsError.new(
+          "#{field_name}: #{type_text} is not a field type; the shell expanded the braces, so quote the field: 'price:decimal{38,10}'")
+      end
+
+      field_type
     end
 
     def execute
@@ -491,7 +532,7 @@ SPEC
 
         required_str = is_required ? ", required: true" : ""
 
-        "  field :#{field_name}, #{crystal_type}#{required_str}#{extra_options}"
+        "  field :#{field_name}, #{crystal_type}#{required_str}#{extra_options}#{currency_schema_field(field_name, is_required)}"
       end.join("\n")
 
       # If no fields were parsed from schema_fields, use regular fields
@@ -518,25 +559,21 @@ SPEC
 # See: https://amberframework.org/docs/v2/guides/schema-api/
 class #{class_name}Schema < Amber::Schema::Definition
 #{field_definitions}
-end
+#{exact_amount_validations_source}end
 SCHEMA
     end
 
     private def schema_spec_template
       # Build valid test data from fields
-      schema_field_width = schema_fields.map { |field| field[0].size }.max? || 0
-      valid_data_entries = schema_fields.map do |field_name, field_type, _|
-        value = case field_type
-                when "string", "text", "uuid"  then "\"test_value\""
-                when "email"                   then "\"test@example.com\""
-                when "integer", "int", "int32" then "1"
-                when "int64"                   then "1_i64"
-                when "float", "float64"        then "1.0"
-                when "decimal"                 then "1.0"
-                when "bool", "boolean"         then "false"
-                when "time", "timestamp"       then "\"2024-01-01T00:00:00Z\""
-                else                                "\"test_value\""
-                end
+      list_of_sample_pairs = schema_fields.flat_map do |field_name, field_type, _|
+        list_of_pairs = [{field_name, schema_sample_value(field_name, field_type)}]
+        if (amount_field = exact_amount_fields[field_name]?) && amount_field.has_a_currency_column?
+          list_of_pairs << {amount_field.currency_column_name, amount_field.sample_currency_code.inspect}
+        end
+        list_of_pairs
+      end
+      schema_field_width = list_of_sample_pairs.map { |pair| pair[0].size }.max? || 0
+      valid_data_entries = list_of_sample_pairs.map do |field_name, value|
         padding = " " * (schema_field_width - field_name.size)
         "      \"#{field_name}\"#{padding} => JSON::Any.new(#{value}),"
       end.join("\n")
@@ -545,17 +582,7 @@ SCHEMA
       if valid_data_entries.empty? && !fields.empty?
         field_width = fields.map { |field| field[0].size }.max? || 0
         valid_data_entries = fields.map do |field_name, field_type|
-          value = case field_type
-                  when "string", "text", "uuid"  then "\"test_value\""
-                  when "email"                   then "\"test@example.com\""
-                  when "integer", "int", "int32" then "1"
-                  when "int64"                   then "1_i64"
-                  when "float", "float64"        then "1.0"
-                  when "decimal"                 then "1.0"
-                  when "bool", "boolean"         then "false"
-                  when "time", "timestamp"       then "\"2024-01-01T00:00:00Z\""
-                  else                                "\"test_value\""
-                  end
+          value = schema_sample_value(field_name, field_type)
           padding = " " * (field_width - field_name.size)
           "      \"#{field_name}\"#{padding} => JSON::Any.new(#{value}),"
         end.join("\n")
@@ -709,7 +736,8 @@ SPEC
         else
           crystal_type = FIELD_TYPE_MAP[field_type]? || "String"
           crystal_type += "?" unless field_required?(field_name)
-          "  column #{field_name} : #{crystal_type}"
+          column_options = exact_amount_fields[field_name]?.try(&.column_options) || ""
+          "  column #{field_name} : #{crystal_type}#{column_options}"
         end
       end.join("\n")
 
@@ -882,7 +910,7 @@ SPEC
         crystal_type = schema_info[:type]
         extra_options = schema_info[:options]
         required_option = is_required ? ", required: true" : ""
-        "  field :#{field_name}, #{crystal_type}#{required_option}#{extra_options}"
+        "  field :#{field_name}, #{crystal_type}#{required_option}#{extra_options}#{currency_schema_field(field_name, is_required)}"
       end.join("\n")
 
       content = <<-SCHEMA
@@ -895,7 +923,7 @@ class #{class_name}Schema < Amber::Schema::Definition
   content_type "#{content_type}"
 
 #{field_definitions}
-end
+#{exact_amount_validations_source}end
 SCHEMA
 
       create_file(schema_path, content)
@@ -914,14 +942,14 @@ SCHEMA
     private def scaffold_controller_template
       template_ext = detect_template_extension
 
-      schema_field_assignments = fields.map do |field_name, _|
+      schema_field_assignments = fields.map do |field_name, field_type|
         suffix = field_required?(field_name) ? " || raise(ArgumentError.new(\"#{field_name} is required\"))" : ""
-        "    #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
+        "    #{variable_name}.#{field_name} = #{assigned_value_source(field_name, field_type, from_form: true)}#{suffix}"
       end.join("\n")
 
-      update_field_assignments = fields.map do |field_name, _|
+      update_field_assignments = fields.map do |field_name, field_type|
         suffix = field_required?(field_name) ? " || raise(ArgumentError.new(\"#{field_name} is required\"))" : ""
-        "      #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
+        "      #{variable_name}.#{field_name} = #{assigned_value_source(field_name, field_type, from_form: true)}#{suffix}"
       end.join("\n")
 
       <<-CONTROLLER
@@ -1117,7 +1145,7 @@ class #{controller_name} < ApplicationController
     page_number = request.query_params["page"]?.to_s.to_i? || 1
     page_number.in?(1..MAXIMUM_PAGE_NUMBER) ? page_number : 1
   end
-end
+#{exact_amount_helpers_source(from_form: true, indent: "  ")}end
 CONTROLLER
     end
 
@@ -1224,7 +1252,7 @@ describe #{controller_name} do
       assert_response_status(response, 403)
       #{class_name}.all.to_a.size.should eq(0)
     end
-#{missing_parent_specs}  end
+#{exact_amount_round_trip_spec(sample_hash)}#{missing_parent_specs}  end
 
   describe "PUT /#{plural_name}/:id" do
     it "updates the #{class_name.underscore}" do
@@ -1377,14 +1405,14 @@ SQL
     end
 
     private def api_controller_template
-      schema_field_assignments = fields.map do |field_name, _|
+      schema_field_assignments = fields.map do |field_name, field_type|
         suffix = field_required?(field_name) ? " || raise(ArgumentError.new(\"#{field_name} is required\"))" : ""
-        "      #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
+        "      #{variable_name}.#{field_name} = #{assigned_value_source(field_name, field_type, from_form: false)}#{suffix}"
       end.join("\n")
 
-      update_field_assignments = fields.map do |field_name, _|
+      update_field_assignments = fields.map do |field_name, field_type|
         suffix = field_required?(field_name) ? " || raise(ArgumentError.new(\"#{field_name} is required\"))" : ""
-        "        #{variable_name}.#{field_name} = schema.#{field_name}#{suffix}"
+        "        #{variable_name}.#{field_name} = #{assigned_value_source(field_name, field_type, from_form: false)}#{suffix}"
       end.join("\n")
 
       <<-CONTROLLER
@@ -1441,17 +1469,20 @@ module Api
         respond_with(404) { json({error: "#{class_name} not found"}.to_json) }
       end
     end
-  end
+#{exact_amount_helpers_source(from_form: false, indent: "    ")}  end
 end
 CONTROLLER
     end
 
     private def api_spec_template
-      sample_json = fields.map { |field_name, field_type| "#{field_name}: #{sample_expression(field_name, field_type)}" }.join(", ")
+      sample_json = fields.map { |field_name, field_type| json_sample_pairs(field_name, field_type) }.join(", ")
       changed_field = fields.find { |_, type| %w[string text email].includes?(type) }
       updated_json = fields.map do |field_name, field_type|
-        value = changed_field && changed_field[0] == field_name ? "\"Updated\"" : sample_expression(field_name, field_type)
-        "#{field_name}: #{value}"
+        if changed_field && changed_field[0] == field_name
+          "#{field_name}: \"Updated\""
+        else
+          json_sample_pairs(field_name, field_type)
+        end
       end.join(", ")
 
       update_check = if changed_field
@@ -1905,6 +1936,11 @@ SPEC
 
     private def create_table_migration
       column_definitions = fields.map do |field_name, field_type|
+        nullability = field_required?(field_name) ? " NOT NULL" : ""
+        if amount_field = exact_amount_fields[field_name]?
+          next exact_amount_column_sql(amount_field, nullability)
+        end
+
         sql_type = case field_type
                    when "string", "email"         then "VARCHAR(255)"
                    when "uuid"                    then database_type == "pg" ? "UUID" : "VARCHAR(36)"
@@ -1912,12 +1948,10 @@ SPEC
                    when "integer", "int", "int32" then "INTEGER"
                    when "int64", "reference"      then "BIGINT"
                    when "float", "float64"        then "DOUBLE PRECISION"
-                   when "decimal"                 then "DECIMAL(10,2)"
                    when "bool", "boolean"         then "BOOLEAN DEFAULT FALSE"
                    when "time", "timestamp"       then "TIMESTAMP"
                    else                                "VARCHAR(255)"
                    end
-        nullability = field_required?(field_name) ? " NOT NULL" : ""
         "  #{field_name} #{sql_type}#{nullability}"
       end.join(",\n")
 
@@ -2140,7 +2174,9 @@ FIELD
     <%= number_field("#{field_name}", value: @#{variable_name}.#{field_name}?, required: true, min: 1) %>
   </div>
 FIELD
-          when "integer", "int", "int32", "int64", "float", "float64", "decimal"
+          when "decimal", "money"
+            exact_amount_form_field(exact_amount_field_of(field_name, field_type))
+          when "integer", "int", "int32", "int64", "float", "float64"
             <<-FIELD
   <div class="form-group">
     <%= label("#{field_name}") %>
@@ -2289,10 +2325,16 @@ SUPPORT
                   override_value.to_s.inspect
                 elsif field_type == "reference"
                   "create_parent_#{field_name.chomp("_id")}.id.to_s"
+                elsif amount_field = exact_amount_fields[field_name]?
+                  amount_field.sample_amount.inspect
                 else
                   sample_form_value(field_type).inspect
                 end
-        "#{field_name.inspect} => #{value}"
+        pair = "#{field_name.inspect} => #{value}"
+        if (amount_field = exact_amount_fields[field_name]?) && amount_field.has_a_currency_column?
+          pair += ", #{amount_field.currency_column_name.inspect} => #{amount_field.sample_currency_code.inspect}"
+        end
+        pair
       end
       "{#{pairs.join(", ")}} of String => String"
     end
@@ -2301,6 +2343,8 @@ SUPPORT
     private def sample_expression(field_name : String, field_type : String) : String
       if field_type == "reference"
         "create_parent_#{field_name.chomp("_id")}.id"
+      elsif AmberCLI::Generators::ExactAmountField.kind?(field_type)
+        exact_amount_field_of(field_name, field_type).sample_literal
       else
         sample_literal(field_type)
       end
@@ -2351,6 +2395,10 @@ SPEC
       return [] of String unless File.exists?(model_path)
 
       File.read_lines(model_path).compact_map do |line|
+        if amount_match = line.match(/^\s*column (\w+) : Grant::(Decimal128|Money)(?:,(.*))?$/)
+          next exact_amount_parent_assignment(amount_match[1], amount_match[2], amount_match[3]?)
+        end
+
         match = line.match(/^\s*column (\w+) : (String|Int32|Int64|Float64|Bool|Time)\s*$/)
         next if match.nil?
 
@@ -2371,7 +2419,8 @@ SPEC
       when "text"                                          then "Sample text"
       when "email"                                         then "sample@example.com"
       when "integer", "int", "int32", "int64", "reference" then "1"
-      when "float", "float64", "decimal"                   then "1.5"
+      when "float", "float64"                              then "1.5"
+      when "decimal", "money"                              then "19.99"
       when "bool", "boolean"                               then "true"
       when "time", "timestamp"                             then "2026-01-01T00:00:00Z"
       when "uuid"                                          then "3f2b8c1e-5d4a-4e6f-9b7a-1c2d3e4f5a6b"
@@ -2382,12 +2431,235 @@ SPEC
     # Crystal source for a typed sample value, used to build records in specs.
     private def sample_literal(field_type : String) : String
       case field_type
-      when "integer", "int", "int32"     then "1"
-      when "int64", "reference"          then "1_i64"
-      when "float", "float64", "decimal" then "1.5"
-      when "bool", "boolean"             then "true"
-      when "time", "timestamp"           then "Time.utc(2026, 1, 1)"
-      else                                    sample_form_value(field_type).inspect
+      when "integer", "int", "int32" then "1"
+      when "int64", "reference"      then "1_i64"
+      when "float", "float64"        then "1.5"
+      when "bool", "boolean"         then "true"
+      when "time", "timestamp"       then "Time.utc(2026, 1, 1)"
+      else                                sample_form_value(field_type).inspect
+      end
+    end
+
+    # =========================================================================
+    # Exact amounts (decimal and money fields)
+    # =========================================================================
+
+    # The options `read_field_type` recorded for a `decimal` or `money` field,
+    # or the defaults when the field was added without them.
+    private def exact_amount_field_of(field_name : String, field_type : String) : AmberCLI::Generators::ExactAmountField
+      exact_amount_fields[field_name]? || AmberCLI::Generators::ExactAmountField.parse(field_name, field_type)
+    end
+
+    # The schema field for a money field's currency code, which is required when the amount is.
+    private def currency_schema_field(field_name : String, is_required : Bool) : String
+      amount_field = exact_amount_fields[field_name]?
+      return "" unless amount_field && amount_field.has_a_currency_column?
+
+      required_option = is_required ? ", required: true" : ""
+      "\n  field :#{amount_field.currency_column_name}, String#{required_option}"
+    end
+
+    # A schema check that each amount is an exact decimal and each currency an
+    # ISO 4217 code, so bad input answers 422 before the action runs. It uses
+    # Amber's method-based `validate :name`; blank input passes here, and a
+    # required field is caught by `required: true`.
+    private def exact_amount_validations_source : String
+      return "" if exact_amount_fields.empty?
+
+      amount_names = exact_amount_fields.keys.join(" ")
+      currency_names = exact_amount_fields.values.select(&.has_a_currency_column?).map(&.currency_column_name).join(" ")
+      currency_check = if currency_names.empty?
+                         ""
+                       else
+                         <<-CHECK
+
+
+    %w[#{currency_names}].each do |field_name|
+      currency_code = @raw_data[field_name]?.to_s.strip.upcase
+      next if currency_code.empty? || Grant::Currency.find?(currency_code)
+
+      @errors << Amber::Schema::CustomValidationError.new(field_name, "is not an ISO 4217 currency code", "invalid_currency")
+    end
+CHECK
+                       end
+
+      <<-SOURCE
+
+  validate :check_exact_amounts
+
+  # Amounts arrive as text so that every digit is kept.
+  def check_exact_amounts : Nil
+    %w[#{amount_names}].each do |field_name|
+      amount_text = @raw_data[field_name]?.to_s.strip
+      next if amount_text.empty? || Grant::Decimal128.parse?(amount_text)
+
+      @errors << Amber::Schema::CustomValidationError.new(field_name, "is not an exact decimal number", "invalid_decimal")
+    end#{currency_check}
+  end
+
+SOURCE
+    end
+
+    # Crystal source for the value a controller assigns to one model field.
+    # A form posts every value as text, and Amber's form parser reads a number
+    # as Float64, which keeps only about 15 digits, so a scaffold reads an
+    # amount from the posted text itself. A JSON API reads it from the schema,
+    # where a JSON string keeps every digit.
+    private def assigned_value_source(field_name : String, field_type : String, from_form : Bool) : String
+      amount_field = exact_amount_fields[field_name]?
+      return "schema.#{field_name}" unless amount_field
+
+      amount_text = from_form ? %(submitted_text("#{field_name}")) : "schema.#{field_name}"
+      return "exact_decimal(#{amount_text})" unless amount_field.money?
+
+      currency_code = if fixed_currency_code = amount_field.fixed_currency_code
+                        fixed_currency_code.inspect
+                      elsif from_form
+                        %(submitted_text("#{amount_field.currency_column_name}"))
+                      else
+                        "schema.#{amount_field.currency_column_name}"
+                      end
+      "exact_money(#{amount_text}, #{currency_code})"
+    end
+
+    # Private controller methods that turn submitted text into exact amounts.
+    private def exact_amount_helpers_source(from_form : Bool, indent : String) : String
+      return "" if exact_amount_fields.empty?
+
+      list_of_methods = [] of String
+      if from_form
+        list_of_methods << <<-METHOD
+# The text the form posted for one field, before any number parsing.
+private def submitted_text(field_name : String) : String?
+  request.params.form_params[field_name]?
+end
+METHOD
+      end
+
+      list_of_methods << <<-METHOD
+# Blank text means no amount. The schema has already checked that the text is an exact decimal.
+private def exact_decimal(amount_text : String?) : Grant::Decimal128?
+  return nil if amount_text.nil?
+
+  trimmed_text = amount_text.strip
+  return nil if trimmed_text.empty?
+
+  Grant::Decimal128.parse(trimmed_text)
+end
+METHOD
+
+      if exact_amount_fields.values.any?(&.money?)
+        list_of_methods << <<-METHOD
+private def exact_money(amount_text : String?, currency_code : String?) : Grant::Money?
+  amount = exact_decimal(amount_text)
+  return nil if amount.nil? || currency_code.nil? || currency_code.blank?
+
+  Grant::Money.new(amount, currency_code.strip.upcase)
+end
+METHOD
+      end
+
+      indented_methods = list_of_methods.map do |method_source|
+        method_source.lines.map { |line| line.empty? ? "" : "#{indent}#{line}" }.join("\n")
+      end
+      "\n#{indented_methods.join("\n\n")}\n"
+    end
+
+    # `name: value` pairs for a generated JSON request body. Amounts are JSON
+    # strings so that every digit survives.
+    private def json_sample_pairs(field_name : String, field_type : String) : String
+      amount_field = exact_amount_fields[field_name]?
+      return "#{field_name}: #{sample_expression(field_name, field_type)}" unless amount_field
+
+      pairs = "#{field_name}: #{amount_field.sample_amount.inspect}"
+      if amount_field.has_a_currency_column?
+        pairs += ", #{amount_field.currency_column_name}: #{amount_field.sample_currency_code.inspect}"
+      end
+      pairs
+    end
+
+    # Crystal source for a sample `JSON::Any` value in a generated schema spec.
+    private def schema_sample_value(field_name : String, field_type : String) : String
+      case field_type
+      when "string", "text", "uuid"  then "\"test_value\""
+      when "email"                   then "\"test@example.com\""
+      when "integer", "int", "int32" then "1"
+      when "int64"                   then "1_i64"
+      when "float", "float64"        then "1.0"
+      when "decimal", "money"        then exact_amount_field_of(field_name, field_type).sample_amount.inspect
+      when "bool", "boolean"         then "false"
+      when "time", "timestamp"       then "\"2024-01-01T00:00:00Z\""
+      else                                "\"test_value\""
+      end
+    end
+
+    # The migration lines for an amount column and, for money without a fixed
+    # currency, its companion currency column.
+    private def exact_amount_column_sql(amount_field : AmberCLI::Generators::ExactAmountField, nullability : String) : String
+      column_sql = "  #{amount_field.field_name} #{amount_field.sql_type(database_type)}#{nullability}"
+      if amount_field.has_a_currency_column?
+        column_sql += ",\n  #{amount_field.currency_column_name} #{amount_field.currency_sql_type(database_type)}#{nullability}"
+      end
+      column_sql
+    end
+
+    # A number input whose step is one unit of the column's last decimal place,
+    # plus a currency input for money without a fixed currency.
+    private def exact_amount_form_field(amount_field : AmberCLI::Generators::ExactAmountField) : String
+      field_name = amount_field.field_name
+      required_attribute = field_required?(field_name) ? " required" : ""
+      amount_value = amount_field.money? ? "@#{variable_name}.#{field_name}?.try(&.amount)" : "@#{variable_name}.#{field_name}?"
+
+      form_field = <<-FIELD
+  <div class="form-group">
+    <%= label("#{field_name}") %>
+    <input type="number" name="#{field_name}" id="#{field_name}" step="#{amount_field.input_step}" value="<%= HTML.escape(#{amount_value}.to_s) %>"#{required_attribute} />
+  </div>
+FIELD
+      return form_field unless amount_field.has_a_currency_column?
+
+      currency_name = amount_field.currency_column_name
+      form_field + "\n" + <<-FIELD
+  <div class="form-group">
+    <%= label("#{currency_name}") %>
+    <%= text_field("#{currency_name}", value: @#{variable_name}.#{field_name}?.try(&.currency.code) || "#{amount_field.sample_currency_code}", maxlength: 3, required: #{field_required?(field_name)}) %>
+  </div>
+FIELD
+    end
+
+    # A generated spec that posts the sample form and reads the amounts back,
+    # equal by value at the column's scale.
+    private def exact_amount_round_trip_spec(sample_hash : String) : String
+      return "" if exact_amount_fields.empty?
+
+      checks = exact_amount_fields.values.map do |amount_field|
+        "        created.#{amount_field.field_name}.should eq(#{amount_field.sample_literal})"
+      end
+
+      <<-SPEC
+
+    it "keeps every digit of the submitted amounts" do
+      headers = csrf_headers("/#{plural_name}/new")
+      post("/#{plural_name}", body: HTTP::Params.encode(#{sample_hash}), headers: headers)
+      if created = #{class_name}.all.to_a.first?
+#{checks.join("\n")}
+      else
+        fail "#{class_name} was not created"
+      end
+    end
+
+SPEC
+    end
+
+    # A sample for a required amount column of a parent model, read from its
+    # `column` line, such as `column total : Grant::Money, currency: "EUR"`.
+    private def exact_amount_parent_assignment(column_name : String, type_name : String, options_text : String?) : String
+      if type_name == "Money"
+        currency_match = options_text.try(&.match(/currency:\s*"([A-Za-z]{3})"/))
+        currency_code = currency_match ? currency_match[1] : "USD"
+        %(parent.#{column_name} = Grant::Money.new(Grant::Decimal128.parse("1"), "#{currency_code}"))
+      else
+        %(parent.#{column_name} = Grant::Decimal128.parse("1"))
       end
     end
 

@@ -172,12 +172,33 @@ module AmberCLI::Documentation
   # - `integer`, `int`, `int32` - INTEGER / Int32
   # - `int64` - BIGINT / Int64
   # - `float`, `float64` - DOUBLE PRECISION / Float64
-  # - `decimal` - DECIMAL(10,2) / Float64
+  # - `decimal` - NUMERIC(18,4) on PostgreSQL, DECIMAL(18,4) on MySQL, INTEGER on SQLite / `Grant::Decimal128` (exact)
+  # - `money` - the same amount column plus a `<name>_currency` column, VARCHAR(3) or TEXT on SQLite / `Grant::Money` (exact)
   # - `bool`, `boolean` - BOOLEAN / Bool
   # - `time`, `timestamp` - TIMESTAMP / Time
   # - `email` - VARCHAR(255) / String (with email format validation)
   # - `uuid` - VARCHAR(255) / String (with UUID format validation)
   # - `reference` - BIGINT / Int64
+  #
+  # ### Exact Amounts: `decimal` and `money`
+  #
+  # A `decimal` field is an exact `Grant::Decimal128` column and a `money` field an
+  # exact `Grant::Money` column; neither ever passes through Float64. Both default
+  # to precision 18 and scale 4. Braces set the precision (1 to 38) and the scale
+  # (0 to the precision), and a money field may fix its currency there, which drops
+  # the `<name>_currency` column. Quote a field whose braces hold a comma, or the
+  # shell expands the braces into two arguments:
+  # ```bash
+  # amber generate scaffold Product price:decimal total:money
+  # amber generate scaffold Product 'price:decimal{38,10}' total:money{USD}
+  # amber generate model Order 'total:money{18,2,USD}:required'
+  # ```
+  #
+  # Storage matches Grant's on each database: PostgreSQL `NUMERIC(p,s)`, MySQL
+  # `DECIMAL(p,s)`, and SQLite `INTEGER` up to 18 digits or `TEXT` from 19 to 38.
+  # Forms post amounts as text and JSON APIs take them as JSON strings, so every
+  # digit reaches the model; the generated schema answers 422 for text that is not
+  # an exact decimal or a currency code that is not ISO 4217.
   #
   # ### Schema Field Format
   #
