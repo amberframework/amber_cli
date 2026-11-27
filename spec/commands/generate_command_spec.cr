@@ -423,4 +423,199 @@ describe AmberCLI::Commands::GenerateCommand do
       end
     end
   end
+
+  describe "exact amount fields" do
+    it "lists money and the brace options in the help text" do
+      help = AmberCLI::Commands::GenerateCommand.new("generate").help_description
+      help.should contain("decimal, money, bool")
+      help.should contain("'price:decimal{38,10}'")
+      help.should contain("total:money{USD}")
+    end
+
+    it "generates Decimal128 and Money columns for a scaffold" do
+      SpecHelper.within_temp_directory do
+        File.write(".amber.yml", "template: ecr\ndatabase: sqlite\nmodel: grant\n")
+
+        AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["scaffold", "Product", "price:decimal", "total:money"])
+
+        model = File.read("src/models/product.cr")
+        model.should contain("column price : Grant::Decimal128?, precision: 18, scale: 4")
+        model.should contain("column total : Grant::Money?, precision: 18, scale: 4")
+        model.should_not contain("Float64")
+        model.should_not contain("column total_currency")
+      end
+    end
+
+    it "writes each database's exact storage into the migration" do
+      {
+        "pg"     => {"price NUMERIC(18,4)", "total NUMERIC(18,4)", "total_currency VARCHAR(3)", "wide NUMERIC(38,10)"},
+        "mysql"  => {"price DECIMAL(18,4)", "total DECIMAL(18,4)", "total_currency VARCHAR(3)", "wide DECIMAL(38,10)"},
+        "sqlite" => {"price INTEGER", "total INTEGER", "total_currency TEXT", "wide TEXT"},
+      }.each do |database, expected_columns|
+        SpecHelper.within_temp_directory do
+          File.write(".amber.yml", "template: ecr\ndatabase: #{database}\nmodel: grant\n")
+
+          AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["model", "Product", "price:decimal", "total:money", "wide:decimal{38,10}"])
+
+          migration = File.read(Dir.glob("db/migrations/*_create_products.sql").first)
+          expected_columns.each { |column_sql| migration.should contain("  #{column_sql},") }
+          migration.should_not contain("DECIMAL(10,2)")
+        end
+      end
+    end
+
+    it "stores 18 digits as an INTEGER and 19 as TEXT on SQLite" do
+      SpecHelper.within_temp_directory do
+        File.write(".amber.yml", "template: ecr\ndatabase: sqlite\nmodel: grant\n")
+
+        AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["model", "Ledger", "small:decimal{18,2}", "large:decimal{19,2}"])
+
+        migration = File.read(Dir.glob("db/migrations/*_create_ledgers.sql").first)
+        migration.should contain("  small INTEGER,")
+        migration.should contain("  large TEXT,")
+        File.read("src/models/ledger.cr").should contain("column large : Grant::Decimal128?, precision: 19, scale: 2")
+      end
+    end
+
+    it "fixes a money currency in the model and drops the currency column" do
+      SpecHelper.within_temp_directory do
+        File.write(".amber.yml", "template: ecr\ndatabase: pg\nmodel: grant\n")
+
+        AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["scaffold", "Order", "total:money{18,2,usd}:required", "fee:money{EUR}"])
+
+        model = File.read("src/models/order.cr")
+        model.should contain(%(column total : Grant::Money, precision: 18, scale: 2, currency: "USD"))
+        model.should contain(%(column fee : Grant::Money?, precision: 18, scale: 4, currency: "EUR"))
+
+        migration = File.read(Dir.glob("db/migrations/*_create_orders.sql").first)
+        migration.should contain("  total NUMERIC(18,2) NOT NULL,")
+        migration.should_not contain("_currency")
+
+        controller = File.read("src/controllers/order_controller.cr")
+        controller.should contain(%(order.total = exact_money(submitted_text("total"), "USD") || raise(ArgumentError.new("total is required"))))
+        controller.should contain(%(order.fee = exact_money(submitted_text("fee"), "EUR")))
+        File.read("src/schemas/order_schema.cr").should_not contain("_currency")
+      end
+    end
+
+    it "requires the currency column of a required money field" do
+      SpecHelper.within_temp_directory do
+        File.write(".amber.yml", "template: ecr\ndatabase: mysql\nmodel: grant\n")
+
+        AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["scaffold", "Order", "total:money:required"])
+
+        migration = File.read(Dir.glob("db/migrations/*_create_orders.sql").first)
+        migration.should contain("  total DECIMAL(18,4) NOT NULL,\n  total_currency VARCHAR(3) NOT NULL,")
+        schema = File.read("src/schemas/order_schema.cr")
+        schema.should contain("field :total, String, required: true\n  field :total_currency, String, required: true")
+      end
+    end
+
+    it "checks amounts as text in the schema and reads them from the posted text" do
+      SpecHelper.within_temp_directory do
+        File.write(".amber.yml", "template: ecr\ndatabase: sqlite\nmodel: grant\n")
+
+        AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["scaffold", "Product", "price:decimal", "total:money"])
+
+        schema = File.read("src/schemas/product_schema.cr")
+        schema.should contain("field :price, String\n")
+        schema.should contain("field :total, String\n")
+        schema.should contain("field :total_currency, String\n")
+        schema.should contain("validate :check_exact_amounts")
+        schema.should contain("%w[price total].each do |field_name|")
+        schema.should contain("Grant::Decimal128.parse?(amount_text)")
+        schema.should contain("%w[total_currency].each do |field_name|")
+        schema.should contain("Grant::Currency.find?(currency_code)")
+
+        controller = File.read("src/controllers/product_controller.cr")
+        controller.should contain(%(product.price = exact_decimal(submitted_text("price"))))
+        controller.should contain(%(product.total = exact_money(submitted_text("total"), submitted_text("total_currency"))))
+        controller.should contain("request.params.form_params[field_name]?")
+        controller.should contain("Grant::Decimal128.parse(trimmed_text)")
+        controller.should contain("Grant::Money.new(amount, currency_code.strip.upcase)")
+      end
+    end
+
+    it "reads API amounts from the JSON schema strings" do
+      SpecHelper.within_temp_directory do
+        File.write(".amber.yml", "template: ecr\ndatabase: sqlite\nmodel: grant\n")
+
+        AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["api", "Invoice", "amount:decimal{38,10}:required", "total:money"])
+
+        File.read("src/schemas/invoice_schema.cr").should contain(%(content_type "application/json"))
+        controller = File.read("src/controllers/api/invoice_controller.cr")
+        controller.should contain(%(invoice.amount = exact_decimal(schema.amount) || raise(ArgumentError.new("amount is required"))))
+        controller.should contain("invoice.total = exact_money(schema.total, schema.total_currency)")
+        controller.should_not contain("submitted_text")
+
+        spec = File.read("spec/controllers/api_invoice_controller_spec.cr")
+        spec.should contain(%(post_json("/api/invoices", {amount: "19.99", total: "19.99", total_currency: "USD"})))
+        spec.should contain(%(saved.amount = Grant::Decimal128.parse("19.99")))
+      end
+    end
+
+    it "renders a number input stepped to the scale, and a currency input for money" do
+      SpecHelper.within_temp_directory do
+        File.write(".amber.yml", "template: ecr\ndatabase: sqlite\nmodel: grant\n")
+
+        AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["scaffold", "Product", "price:decimal{10,2}:required", "total:money"])
+
+        form = File.read("src/views/product/_form.ecr")
+        form.should contain(%(<input type="number" name="price" id="price" step="0.01" value="<%= HTML.escape(@product.price?.to_s) %>" required />))
+        form.should contain(%(<input type="number" name="total" id="total" step="0.0001" value="<%= HTML.escape(@product.total?.try(&.amount).to_s) %>" />))
+        form.should contain(%(text_field("total_currency", value: @product.total?.try(&.currency.code) || "USD", maxlength: 3, required: false)))
+        form.should_not contain(%(number_field("price")))
+      end
+    end
+
+    it "uses exact sample strings in generated specs, never floats" do
+      SpecHelper.within_temp_directory do
+        File.write(".amber.yml", "template: ecr\ndatabase: sqlite\nmodel: grant\n")
+
+        AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["scaffold", "Product", "price:decimal", "total:money"])
+
+        spec = File.read("spec/controllers/product_controller_spec.cr")
+        spec.should contain(%(saved.price = Grant::Decimal128.parse("19.99")))
+        spec.should contain(%(saved.total = Grant::Money.new(Grant::Decimal128.parse("19.99"), "USD")))
+        spec.should contain(%({"price" => "19.99", "total" => "19.99", "total_currency" => "USD"} of String => String))
+        spec.should contain(%(it "keeps every digit of the submitted amounts"))
+        spec.should contain(%(created.price.should eq(Grant::Decimal128.parse("19.99"))))
+        spec.should_not contain("1.5")
+      end
+    end
+
+    it "uses exact sample strings in schema specs" do
+      SpecHelper.within_temp_directory do
+        AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["schema", "Payment", "amount:money", "fee:decimal"])
+
+        schema = File.read("src/schemas/payment_schema.cr")
+        schema.should contain("field :amount, String\n  field :amount_currency, String\n  field :fee, String")
+        spec = File.read("spec/schemas/payment_schema_spec.cr")
+        spec.should contain(%("amount"          => JSON::Any.new("19.99")))
+        spec.should contain(%("amount_currency" => JSON::Any.new("USD")))
+        spec.should contain(%("fee"             => JSON::Any.new("19.99")))
+      end
+    end
+
+    it "fills a parent's required amount columns in reference specs" do
+      SpecHelper.within_temp_directory do
+        File.write(".amber.yml", "template: ecr\ndatabase: sqlite\nmodel: grant\n")
+        Dir.mkdir_p("src/models")
+        File.write("src/models/account.cr", <<-CRYSTAL)
+        class Account < Grant::Base
+          column balance : Grant::Decimal128, precision: 18, scale: 4
+          column limit_amount : Grant::Money, precision: 18, scale: 2, currency: "EUR"
+          column note : Grant::Decimal128?, precision: 18, scale: 4
+        end
+        CRYSTAL
+
+        AmberCLI::Commands::GenerateCommand.new("generate").parse_and_execute(["scaffold", "Payment", "account:reference"])
+
+        spec = File.read("spec/controllers/payment_controller_spec.cr")
+        spec.should contain(%(parent.balance = Grant::Decimal128.parse("1")))
+        spec.should contain(%(parent.limit_amount = Grant::Money.new(Grant::Decimal128.parse("1"), "EUR")))
+        spec.should_not contain("parent.note")
+      end
+    end
+  end
 end
