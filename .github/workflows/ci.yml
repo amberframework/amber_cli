@@ -267,7 +267,9 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libsqlite3-dev libyaml-dev libssl-dev libgmp-dev zlib1g-dev
+        # sqlite3 is the C tool the check runs integrity_check with on the
+        # database Grant's engine wrote.
+        sudo apt-get install -y libsqlite3-dev libyaml-dev libssl-dev libgmp-dev zlib1g-dev sqlite3
 
     - name: Install the generated app's system libraries (macOS)
       if: runner.os == 'macOS'

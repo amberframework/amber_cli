@@ -146,6 +146,20 @@ server_pid=""
 check_binary_is_pcre2_free "scaffolded app" bin/linkage_probe_scaffold
 check_binary_is_sqlite_library_free "scaffolded app" bin/linkage_probe_scaffold
 AMBER_ENV=test "$cli_path" database migrate
+# Grant's engine wrote the database file; the C sqlite3 tool must read it as sound.
+sqlite_tool="$(command -v sqlite3 || true)"
+if [[ -n "$sqlite_tool" ]]; then
+  integrity="$("$sqlite_tool" db/linkage_probe_test.db "PRAGMA integrity_check" 2>&1)"
+  if [[ "$integrity" == "ok" ]]; then
+    echo "ok: $sqlite_tool reports integrity_check ok for the migrated test database"
+  else
+    echo "FAIL: $sqlite_tool reports integrity_check: $integrity"
+    status=1
+  fi
+else
+  echo "FAIL: no sqlite3 tool to check the migrated database"
+  status=1
+fi
 AMBER_ENV=test "$CRYSTAL" spec
 
 exit $status
