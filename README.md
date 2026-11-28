@@ -3,7 +3,7 @@
 [![GitHub release](https://img.shields.io/github/release/amberframework/amber_cli.svg)](https://github.com/amberframework/amber_cli/releases)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://amberframework.github.io/amber_cli/)
 
-Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.18`
+Amber CLI is the standalone command-line companion for Amber V2. CLI `2.0.19`
 creates the supported Amber `2.0.0-beta.16` ECR web application and includes
 development, generator, database, and LSP tooling. Its agent tooling also
 works in plain Crystal apps and shards; see
@@ -42,13 +42,13 @@ are selected by the installed core catalog, not pinned by this tap.
 
 ### Direct release archive
 
-The CLI `2.0.18` release has `darwin-arm64`, `linux-x86_64`, and
+The CLI `2.0.19` release has `darwin-arm64`, `linux-x86_64`, and
 `linux-arm64` binary archives. A direct archive does not install Minecart or
 the native dependencies, so Homebrew is the beginner path. Windows x86-64 has
 no release archive.
 
 ```bash
-version=v2.0.18
+version=v2.0.19
 platform=darwin-arm64
 asset="amber_cli-${platform}.tar.gz"
 
@@ -111,6 +111,17 @@ The web template is deliberately small:
 The `-d pg|mysql|sqlite` option selects the generated driver, connection, and
 development/test URLs. SQLite is the default; PostgreSQL and MySQL expect their
 respective local servers or a `DATABASE_URL`.
+
+SQLite apps run on Grant's own SQLite engine, written in Crystal, so the app
+links no C SQLite library, and its database files open in the `sqlite3` tool.
+To run an app on the system's C SQLite library instead, change one line in
+`config/database.cr`:
+
+```crystal
+require "grant/adapter/sqlite" # was: require "grant/adapter/sqlite/grant_engine"
+```
+
+The database files stay the same, so switching either way keeps your data.
 
 ### Static assets: source versus generated output
 

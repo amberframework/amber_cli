@@ -97,9 +97,9 @@ jobs:
         otool -L amber
         otool -L amber-lsp
         ! otool -L amber amber-lsp | grep -F 'openssl@1.1'
-        # The CLI links no OpenSSL (SQLite migrations use the system libsqlite3,
-        # as generated SQLite apps do).
-        ! otool -L amber | grep -E 'libssl|libcrypto'
+        # The CLI links no OpenSSL and no C SQLite library: SQLite migrations run
+        # on Grant's own engine, as generated SQLite apps do.
+        ! otool -L amber | grep -E 'libssl|libcrypto|libsqlite3'
 
     - name: Smoke test generated Amber V2 web app
       run: scripts/smoke_generated_web.sh ./amber

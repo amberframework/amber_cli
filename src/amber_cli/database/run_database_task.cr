@@ -1,11 +1,12 @@
 require "grant"
 # The same drivers a generated application uses: Grant's PostgreSQL driver
-# and crystal-mysql, both on Beryl TLS 1.3 (no OpenSSL), and Grant's SQLite
-# driver on the system's libsqlite3, which `amber new -d sqlite` apps use in
-# 2.0.17. Grant's own SQLite engine follows when generated apps move to it.
+# and crystal-mysql, both on Beryl TLS 1.3 (no OpenSSL), and Grant's own
+# SQLite engine, which `amber new -d sqlite` apps run on, so the CLI links no
+# C SQLite library. The engine reads and writes the same database files as
+# the C library, so an app switched back to it keeps its database.
 require "grant/adapter/pg"
 require "grant/adapter/mysql"
-require "grant/adapter/sqlite"
+require "grant/adapter/sqlite/grant_engine"
 
 module AmberCLI::Database
   # Raised for an action `amber database` does not know.
