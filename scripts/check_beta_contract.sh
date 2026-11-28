@@ -3,7 +3,7 @@ set -euo pipefail
 
 shard_version="$(awk '/^version:/ { print $2; exit }' shard.yml)"
 cli_version="$(sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' src/amber_cli.cr | head -1)"
-test "$shard_version" = "2.0.18"
+test "$shard_version" = "2.0.19"
 test "$cli_version" = "$shard_version"
 
 grep -F 'github: amberframework/amber' src/amber_cli/commands/new_command.cr
@@ -18,11 +18,11 @@ grep -F 'github: crimson-knight/grant' src/amber_cli/commands/new_command.cr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/commands/new_command.cr
 grep -F 'commit: #{GrantRelease::COMMIT} # v#{GrantRelease::VERSION}' src/amber_cli/commands/new_command.cr
 grep -F 'commit: #{AssetPipelineRelease::COMMIT} # v#{AssetPipelineRelease::VERSION}' src/amber_cli/commands/new_command.cr
-grep -F 'COMMIT   = "4ba859e673a85de91b5dd815556ee83be3cc13b2"' src/amber_cli/pinned_releases.cr
-grep -F 'CHECKSUM = "sha256-v2:cd018dbf347f2dbb3591f9bd671c59ecff58bdfc98383a1a5b03d675228f5990"' src/amber_cli/pinned_releases.cr
+grep -F 'COMMIT   = "a4f8c01e08ff9874c9f79684d81fd820def26392"' src/amber_cli/pinned_releases.cr
+grep -F 'CHECKSUM = "sha256-v2:bb8801599eb3c25c77d480017205accb03a65aee94158dd6440443891d43e6d1"' src/amber_cli/pinned_releases.cr
 grep -F 'COMMIT   = "9a0447c0e10d645307e8532c7794b89491281210"' src/amber_cli/pinned_releases.cr
 grep -F 'CHECKSUM = "sha256-v2:d34f0ec99a825eb90fd651676d7aff40b3cca7277f31db9f06e0d3b1e8164e8d"' src/amber_cli/pinned_releases.cr
-grep -F 'commit: 4ba859e673a85de91b5dd815556ee83be3cc13b2 # v0.28.2' src/amber_cli/templates/app/shard.yml.ecr
+grep -F 'commit: a4f8c01e08ff9874c9f79684d81fd820def26392 # v0.29.0' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/asset_pipeline' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'commit: 9a0447c0e10d645307e8532c7794b89491281210 # v0.40.1' src/amber_cli/templates/app/shard.yml.ecr
 grep -F 'github: amberframework/amber' src/amber_cli/generators/native_app.cr

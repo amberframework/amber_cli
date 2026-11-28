@@ -1,5 +1,5 @@
 name: amber_cli
-version: 2.0.18
+version: 2.0.19
 
 authors:
   - crimson-knight <crimsonknightstudios@gmail.com>
@@ -28,9 +28,9 @@ dependencies:
   grant:
     github: crimson-knight/grant
     # `amber database` runs migrations on Grant: its PostgreSQL driver on
-    # Beryl TLS 1.3 and its SQLite driver on the system libsqlite3, as
-    # generated 2.0.17 apps do.
-    commit: 4ba859e673a85de91b5dd815556ee83be3cc13b2
+    # Beryl TLS 1.3 and its own SQLite engine, as generated SQLite apps do
+    # (v0.29.0).
+    commit: a4f8c01e08ff9874c9f79684d81fd820def26392
 
   # The MySQL driver generated MySQL applications use (0.18.1, TLS 1.3 and the
   # password exchanges on Beryl 0.2.1).

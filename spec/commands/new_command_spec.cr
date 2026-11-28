@@ -244,7 +244,8 @@ describe AmberCLI::Commands::NewCommand do
         amber_config["model"].as_s.should eq("grant")
 
         database_config = File.read(File.join(destination, "config/database.cr"))
-        database_config.should contain(%(require "grant/adapter/sqlite"))
+        database_config.should contain(%(require "grant/adapter/sqlite/grant_engine"))
+        database_config.should contain(%(require "grant/adapter/sqlite" above))
         database_config.should contain(%(database: "primary"))
         database_config.should contain("Grant::ConnectionRegistry.establish_connection")
         database_config.should contain(%(ENV["DATABASE_URL"]? || Amber.settings.database_url))
@@ -364,6 +365,11 @@ describe AmberCLI::Commands::NewCommand do
           shard = File.read(File.join(destination, "shard.yml"))
           shard.should_not contain("crystal-pg")
 
+          database_config = File.read(File.join(destination, "config/database.cr"))
+          database_config.should contain(%(require "grant/adapter/pg"))
+          database_config.should_not contain("grant_engine")
+          database_config.should_not contain("SQLite")
+
           production = YAML.parse(File.read(File.join(destination, "config/environments/production.yml")))
           production["database"]["url"].as_s.should eq("postgres:///tuned_pg_production?host=/var/run/postgresql")
           File.read(File.join(destination, "README.md")).should contain("DATABASE_URL")
@@ -378,6 +384,11 @@ describe AmberCLI::Commands::NewCommand do
           shard = File.read(File.join(destination, "shard.yml"))
           shard.should contain("github: crimson-knight/crystal-mysql")
           shard.should contain("commit: ce9cbfab8ba76f5b6d25386140aca0a409b1d585")
+
+          database_config = File.read(File.join(destination, "config/database.cr"))
+          database_config.should contain(%(require "grant/adapter/mysql"))
+          database_config.should_not contain("grant_engine")
+          database_config.should_not contain("SQLite")
         end
       end
 

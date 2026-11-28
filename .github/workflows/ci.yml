@@ -115,8 +115,8 @@ jobs:
         persist-credentials: false
 
     - name: Install build libraries
-      # The libraries install-crystal adds on Linux; the CLI links libyaml,
-      # libssl and libsqlite3.
+      # The libraries install-crystal adds on Linux. The CLI links libyaml on
+      # stock Crystal; it links no OpenSSL and no libsqlite3.
       run: |
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends libgmp-dev libssl-dev libxml2-dev libyaml-dev libz-dev libsqlite3-dev
@@ -267,7 +267,9 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libsqlite3-dev libyaml-dev libssl-dev libgmp-dev zlib1g-dev
+        # sqlite3 is the C tool the check runs integrity_check with on the
+        # database Grant's engine wrote.
+        sudo apt-get install -y libsqlite3-dev libyaml-dev libssl-dev libgmp-dev zlib1g-dev sqlite3
 
     - name: Install the generated app's system libraries (macOS)
       if: runner.os == 'macOS'

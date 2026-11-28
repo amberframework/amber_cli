@@ -2,7 +2,7 @@
 
 This page takes a new developer from a bare machine to an Amber V2 app with
 checksum-verified dependencies, and with editor and coding-assistant rules active
-from the first edit. It covers Amber CLI 2.0.18, Amber 2.0.0-beta.16 and Minecart
+from the first edit. It covers Amber CLI 2.0.19, Amber 2.0.0-beta.16 and Minecart
 2025.11.25.9 on Apple Silicon macOS and Linux.
 
 ## What you get
@@ -36,8 +36,8 @@ HOMEBREW_NO_AUTO_UPDATE=1 brew install amberframework/amber_cli/amber_cli
 Check the result:
 
 ```bash
-amber --version      # Amber CLI v2.0.18
-amber-lsp --version  # amber-lsp 1.0.0 (amber_cli 2.0.18, ...)
+amber --version      # Amber CLI v2.0.19
+amber-lsp --version  # amber-lsp 1.0.0 (amber_cli 2.0.19, ...)
 minecart --version   # Minecart 2025.11.25.9
 ```
 
@@ -194,7 +194,7 @@ dependencies:
     commit: 261cf2d3b4a6f3292fefb8113e71e0fe6900fcee # v2.0.0-beta.16
   grant:
     github: crimson-knight/grant
-    commit: 4ba859e673a85de91b5dd815556ee83be3cc13b2 # v0.28.2
+    commit: a4f8c01e08ff9874c9f79684d81fd820def26392 # v0.29.0
   asset_pipeline:
     github: amberframework/asset_pipeline
     commit: 9a0447c0e10d645307e8532c7794b89491281210 # v0.40.1

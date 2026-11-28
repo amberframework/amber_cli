@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# Checks that the app `amber new` generates links no regex engine.
+# Checks that the app `amber new` generates links no regex engine and no C SQLite library.
 #
 # 1. scripts/linkage/regex_control.cr links PCRE2, which proves the check can fail.
 # 2. `amber new linkage_probe -d sqlite` builds into a binary that links no
 #    libpcre2 and holds no pcre2_ symbol, and its home page answers 200.
+#    It runs on Grant's own SQLite engine, so it also links no libsqlite3 and
+#    holds no sqlite3_ symbol.
 # 3. After `amber generate scaffold` adds a Grant model, controller and schema,
-#    the rebuilt binary still links no PCRE2 and its specs pass.
+#    the rebuilt binary still links neither, `amber database migrate` applies
+#    the migration, and the app's specs pass.
 #
 # usage: scripts/check_generated_app_linkage.sh /path/to/amber [OUTPUT_DIR]
 # Set CRYSTAL to choose the compiler; crystal-alpha is preferred when present.
@@ -60,7 +63,30 @@ count_pcre2_symbols() {
   nm "$1" 2>/dev/null | grep -c pcre2_ || true
 }
 
+count_sqlite_libraries() {
+  list_libraries "$1" | grep -c libsqlite3 || true
+}
+
+# Plain nm, as for PCRE2: a statically linked libsqlite3 defines its symbols.
+count_sqlite_symbols() {
+  nm "$1" 2>/dev/null | grep -c ' _\{0,1\}sqlite3_' || true
+}
+
 status=0
+
+# Fails the run when the binary reaches the C SQLite library.
+check_binary_is_sqlite_library_free() {
+  local label="$1" binary="$2"
+  local library_count symbol_count
+  library_count="$(count_sqlite_libraries "$binary")"
+  symbol_count="$(count_sqlite_symbols "$binary")"
+  if [[ "$library_count" -ne 0 || "$symbol_count" -ne 0 ]]; then
+    echo "FAIL: $label reaches the C SQLite library ($library_count libraries, $symbol_count sqlite3_ symbols)"
+    status=1
+  else
+    echo "ok: $label links no libsqlite3 and holds no sqlite3_ symbol"
+  fi
+}
 
 # Fails the run when the binary reaches PCRE2, and prints what it links.
 check_binary_is_pcre2_free() {
@@ -96,6 +122,7 @@ cd "$app_path"
 mkdir -p bin
 "$CRYSTAL" build src/linkage_probe.cr -o bin/linkage_probe
 check_binary_is_pcre2_free "default app" bin/linkage_probe
+check_binary_is_sqlite_library_free "default app" bin/linkage_probe
 
 AMBER_ENV=development AMBER_SERVER_PORT="$probe_port" bin/linkage_probe > "$output_directory/server.log" 2>&1 &
 server_pid=$!
@@ -118,7 +145,27 @@ server_pid=""
 "$cli_path" generate scaffold Pet name:string:required species:string:required adopted:bool
 "$CRYSTAL" build src/linkage_probe.cr -o bin/linkage_probe_scaffold
 check_binary_is_pcre2_free "scaffolded app" bin/linkage_probe_scaffold
+check_binary_is_sqlite_library_free "scaffolded app" bin/linkage_probe_scaffold
 AMBER_ENV=test "$cli_path" database migrate
+# Grant's engine wrote the database file; the C sqlite3 tool must read it as sound.
+sqlite_tool="$(command -v sqlite3 || true)"
+if [[ -n "$sqlite_tool" ]]; then
+  # -readonly keeps the tool from creating an empty database when the file is missing.
+  if [[ ! -s db/linkage_probe_test.db ]]; then
+    integrity="no database file at db/linkage_probe_test.db"
+  elif ! integrity="$("$sqlite_tool" -readonly db/linkage_probe_test.db "PRAGMA integrity_check" 2>&1)"; then
+    integrity="sqlite3 failed: $integrity"
+  fi
+  if [[ "$integrity" == "ok" ]]; then
+    echo "ok: $sqlite_tool reports integrity_check ok for the migrated test database"
+  else
+    echo "FAIL: $sqlite_tool reports integrity_check: $integrity"
+    status=1
+  fi
+else
+  echo "FAIL: no sqlite3 tool to check the migrated database"
+  status=1
+fi
 AMBER_ENV=test "$CRYSTAL" spec
 
 exit $status
