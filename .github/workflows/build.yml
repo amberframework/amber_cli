@@ -94,8 +94,8 @@ jobs:
       # amber database runs SQLite migrations on Grant's own engine.
       run: |
         if [ "$(uname -s)" = Darwin ]; then otool -L amber; libraries="$(otool -L amber)"; else ldd amber || true; libraries="$(ldd amber 2>&1 || true)"; fi
-        ! printf '%s\n' "$libraries" | grep -F libsqlite3
-        ! nm amber | grep -q ' _\{0,1\}sqlite3_'
+        if printf '%s\n' "$libraries" | grep -F libsqlite3; then echo "the CLI links libsqlite3"; exit 1; fi
+        if nm amber | grep ' _\{0,1\}sqlite3_'; then echo "the CLI holds sqlite3_ symbols"; exit 1; fi
 
     - name: Smoke test generated Amber V2 web app
       # Exercise the exact published framework emitted by the template.
