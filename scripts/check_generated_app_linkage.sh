@@ -67,8 +67,9 @@ count_sqlite_libraries() {
   list_libraries "$1" | grep -c libsqlite3 || true
 }
 
+# Plain nm, as for PCRE2: a statically linked libsqlite3 defines its symbols.
 count_sqlite_symbols() {
-  nm -u "$1" 2>/dev/null | grep -c sqlite3_ || true
+  nm "$1" 2>/dev/null | grep -c ' _\{0,1\}sqlite3_' || true
 }
 
 status=0
@@ -80,10 +81,10 @@ check_binary_is_sqlite_library_free() {
   library_count="$(count_sqlite_libraries "$binary")"
   symbol_count="$(count_sqlite_symbols "$binary")"
   if [[ "$library_count" -ne 0 || "$symbol_count" -ne 0 ]]; then
-    echo "FAIL: $label reaches the C SQLite library ($library_count libraries, $symbol_count sqlite3_ imports)"
+    echo "FAIL: $label reaches the C SQLite library ($library_count libraries, $symbol_count sqlite3_ symbols)"
     status=1
   else
-    echo "ok: $label links no libsqlite3 and imports no sqlite3_ symbol"
+    echo "ok: $label links no libsqlite3 and holds no sqlite3_ symbol"
   fi
 }
 
@@ -149,7 +150,12 @@ AMBER_ENV=test "$cli_path" database migrate
 # Grant's engine wrote the database file; the C sqlite3 tool must read it as sound.
 sqlite_tool="$(command -v sqlite3 || true)"
 if [[ -n "$sqlite_tool" ]]; then
-  integrity="$("$sqlite_tool" db/linkage_probe_test.db "PRAGMA integrity_check" 2>&1)"
+  # -readonly keeps the tool from creating an empty database when the file is missing.
+  if [[ ! -s db/linkage_probe_test.db ]]; then
+    integrity="no database file at db/linkage_probe_test.db"
+  elif ! integrity="$("$sqlite_tool" -readonly db/linkage_probe_test.db "PRAGMA integrity_check" 2>&1)"; then
+    integrity="sqlite3 failed: $integrity"
+  fi
   if [[ "$integrity" == "ok" ]]; then
     echo "ok: $sqlite_tool reports integrity_check ok for the migrated test database"
   else

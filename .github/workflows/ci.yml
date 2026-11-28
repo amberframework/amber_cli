@@ -115,8 +115,8 @@ jobs:
         persist-credentials: false
 
     - name: Install build libraries
-      # The libraries install-crystal adds on Linux; the CLI links libyaml,
-      # libssl and libsqlite3.
+      # The libraries install-crystal adds on Linux. The CLI links libyaml on
+      # stock Crystal; it links no OpenSSL and no libsqlite3.
       run: |
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends libgmp-dev libssl-dev libxml2-dev libyaml-dev libz-dev libsqlite3-dev
